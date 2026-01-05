@@ -42,8 +42,20 @@ public class StockMovementService {
         movement.setProduct(product);
         movement.setType(type);
         movement.setQuantity(quantity);
-        movement.setStockBefore(product.getStockQuantity() - quantity);
-        movement.setStockAfter(product.getStockQuantity());
+        
+        // Calculate stock before/after based on the current stock and the quantity change
+        if (type == StockMovement.MovementType.PURCHASE || 
+            type == StockMovement.MovementType.RETURN || 
+            type == StockMovement.MovementType.INVENTORY) {
+            // For additions: stockBefore is current - quantity, stockAfter is current
+            movement.setStockBefore(product.getStockQuantity() - quantity);
+            movement.setStockAfter(product.getStockQuantity());
+        } else {
+            // For reductions: stockBefore is current + quantity, stockAfter is current
+            movement.setStockBefore(product.getStockQuantity() + quantity);
+            movement.setStockAfter(product.getStockQuantity());
+        }
+        
         movement.setReferenceNumber(referenceNumber);
         movement.setReason(reason);
         movement.setMovementDate(LocalDateTime.now());
