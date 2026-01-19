@@ -1,0 +1,24 @@
+Module Achats (processus complet)
+    Demande d’achat (DA)
+    Validation multi-niveaux (N1 / N2 / N3)
+    Contrôle budget / finance
+    Pro-forma fournisseur
+    Bon de commande (BC)
+    Approbation légale (DAF / DG)
+    Réception fournisseur :
+        Totale ou partielle
+    Facture fournisseur
+    Paiement
+    Gestion des litiges fournisseurs
+    Traçabilité DA → BC → Réception → Facture → Paiement
+
+Module Ventes
+    Devis / pro-forma client
+    Commande client
+    Réservation de stock
+    Livraison
+    Facturation
+    Encaissement
+    Gestion des remises plafonnées
+    Avoirs (retours, erreurs, casse)
+    Blocage livraison si stock insuffisant
