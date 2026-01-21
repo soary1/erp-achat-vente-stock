@@ -1,0 +1,46 @@
+PROCESSUS ACHATS (de l’expression du besoin au paiement)
+    Étape 1 : Demande d’Achat (DA)  
+        Initiateur : 
+            Demandeur
+        Actions :
+            création de la DA
+            description besoin, quantités, urgence
+        Règles :
+            pas d’approbation par le créateur
+        Sortie :
+            DA en attente de validation
+    Étape 2 : Validation Demande d’Achat
+        Acteurs : 
+            Approbateurs N1 / N2 / N3
+        Conditions :
+            seuils (montant, catégorie)
+        Règles :
+            validation séquentielle
+            refus avec justification
+        Sortie :
+            DA validée ou rejetée
+    Étape 3 : Vérification budgétaire
+        Acteur :
+            Finance
+        Actions :
+            contrôle disponibilité fonds
+        Sortie :
+            DA autorisée ou bloquée
+    Étape 4 : Commande Fournisseur (BC)
+        Acteur : 
+            Acheteur
+        Actions :
+            transformation DA → BC
+            négociation fournisseur
+        Règles :
+            acheteur ≠ validateur
+        Sortie :
+            BC créée
+    Étape 5 : Validation légale BC
+        Acteurs : 
+            Responsable Achats / DAF / DG
+        Règles :
+            seuils légaux
+        Sortie :
+            BC approuvée
+    
