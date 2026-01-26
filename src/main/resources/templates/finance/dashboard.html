@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{layout/main}">
+<head>
+    <title>Tableau de bord financier</title>
+</head>
+<body>
+<div layout:fragment="content">
+    <div class="page-header mb-4">
+        <h1>Tableau de bord financier</h1>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a th:href="@{/dashboard}">Accueil</a></li>
+                <li class="breadcrumb-item active">Finance</li>
+            </ol>
+        </nav>
+    </div>
+    
+    <!-- KPIs -->
+    <div class="row g-4 mb-4">
+        <div class="col-md-6 col-xl-3">
+            <div class="stat-card">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <div class="stat-label">Créances clients</div>
+                        <div class="stat-value text-success" th:text="${#numbers.formatDecimal(facturesClientImpayees, 0, 'COMMA', 0, 'POINT')} + ' MGA'">0</div>
+                    </div>
+                    <div class="stat-icon bg-success bg-opacity-10 text-success">
+                        <i class="bi bi-arrow-down-circle"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6 col-xl-3">
+            <div class="stat-card">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <div class="stat-label">Dettes fournisseurs</div>
+                        <div class="stat-value text-danger" th:text="${#numbers.formatDecimal(facturesFournisseurImpayees, 0, 'COMMA', 0, 'POINT')} + ' MGA'">0</div>
+                    </div>
+                    <div class="stat-icon bg-danger bg-opacity-10 text-danger">
+                        <i class="bi bi-arrow-up-circle"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Factures en retard -->
+    <div class="row g-4">
+        <div class="col-lg-6">
+            <div class="card">
+                <div class="card-header bg-danger text-white">
+                    <i class="bi bi-exclamation-triangle me-2"></i>
+                    Factures clients en retard
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Numéro</th>
+                                    <th>Client</th>
+                                    <th>Échéance</th>
+                                    <th>Montant dû</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr th:each="facture : ${facturesClientRetard}">
+                                    <td><a th:href="@{/finance/factures-client/{id}(id=${facture.id})}" th:text="${facture.numero}"></a></td>
+                                    <td th:text="${facture.client?.raisonSociale}"></td>
+                                    <td th:text="${#temporals.format(facture.dateEcheance, 'dd/MM/yyyy')}"></td>
+                                    <td class="fw-bold text-danger" th:text="${#numbers.formatDecimal(facture.montantRestant, 0, 'COMMA', 0, 'POINT')}"></td>
+                                </tr>
+                                <tr th:if="${#lists.isEmpty(facturesClientRetard)}">
+                                    <td colspan="4" class="text-center text-muted py-3">Aucune facture en retard</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-6">
+            <div class="card">
+                <div class="card-header bg-warning text-dark">
+                    <i class="bi bi-clock me-2"></i>
+                    Factures fournisseurs en retard
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Numéro</th>
+                                    <th>Fournisseur</th>
+                                    <th>Échéance</th>
+                                    <th>Montant dû</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr th:each="facture : ${facturesFournisseurRetard}">
+                                    <td><a th:href="@{/finance/factures-fournisseur/{id}(id=${facture.id})}" th:text="${facture.numeroFacture}"></a></td>
+                                    <td th:text="${facture.fournisseur?.raisonSociale}"></td>
+                                    <td th:text="${#temporals.format(facture.dateEcheance, 'dd/MM/yyyy')}"></td>
+                                    <td class="fw-bold text-danger" th:text="${#numbers.formatDecimal(facture.montantRestant, 0, 'COMMA', 0, 'POINT')}"></td>
+                                </tr>
+                                <tr th:if="${#lists.isEmpty(facturesFournisseurRetard)}">
+                                    <td colspan="4" class="text-center text-muted py-3">Aucune facture en retard</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Liens rapides -->
+    <div class="row g-4 mt-2">
+        <div class="col-md-6 col-xl-3">
+            <a th:href="@{/finance/factures-client}" class="card text-decoration-none h-100">
+                <div class="card-body text-center py-4">
+                    <i class="bi bi-file-text fs-1 text-primary mb-2"></i>
+                    <h5 class="mb-0">Factures clients</h5>
+                </div>
+            </a>
+        </div>
+        <div class="col-md-6 col-xl-3">
+            <a th:href="@{/finance/factures-fournisseur}" class="card text-decoration-none h-100">
+                <div class="card-body text-center py-4">
+                    <i class="bi bi-receipt fs-1 text-primary mb-2"></i>
+                    <h5 class="mb-0">Factures fournisseurs</h5>
+                </div>
+            </a>
+        </div>
+    </div>
+</div>
+</body>
+</html>

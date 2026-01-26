@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" 
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{layout/main}">
+<head>
+    <title>Carte des Fournisseurs</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        #mainMap {
+            height: calc(100vh - 200px);
+            min-height: 500px;
+            border-radius: 12px;
+        }
+        .fournisseur-panel {
+            max-height: calc(100vh - 200px);
+            overflow-y: auto;
+        }
+        .fournisseur-item {
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border-left: 3px solid transparent;
+        }
+        .fournisseur-item:hover {
+            background-color: #f3e8ff;
+            border-left-color: #8b5cf6;
+        }
+        .fournisseur-item.active {
+            background-color: #ede9fe;
+            border-left-color: #8b5cf6;
+        }
+        .fournisseur-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            background: linear-gradient(135deg, #8b5cf6, #6d28d9);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+        }
+        .rating-stars {
+            color: #f59e0b;
+            font-size: 0.75rem;
+        }
+    </style>
+</head>
+<body>
+<div layout:fragment="content">
+    <div class="page-header d-flex justify-content-between align-items-center">
+        <div>
+            <h1><i class="bi bi-truck me-2"></i>Carte des Fournisseurs</h1>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a th:href="@{/}">Accueil</a></li>
+                    <li class="breadcrumb-item"><a th:href="@{/carte}">Cartographie</a></li>
+                    <li class="breadcrumb-item active">Fournisseurs</li>
+                </ol>
+            </nav>
+        </div>
+        <div class="btn-group">
+            <a th:href="@{/achats/fournisseurs}" class="btn btn-outline-secondary" style="border-color: #8b5cf6; color: #8b5cf6;">
+                <i class="bi bi-list me-1"></i>Vue liste
+            </a>
+            <button class="btn text-white" style="background-color: #8b5cf6;" onclick="fitAllMarkers()">
+                <i class="bi bi-arrows-fullscreen me-1"></i>Tout afficher
+            </button>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-8 mb-4">
+            <div class="card h-100">
+                <div class="card-body p-0">
+                    <div id="mainMap"></div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-4 mb-4">
+            <div class="card h-100">
+                <div class="card-header">
+                    <div class="input-group">
+                        <span class="input-group-text bg-white border-0"><i class="bi bi-search"></i></span>
+                        <input type="text" class="form-control border-0" placeholder="Rechercher un fournisseur..." id="searchInput">
+                    </div>
+                </div>
+                <div class="card-body p-0 fournisseur-panel">
+                    <div class="list-group list-group-flush">
+                        <div th:each="fournisseur : ${fournisseurs}" 
+                             class="list-group-item fournisseur-item"
+                             th:data-lat="${fournisseur.latitude}"
+                             th:data-lng="${fournisseur.longitude}"
+                             th:data-id="${fournisseur.id}"
+                             th:onclick="'focusOnFournisseur(' + ${fournisseur.latitude} + ',' + ${fournisseur.longitude} + ', this)'">
+                            <div class="d-flex align-items-center">
+                                <div class="fournisseur-avatar me-3">
+                                    <span th:text="${#strings.substring(fournisseur.name, 0, 1)}">F</span>
+                                </div>
+                                <div class="flex-grow-1">
+                                    <h6 class="mb-0" th:text="${fournisseur.name}">Nom du fournisseur</h6>
+                                    <small class="text-muted" th:text="${fournisseur.code}">CODE</small>
+                                    <div class="mt-1">
+                                        <span th:if="${fournisseur.city}" class="me-2">
+                                            <small class="text-muted">
+                                                <i class="bi bi-geo me-1"></i>
+                                                <span th:text="${fournisseur.city}"></span>
+                                            </small>
+                                        </span>
+                                        <span th:if="${fournisseur.evaluationNote != null}" class="rating-stars">
+                                            <i class="bi bi-star-fill" th:each="i : ${#numbers.sequence(1, fournisseur.evaluationNote ?: 0)}"></i>
+                                        </span>
+                                    </div>
+                                </div>
+                                <div class="text-end">
+                                    <span th:if="${fournisseur.latitude != null}" class="badge bg-success">
+                                        <i class="bi bi-geo-alt-fill"></i>
+                                    </span>
+                                    <span th:unless="${fournisseur.latitude != null}" class="badge bg-secondary">
+                                        <i class="bi bi-geo-alt"></i>
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<th:block layout:fragment="scripts">
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        const map = L.map('mainMap').setView([-18.8792, 47.5079], 5);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors'
+        }).addTo(map);
+
+        const fournisseurIcon = L.divIcon({
+            className: 'custom-marker',
+            html: '<div style="background-color: #8b5cf6; width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: white; box-shadow: 0 3px 10px rgba(0,0,0,0.3); font-size: 16px; border: 3px solid white;"><i class="bi bi-truck"></i></div>',
+            iconSize: [32, 32],
+            iconAnchor: [16, 16],
+            popupAnchor: [0, -18]
+        });
+
+        let markers = [];
+
+        // Charger les fournisseurs via l'API
+        fetch('/api/geo/fournisseurs')
+            .then(response => response.json())
+            .then(fournisseurs => {
+                fournisseurs.forEach(fournisseur => {
+                    const marker = L.marker([fournisseur.latitude, fournisseur.longitude], { icon: fournisseurIcon })
+                        .bindPopup(fournisseur.popupContent)
+                        .addTo(map);
+                    markers.push(marker);
+                });
+                if (markers.length > 0) {
+                    fitAllMarkers();
+                }
+            });
+
+        function fitAllMarkers() {
+            if (markers.length > 0) {
+                const group = L.featureGroup(markers);
+                map.fitBounds(group.getBounds(), { padding: [50, 50] });
+            }
+        }
+
+        function focusOnFournisseur(lat, lng, element) {
+            if (lat && lng) {
+                map.setView([lat, lng], 15);
+                document.querySelectorAll('.fournisseur-item').forEach(el => el.classList.remove('active'));
+                element.classList.add('active');
+            }
+        }
+
+        document.getElementById('searchInput').addEventListener('input', function() {
+            const search = this.value.toLowerCase();
+            document.querySelectorAll('.fournisseur-item').forEach(item => {
+                const text = item.textContent.toLowerCase();
+                item.style.display = text.includes(search) ? '' : 'none';
+            });
+        });
+    </script>
+</th:block>
+</body>
+</html>

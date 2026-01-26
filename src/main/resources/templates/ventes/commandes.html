@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{layout/main}">
+<head>
+    <title>Commandes clients</title>
+</head>
+<body>
+<div layout:fragment="content">
+    <div class="page-header d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1>Commandes clients</h1>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a th:href="@{/dashboard}">Accueil</a></li>
+                    <li class="breadcrumb-item active">Commandes clients</li>
+                </ol>
+            </nav>
+        </div>
+        <a th:href="@{/ventes/commandes/add}" class="btn btn-primary">
+            <i class="bi bi-plus-lg me-2"></i>Nouvelle commande
+        </a>
+    </div>
+    
+    <div class="card">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Numéro</th>
+                            <th>Date</th>
+                            <th>Client</th>
+                            <th>Commercial</th>
+                            <th>Total TTC</th>
+                            <th>Statut</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr th:each="commande : ${commandes.content}">
+                            <td>
+                                <a th:href="@{/ventes/commandes/{id}(id=${commande.id})}" th:text="${commande.numero}"></a>
+                            </td>
+                            <td th:text="${#temporals.format(commande.createdAt, 'dd/MM/yyyy')}"></td>
+                            <td th:text="${commande.client?.raisonSociale}"></td>
+                            <td th:text="${commande.commercial?.nom + ' ' + commande.commercial?.prenom}"></td>
+                            <td th:text="${#numbers.formatDecimal(commande.totalTTC, 0, 'COMMA', 0, 'POINT')} + ' MGA'"></td>
+                            <td>
+                                <span class="badge badge-status" 
+                                      th:classappend="'badge-' + ${commande.statutCode?.toLowerCase()}"
+                                      th:text="${commande.statutCode}"></span>
+                            </td>
+                            <td>
+                                <div class="btn-group btn-group-sm">
+                                    <a th:href="@{/ventes/commandes/{id}(id=${commande.id})}" class="btn btn-outline-primary" title="Voir">
+                                        <i class="bi bi-eye"></i>
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                        <tr th:if="${commandes.content.isEmpty()}">
+                            <td colspan="7" class="text-center text-muted py-4">
+                                <i class="bi bi-inbox fs-1 d-block mb-2"></i>
+                                Aucune commande client
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- Pagination -->
+            <nav th:if="${commandes.totalPages > 1}" class="mt-4">
+                <ul class="pagination justify-content-center">
+                    <li class="page-item" th:classappend="${commandes.first} ? 'disabled'">
+                        <a class="page-link" th:href="@{/ventes/commandes(page=${commandes.number - 1})}">Précédent</a>
+                    </li>
+                    <li class="page-item" th:each="i : ${#numbers.sequence(0, commandes.totalPages - 1)}"
+                        th:classappend="${i == commandes.number} ? 'active'">
+                        <a class="page-link" th:href="@{/ventes/commandes(page=${i})}" th:text="${i + 1}"></a>
+                    </li>
+                    <li class="page-item" th:classappend="${commandes.last} ? 'disabled'">
+                        <a class="page-link" th:href="@{/ventes/commandes(page=${commandes.number + 1})}">Suivant</a>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+    </div>
+</div>
+</body>
+</html>

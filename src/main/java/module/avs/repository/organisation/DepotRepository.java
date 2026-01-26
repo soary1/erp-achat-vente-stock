@@ -1,0 +1,15 @@
+package module.avs.repository.organisation;
+
+import module.avs.model.organisation.Depot;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+
+@Repository
+public interface DepotRepository extends JpaRepository<Depot, UUID> {
+    Optional<Depot> findByCode(String code);
+    List<Depot> findBySiteIdAndIsActiveTrue(UUID siteId);
+    List<Depot> findByIsActiveTrue();
+}

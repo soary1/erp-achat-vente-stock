@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{layout/main}">
+<head>
+    <title>Factures fournisseurs</title>
+</head>
+<body>
+<div layout:fragment="content">
+    <div class="page-header d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1>Factures fournisseurs</h1>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a th:href="@{/dashboard}">Accueil</a></li>
+                    <li class="breadcrumb-item"><a th:href="@{/finance}">Finance</a></li>
+                    <li class="breadcrumb-item active">Factures fournisseurs</li>
+                </ol>
+            </nav>
+        </div>
+        <a th:href="@{/finance/factures-fournisseur/add}" class="btn btn-primary">
+            <i class="bi bi-plus-lg me-2"></i>Saisir une facture
+        </a>
+    </div>
+    
+    <div class="card">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>N° Facture</th>
+                            <th>Date</th>
+                            <th>Fournisseur</th>
+                            <th>Échéance</th>
+                            <th class="text-end">Montant TTC</th>
+                            <th class="text-end">Payé</th>
+                            <th class="text-end">Reste dû</th>
+                            <th>Statut</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr th:each="facture : ${factures.content}"
+                            th:classappend="${facture.dateEcheance != null and facture.dateEcheance.isBefore(T(java.time.LocalDate).now()) and facture.montantRestant.compareTo(T(java.math.BigDecimal).ZERO) > 0} ? 'table-warning' : ''">
+                            <td>
+                                <a th:href="@{/finance/factures-fournisseur/{id}(id=${facture.id})}" th:text="${facture.numeroFacture}"></a>
+                            </td>
+                            <td th:text="${#temporals.format(facture.dateFacture, 'dd/MM/yyyy')}"></td>
+                            <td th:text="${facture.fournisseur?.raisonSociale}"></td>
+                            <td th:text="${facture.dateEcheance != null ? #temporals.format(facture.dateEcheance, 'dd/MM/yyyy') : '-'}"></td>
+                            <td class="text-end" th:text="${#numbers.formatDecimal(facture.montantTTC, 0, 'COMMA', 0, 'POINT')}"></td>
+                            <td class="text-end" th:text="${#numbers.formatDecimal(facture.montantPaye, 0, 'COMMA', 0, 'POINT')}"></td>
+                            <td class="text-end fw-bold" th:text="${#numbers.formatDecimal(facture.montantRestant, 0, 'COMMA', 0, 'POINT')}"></td>
+                            <td>
+                                <span class="badge" 
+                                      th:classappend="${facture.statutCode == 'PAYEE'} ? 'bg-success' : 
+                                                     (${facture.statutCode == 'A_PAYER'} ? 'bg-primary' : 
+                                                     (${facture.statutCode == 'PAYEE_PARTIEL'} ? 'bg-warning' : 'bg-secondary'))"
+                                      th:text="${facture.statutCode}"></span>
+                            </td>
+                            <td>
+                                <div class="btn-group btn-group-sm">
+                                    <a th:href="@{/finance/factures-fournisseur/{id}(id=${facture.id})}" class="btn btn-outline-primary" title="Voir">
+                                        <i class="bi bi-eye"></i>
+                                    </a>
+                                    <a th:if="${facture.statutCode == 'BROUILLON'}"
+                                       th:href="@{/finance/factures-fournisseur/{id}/rapprochement(id=${facture.id})}" 
+                                       class="btn btn-outline-info" title="Rapprochement">
+                                        <i class="bi bi-link"></i>
+                                    </a>
+                                    <a th:if="${facture.montantRestant.compareTo(T(java.math.BigDecimal).ZERO) > 0}"
+                                       th:href="@{/finance/factures-fournisseur/{id}/paiement(id=${facture.id})}" 
+                                       class="btn btn-outline-success" title="Payer">
+                                        <i class="bi bi-credit-card"></i>
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                        <tr th:if="${factures.content.isEmpty()}">
+                            <td colspan="9" class="text-center text-muted py-4">
+                                <i class="bi bi-receipt fs-1 d-block mb-2"></i>
+                                Aucune facture
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+</html>

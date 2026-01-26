@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{layout/main}">
+<head>
+    <title>Nouvel inventaire</title>
+</head>
+<body>
+<div layout:fragment="content">
+    <div class="page-header mb-4">
+        <h1>Créer un inventaire</h1>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a th:href="@{/dashboard}">Accueil</a></li>
+                <li class="breadcrumb-item"><a th:href="@{/inventaires}">Inventaires</a></li>
+                <li class="breadcrumb-item active">Nouveau</li>
+            </ol>
+        </nav>
+    </div>
+    
+    <form th:action="@{/inventaires/save}" method="post" th:object="${inventaire}">
+        <div class="row g-4">
+            <div class="col-lg-8">
+                <div class="card">
+                    <div class="card-header">Paramètres de l'inventaire</div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Dépôt <span class="text-danger">*</span></label>
+                                <select class="form-select" th:field="*{depot.id}" required id="depot-select">
+                                    <option value="">-- Sélectionner un dépôt --</option>
+                                    <option th:each="depot : ${depots}" th:value="${depot.id}" th:text="${depot.nom}"></option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Type d'inventaire <span class="text-danger">*</span></label>
+                                <select class="form-select" th:field="*{typeCode}" required id="type-select">
+                                    <option value="">-- Sélectionner le type --</option>
+                                    <option value="COMPLET">Inventaire complet</option>
+                                    <option value="PARTIEL">Inventaire partiel (par emplacement)</option>
+                                    <option value="TOURNANT">Inventaire tournant (par famille)</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <!-- Sélection d'emplacements (pour inventaire partiel) -->
+                        <div id="emplacements-section" class="mt-4" style="display: none;">
+                            <label class="form-label">Emplacements à inventorier</label>
+                            <div class="row g-2" id="emplacements-list">
+                                <!-- Populated dynamically -->
+                            </div>
+                        </div>
+                        
+                        <!-- Sélection de familles (pour inventaire tournant) -->
+                        <div id="familles-section" class="mt-4" style="display: none;">
+                            <label class="form-label">Familles d'articles à inventorier</label>
+                            <div class="row g-2">
+                                <div class="col-md-6" th:each="famille : ${familles}">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="familleIds" th:value="${famille.id}" th:id="'famille-' + ${famille.id}" />
+                                        <label class="form-check-label" th:for="'famille-' + ${famille.id}" th:text="${famille.libelle}"></label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Options avancées -->
+                <div class="card mt-4">
+                    <div class="card-header">Options avancées</div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" id="comptage-aveugle" name="comptageAveugle" checked />
+                                    <label class="form-check-label" for="comptage-aveugle">
+                                        Comptage à l'aveugle
+                                        <small class="d-block text-muted">Les opérateurs ne voient pas les quantités théoriques</small>
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" id="double-comptage" name="doubleComptage" />
+                                    <label class="form-check-label" for="double-comptage">
+                                        Double comptage obligatoire
+                                        <small class="d-block text-muted">Nécessite 2 comptages par ligne</small>
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Seuil d'écart à justifier (%)</label>
+                                <input type="number" class="form-control" name="seuilEcart" value="5" min="0" max="100" step="1" />
+                                <small class="text-muted">Les écarts supérieurs à ce seuil devront être justifiés</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Actions -->
+            <div class="col-lg-4">
+                <div class="card">
+                    <div class="card-header">Actions</div>
+                    <div class="card-body">
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-plus-lg me-2"></i>Créer l'inventaire
+                            </button>
+                            <a th:href="@{/inventaires}" class="btn btn-outline-secondary">
+                                <i class="bi bi-x-lg me-2"></i>Annuler
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card mt-4">
+                    <div class="card-header">Information</div>
+                    <div class="card-body">
+                        <div class="alert alert-info mb-0">
+                            <i class="bi bi-info-circle me-2"></i>
+                            L'inventaire sera créé avec le statut "Planifié". Vous pourrez ensuite le démarrer pour bloquer les mouvements de stock et permettre les comptages.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </form>
+    
+    <script th:inline="javascript">
+        const emplacements = /*[[${emplacements}]]*/ [];
+        
+        document.getElementById('type-select').addEventListener('change', function() {
+            const type = this.value;
+            document.getElementById('emplacements-section').style.display = type === 'PARTIEL' ? 'block' : 'none';
+            document.getElementById('familles-section').style.display = type === 'TOURNANT' ? 'block' : 'none';
+        });
+        
+        document.getElementById('depot-select').addEventListener('change', function() {
+            const depotId = this.value;
+            const container = document.getElementById('emplacements-list');
+            
+            // Filter emplacements by depot
+            const depotEmplacements = emplacements.filter(e => e.depot?.id === depotId);
+            
+            if (depotEmplacements.length === 0) {
+                container.innerHTML = '<div class="col-12 text-muted">Aucun emplacement pour ce dépôt</div>';
+                return;
+            }
+            
+            container.innerHTML = depotEmplacements.map(e => `
+                <div class="col-md-4">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" name="emplacementIds" value="${e.id}" id="emp-${e.id}" />
+                        <label class="form-check-label" for="emp-${e.id}">${e.code}</label>
+                    </div>
+                </div>
+            `).join('');
+        });
+    </script>
+</div>
+</body>
+</html>

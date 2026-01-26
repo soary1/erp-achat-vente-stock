@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{layout/main}">
+<head>
+    <title>État des stocks</title>
+</head>
+<body>
+<div layout:fragment="content">
+    <div class="page-header d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1>État des stocks</h1>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a th:href="@{/dashboard}">Accueil</a></li>
+                    <li class="breadcrumb-item active">Stocks</li>
+                </ol>
+            </nav>
+        </div>
+        <div class="btn-group">
+            <a th:href="@{/stock/transferts/add}" class="btn btn-outline-primary">
+                <i class="bi bi-arrow-left-right me-2"></i>Transfert
+            </a>
+        </div>
+    </div>
+    
+    <!-- Filtres -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <form class="row g-3">
+                <div class="col-md-3">
+                    <label class="form-label">Dépôt</label>
+                    <select class="form-select" name="depot">
+                        <option value="">Tous les dépôts</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Famille article</label>
+                    <select class="form-select" name="famille">
+                        <option value="">Toutes</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Recherche article</label>
+                    <input type="text" class="form-control" name="search" placeholder="SKU ou désignation">
+                </div>
+                <div class="col-md-3 d-flex align-items-end">
+                    <button type="submit" class="btn btn-outline-primary w-100">
+                        <i class="bi bi-search me-2"></i>Filtrer
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <div class="card">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Article</th>
+                            <th>SKU</th>
+                            <th>Dépôt</th>
+                            <th>Emplacement</th>
+                            <th>Lot</th>
+                            <th class="text-end">Qty Réelle</th>
+                            <th class="text-end">Qty Réservée</th>
+                            <th class="text-end">Qty Disponible</th>
+                            <th>État</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr th:each="stock : ${stocks.content}"
+                            th:classappend="${stock.qtyReel.compareTo(T(java.math.BigDecimal).valueOf(10)) < 0} ? 'table-warning' : ''">
+                            <td th:text="${stock.article?.designation}"></td>
+                            <td><code th:text="${stock.article?.sku}"></code></td>
+                            <td th:text="${stock.depot?.nom}"></td>
+                            <td th:text="${stock.emplacement?.code}"></td>
+                            <td th:text="${stock.lot?.numeroLot}"></td>
+                            <td class="text-end" th:text="${#numbers.formatDecimal(stock.qtyReel, 0, 'COMMA', 2, 'POINT')}"></td>
+                            <td class="text-end" th:text="${#numbers.formatDecimal(stock.qtyReserve, 0, 'COMMA', 2, 'POINT')}"></td>
+                            <td class="text-end fw-bold" th:text="${#numbers.formatDecimal(stock.qtyDisponible, 0, 'COMMA', 2, 'POINT')}"></td>
+                            <td>
+                                <span th:if="${stock.qtyReel.compareTo(T(java.math.BigDecimal).valueOf(10)) < 0}" class="badge bg-warning">Stock faible</span>
+                                <span th:if="${stock.qtyReel.compareTo(T(java.math.BigDecimal).ZERO) == 0}" class="badge bg-danger">Rupture</span>
+                            </td>
+                        </tr>
+                        <tr th:if="${stocks.content.isEmpty()}">
+                            <td colspan="9" class="text-center text-muted py-4">
+                                <i class="bi bi-box fs-1 d-block mb-2"></i>
+                                Aucun stock
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- Pagination -->
+            <nav th:if="${stocks.totalPages > 1}" class="mt-4">
+                <ul class="pagination justify-content-center">
+                    <li class="page-item" th:classappend="${stocks.first} ? 'disabled'">
+                        <a class="page-link" th:href="@{/stock(page=${stocks.number - 1})}">Précédent</a>
+                    </li>
+                    <li class="page-item" th:each="i : ${#numbers.sequence(0, stocks.totalPages - 1)}"
+                        th:classappend="${i == stocks.number} ? 'active'">
+                        <a class="page-link" th:href="@{/stock(page=${i})}" th:text="${i + 1}"></a>
+                    </li>
+                    <li class="page-item" th:classappend="${stocks.last} ? 'disabled'">
+                        <a class="page-link" th:href="@{/stock(page=${stocks.number + 1})}">Suivant</a>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+    </div>
+</div>
+</body>
+</html>

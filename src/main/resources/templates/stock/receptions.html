@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{layout/main}">
+<head>
+    <title>Réceptions</title>
+</head>
+<body>
+<div layout:fragment="content">
+    <div class="page-header d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1>Bons de réception</h1>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a th:href="@{/dashboard}">Accueil</a></li>
+                    <li class="breadcrumb-item active">Réceptions</li>
+                </ol>
+            </nav>
+        </div>
+        <a th:href="@{/stock/receptions/add}" class="btn btn-primary">
+            <i class="bi bi-plus-lg me-2"></i>Nouvelle réception
+        </a>
+    </div>
+    
+    <div class="card">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Numéro BR</th>
+                            <th>Date réception</th>
+                            <th>Commande achat</th>
+                            <th>Fournisseur</th>
+                            <th>Dépôt</th>
+                            <th>Statut</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr th:each="reception : ${receptions.content}">
+                            <td>
+                                <a th:href="@{/stock/receptions/{id}(id=${reception.id})}" th:text="${reception.numero}"></a>
+                            </td>
+                            <td th:text="${#temporals.format(reception.dateReception, 'dd/MM/yyyy')}"></td>
+                            <td th:text="${reception.commandeAchat?.numero}"></td>
+                            <td th:text="${reception.commandeAchat?.fournisseur?.raisonSociale}"></td>
+                            <td th:text="${reception.depot?.nom}"></td>
+                            <td>
+                                <span class="badge badge-status" 
+                                      th:classappend="'badge-' + ${reception.statutCode?.toLowerCase()}"
+                                      th:text="${reception.statutCode}"></span>
+                            </td>
+                            <td>
+                                <div class="btn-group btn-group-sm">
+                                    <a th:href="@{/stock/receptions/{id}(id=${reception.id})}" class="btn btn-outline-primary" title="Voir">
+                                        <i class="bi bi-eye"></i>
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                        <tr th:if="${receptions.content.isEmpty()}">
+                            <td colspan="7" class="text-center text-muted py-4">
+                                <i class="bi bi-box-arrow-in-down fs-1 d-block mb-2"></i>
+                                Aucune réception
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+</html>

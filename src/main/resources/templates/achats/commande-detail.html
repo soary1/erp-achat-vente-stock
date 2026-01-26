@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{layout/main}">
+<head>
+    <title>Détail commande</title>
+</head>
+<body>
+<div layout:fragment="content">
+    <div class="page-header d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1>Commande <span th:text="${commande.numero}"></span></h1>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a th:href="@{/dashboard}">Accueil</a></li>
+                    <li class="breadcrumb-item"><a th:href="@{/achats/commandes}">Commandes</a></li>
+                    <li class="breadcrumb-item active" th:text="${commande.numero}"></li>
+                </ol>
+            </nav>
+        </div>
+        <div>
+            <span class="badge fs-6" 
+                  th:classappend="${commande.statutCode == 'BROUILLON'} ? 'bg-secondary' : 
+                                 (${commande.statutCode == 'VALIDEE'} ? 'bg-success' : 
+                                 (${commande.statutCode == 'ENVOYEE'} ? 'bg-primary' : 'bg-info'))"
+                  th:text="${commande.statutCode}"></span>
+        </div>
+    </div>
+    
+    <div class="row g-4">
+        <!-- Informations principales -->
+        <div class="col-lg-8">
+            <div class="card mb-4">
+                <div class="card-header">Informations générales</div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p><strong>Fournisseur:</strong> <span th:text="${commande.fournisseur?.raisonSociale}"></span></p>
+                            <p><strong>Site:</strong> <span th:text="${commande.site?.nom}"></span></p>
+                            <p><strong>Devise:</strong> <span th:text="${commande.devise?.code}"></span></p>
+                        </div>
+                        <div class="col-md-6">
+                            <p><strong>Date création:</strong> <span th:text="${#temporals.format(commande.createdAt, 'dd/MM/yyyy HH:mm')}"></span></p>
+                            <p><strong>Créé par:</strong> <span th:text="${commande.creePar?.nom + ' ' + commande.creePar?.prenom}"></span></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Lignes de commande -->
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <span>Lignes de commande</span>
+                    <button th:if="${commande.statutCode == 'BROUILLON'}" class="btn btn-sm btn-outline-primary">
+                        <i class="bi bi-plus-lg me-1"></i>Ajouter ligne
+                    </button>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Article</th>
+                                    <th>SKU</th>
+                                    <th class="text-end">Quantité</th>
+                                    <th class="text-end">Prix unitaire</th>
+                                    <th class="text-end">Total HT</th>
+                                    <th class="text-end">Reçu</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr th:each="ligne : ${commande.lignes}">
+                                    <td th:text="${ligne.article?.designation}"></td>
+                                    <td><code th:text="${ligne.article?.sku}"></code></td>
+                                    <td class="text-end" th:text="${#numbers.formatDecimal(ligne.qtyOrdered, 0, 'COMMA', 2, 'POINT')}"></td>
+                                    <td class="text-end" th:text="${#numbers.formatDecimal(ligne.priceUnit, 0, 'COMMA', 2, 'POINT')}"></td>
+                                    <td class="text-end" th:text="${#numbers.formatDecimal(ligne.totalHT, 0, 'COMMA', 2, 'POINT')}"></td>
+                                    <td class="text-end" th:text="${#numbers.formatDecimal(ligne.qtyReceived, 0, 'COMMA', 2, 'POINT')}"></td>
+                                </tr>
+                            </tbody>
+                            <tfoot>
+                                <tr class="table-light">
+                                    <th colspan="4">Total HT</th>
+                                    <th class="text-end" th:text="${#numbers.formatDecimal(commande.totalHT, 0, 'COMMA', 2, 'POINT')}"></th>
+                                    <th></th>
+                                </tr>
+                                <tr class="table-light fw-bold">
+                                    <th colspan="4">Total TTC</th>
+                                    <th class="text-end" th:text="${#numbers.formatDecimal(commande.totalTTC, 0, 'COMMA', 2, 'POINT')}"></th>
+                                    <th></th>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Actions et timeline -->
+        <div class="col-lg-4">
+            <!-- Actions -->
+            <div class="card mb-4">
+                <div class="card-header">Actions</div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <form th:if="${commande.statutCode == 'BROUILLON'}" th:action="@{/achats/commandes/{id}/submit(id=${commande.id})}" method="post">
+                            <button type="submit" class="btn btn-primary w-100">
+                                <i class="bi bi-send me-2"></i>Soumettre pour validation
+                            </button>
+                        </form>
+                        <form th:if="${commande.statutCode == 'SOUMISE'}" th:action="@{/achats/commandes/{id}/approve(id=${commande.id})}" method="post">
+                            <button type="submit" class="btn btn-success w-100">
+                                <i class="bi bi-check-lg me-2"></i>Approuver
+                            </button>
+                        </form>
+                        <form th:if="${commande.statutCode == 'VALIDEE'}" th:action="@{/achats/commandes/{id}/send(id=${commande.id})}" method="post">
+                            <button type="submit" class="btn btn-info w-100">
+                                <i class="bi bi-envelope me-2"></i>Envoyer au fournisseur
+                            </button>
+                        </form>
+                        <a th:if="${commande.statutCode == 'ENVOYEE'}" th:href="@{/stock/receptions/add(commandeId=${commande.id})}" class="btn btn-outline-primary">
+                            <i class="bi bi-box-arrow-in-down me-2"></i>Créer réception
+                        </a>
+                        <button class="btn btn-outline-secondary">
+                            <i class="bi bi-printer me-2"></i>Imprimer
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Totaux -->
+            <div class="card">
+                <div class="card-header">Récapitulatif</div>
+                <div class="card-body">
+                    <div class="d-flex justify-content-between mb-2">
+                        <span>Total HT</span>
+                        <strong th:text="${#numbers.formatDecimal(commande.totalHT, 0, 'COMMA', 0, 'POINT')} + ' ' + ${commande.devise?.code}"></strong>
+                    </div>
+                    <div class="d-flex justify-content-between mb-2">
+                        <span>TVA</span>
+                        <strong th:text="${#numbers.formatDecimal(commande.totalTTC - commande.totalHT, 0, 'COMMA', 0, 'POINT')} + ' ' + ${commande.devise?.code}"></strong>
+                    </div>
+                    <hr>
+                    <div class="d-flex justify-content-between fs-5">
+                        <span>Total TTC</span>
+                        <strong class="text-primary" th:text="${#numbers.formatDecimal(commande.totalTTC, 0, 'COMMA', 0, 'POINT')} + ' ' + ${commande.devise?.code}"></strong>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+</html>

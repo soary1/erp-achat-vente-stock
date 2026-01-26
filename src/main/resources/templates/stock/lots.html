@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{layout/main}">
+<head>
+    <title>Lots</title>
+</head>
+<body>
+<div layout:fragment="content">
+    <div class="page-header d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 th:text="${titre != null ? titre : 'Gestion des lots'}">Gestion des lots</h1>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a th:href="@{/dashboard}">Accueil</a></li>
+                    <li class="breadcrumb-item active">Lots</li>
+                </ol>
+            </nav>
+        </div>
+        <div class="btn-group">
+            <a th:href="@{/stock/lots}" class="btn btn-outline-secondary">Tous</a>
+            <a th:href="@{/stock/lots/expirant}" class="btn btn-outline-warning">Expirant bientôt</a>
+            <a th:href="@{/stock/lots/perimes}" class="btn btn-outline-danger">Périmés</a>
+        </div>
+    </div>
+    
+    <div class="card">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>N° Lot</th>
+                            <th>Article</th>
+                            <th>Date fabrication</th>
+                            <th>Date expiration</th>
+                            <th>Fournisseur</th>
+                            <th>Statut QC</th>
+                            <th>État</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr th:each="lot : ${lots}"
+                            th:classappend="${lot.dateExpiration != null and lot.dateExpiration.isBefore(T(java.time.LocalDate).now())} ? 'table-danger' : 
+                                           (${lot.dateExpiration != null and lot.dateExpiration.isBefore(T(java.time.LocalDate).now().plusDays(30))} ? 'table-warning' : '')">
+                            <td><code th:text="${lot.numeroLot}"></code></td>
+                            <td th:text="${lot.article?.designation}"></td>
+                            <td th:text="${lot.dateFabrication != null ? #temporals.format(lot.dateFabrication, 'dd/MM/yyyy') : '-'}"></td>
+                            <td th:text="${lot.dateExpiration != null ? #temporals.format(lot.dateExpiration, 'dd/MM/yyyy') : '-'}"></td>
+                            <td th:text="${lot.fournisseur?.raisonSociale}"></td>
+                            <td>
+                                <span class="badge" th:classappend="${lot.statutQc == 'CONFORME'} ? 'bg-success' : 
+                                                                   (${lot.statutQc == 'NON_CONFORME'} ? 'bg-danger' : 'bg-secondary')"
+                                      th:text="${lot.statutQc}"></span>
+                            </td>
+                            <td>
+                                <span th:if="${lot.dateExpiration != null and lot.dateExpiration.isBefore(T(java.time.LocalDate).now())}" 
+                                      class="badge bg-danger">Périmé</span>
+                                <span th:if="${lot.dateExpiration != null and lot.dateExpiration.isAfter(T(java.time.LocalDate).now()) and lot.dateExpiration.isBefore(T(java.time.LocalDate).now().plusDays(30))}" 
+                                      class="badge bg-warning">Expire bientôt</span>
+                                <span th:if="${lot.dateExpiration == null or lot.dateExpiration.isAfter(T(java.time.LocalDate).now().plusDays(30))}" 
+                                      class="badge bg-success">Valide</span>
+                            </td>
+                            <td>
+                                <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#controleModal"
+                                        th:data-lot-id="${lot.id}">
+                                    <i class="bi bi-clipboard-check"></i> Contrôle QC
+                                </button>
+                            </td>
+                        </tr>
+                        <tr th:if="${#lists.isEmpty(lots)}">
+                            <td colspan="8" class="text-center text-muted py-4">
+                                <i class="bi bi-upc-scan fs-1 d-block mb-2"></i>
+                                Aucun lot
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+</html>

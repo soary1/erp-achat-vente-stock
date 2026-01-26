@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{layout/main}">
+<head>
+    <title>Nouveau devis client</title>
+</head>
+<body>
+<div layout:fragment="content">
+    <div class="page-header mb-4">
+        <h1 th:text="${devis?.id != null ? 'Modifier devis ' + devis.numero : 'Nouveau devis client'}"></h1>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a th:href="@{/dashboard}">Accueil</a></li>
+                <li class="breadcrumb-item"><a th:href="@{/ventes/devis}">Devis</a></li>
+                <li class="breadcrumb-item active">Nouveau</li>
+            </ol>
+        </nav>
+    </div>
+    
+    <form th:action="@{/ventes/devis/save}" method="post" th:object="${devis}">
+        <input type="hidden" th:field="*{id}" />
+        
+        <div class="row g-4">
+            <div class="col-lg-8">
+                <div class="card">
+                    <div class="card-header">Informations client</div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Client <span class="text-danger">*</span></label>
+                                <select class="form-select" th:field="*{client.id}" required id="client-select">
+                                    <option value="">-- Sélectionner un client --</option>
+                                    <option th:each="client : ${clients}" th:value="${client.id}" 
+                                            th:text="${client.raisonSociale}"
+                                            th:data-limite-credit="${client.limiteCredit}"
+                                            th:data-solde="${client.solde}"></option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Commercial</label>
+                                <select class="form-select" th:field="*{commercial.id}">
+                                    <option value="">-- Aucun commercial --</option>
+                                    <option th:each="user : ${commerciaux}" th:value="${user.id}" th:text="${user.nom + ' ' + user.prenom}"></option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Site <span class="text-danger">*</span></label>
+                                <select class="form-select" th:field="*{site.id}" required>
+                                    <option value="">-- Sélectionner un site --</option>
+                                    <option th:each="site : ${sites}" th:value="${site.id}" th:text="${site.nom}"></option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Devise <span class="text-danger">*</span></label>
+                                <select class="form-select" th:field="*{devise.code}" required>
+                                    <option value="">-- Sélectionner une devise --</option>
+                                    <option th:each="devise : ${devises}" th:value="${devise.code}" th:text="${devise.libelle + ' (' + devise.code + ')'}"></option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Date validité</label>
+                                <input type="date" class="form-control" th:field="*{dateValidite}" />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Mode de paiement</label>
+                                <select class="form-select" th:field="*{modePaiement.code}">
+                                    <option value="">-- Sélectionner --</option>
+                                    <option th:each="mode : ${modesPaiement}" th:value="${mode.code}" th:text="${mode.libelle}"></option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Lignes du devis -->
+                <div class="card mt-4">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <span>Lignes du devis</span>
+                        <button type="button" class="btn btn-sm btn-outline-primary" onclick="addLigneDevis()">
+                            <i class="bi bi-plus-lg me-1"></i>Ajouter article
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table" id="lignes-table">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 35%">Article</th>
+                                        <th style="width: 15%">Quantité</th>
+                                        <th style="width: 15%">Prix unit.</th>
+                                        <th style="width: 10%">Remise %</th>
+                                        <th style="width: 15%">Total HT</th>
+                                        <th style="width: 10%"></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="lignes-body">
+                                    <tr class="ligne-row" th:each="ligne, stat : ${devis?.lignes ?: #lists.emptyList()}">
+                                        <input type="hidden" th:name="'lignes[' + ${stat.index} + '].id'" th:value="${ligne.id}" />
+                                        <td>
+                                            <select class="form-select form-select-sm article-select" th:name="'lignes[' + ${stat.index} + '].article.id'" required onchange="updatePrix(this)">
+                                                <option th:each="article : ${articles}" th:value="${article.id}" 
+                                                        th:text="${article.designation}" 
+                                                        th:data-prix="${article.prixVente}"
+                                                        th:selected="${article.id == ligne.article?.id}"></option>
+                                            </select>
+                                        </td>
+                                        <td>
+                                            <input type="number" class="form-control form-control-sm qty-input" th:name="'lignes[' + ${stat.index} + '].qtyDevis'" th:value="${ligne.qtyDevis}" step="0.01" min="0.01" required onchange="calculateTotal(this)" />
+                                        </td>
+                                        <td>
+                                            <input type="number" class="form-control form-control-sm prix-input" th:name="'lignes[' + ${stat.index} + '].prixUnit'" th:value="${ligne.prixUnit}" step="0.01" min="0" required onchange="calculateTotal(this)" />
+                                        </td>
+                                        <td>
+                                            <input type="number" class="form-control form-control-sm remise-input" th:name="'lignes[' + ${stat.index} + '].remise'" th:value="${ligne.remise ?: 0}" step="0.01" min="0" max="100" onchange="calculateTotal(this)" />
+                                        </td>
+                                        <td>
+                                            <input type="text" class="form-control form-control-sm total-input" readonly th:value="${ligne.totalHT}" />
+                                        </td>
+                                        <td class="text-center">
+                                            <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeLigneDevis(this)">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                                <tfoot>
+                                    <tr class="table-light">
+                                        <th colspan="4" class="text-end">Total HT</th>
+                                        <th id="total-ht">0.00</th>
+                                        <th></th>
+                                    </tr>
+                                    <tr class="table-light">
+                                        <th colspan="4" class="text-end">TVA (20%)</th>
+                                        <th id="total-tva">0.00</th>
+                                        <th></th>
+                                    </tr>
+                                    <tr class="table-primary">
+                                        <th colspan="4" class="text-end">Total TTC</th>
+                                        <th id="total-ttc">0.00</th>
+                                        <th></th>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Conditions -->
+                <div class="card mt-4">
+                    <div class="card-header">Conditions et notes</div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Conditions de paiement</label>
+                                <textarea class="form-control" th:field="*{conditionsPaiement}" rows="3"></textarea>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Conditions de livraison</label>
+                                <textarea class="form-control" th:field="*{conditionsLivraison}" rows="3"></textarea>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Panneau latéral -->
+            <div class="col-lg-4">
+                <!-- Info client -->
+                <div class="card mb-4" id="client-info" style="display: none;">
+                    <div class="card-header">Situation client</div>
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between mb-2">
+                            <span>Limite de crédit</span>
+                            <strong id="client-limite">-</strong>
+                        </div>
+                        <div class="d-flex justify-content-between mb-2">
+                            <span>Solde actuel</span>
+                            <strong id="client-solde">-</strong>
+                        </div>
+                        <hr>
+                        <div class="d-flex justify-content-between">
+                            <span>Crédit disponible</span>
+                            <strong id="client-dispo" class="text-success">-</strong>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Actions -->
+                <div class="card">
+                    <div class="card-header">Actions</div>
+                    <div class="card-body">
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-save me-2"></i>Enregistrer brouillon
+                            </button>
+                            <button type="submit" name="action" value="submit" class="btn btn-success">
+                                <i class="bi bi-send me-2"></i>Soumettre pour validation
+                            </button>
+                            <a th:href="@{/ventes/devis}" class="btn btn-outline-secondary">
+                                <i class="bi bi-x-lg me-2"></i>Annuler
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </form>
+    
+    <script th:inline="javascript">
+        let ligneIndex = [[${devis?.lignes?.size() ?: 0}]];
+        const articles = /*[[${articles}]]*/ [];
+        
+        function addLigneDevis() {
+            const tbody = document.getElementById('lignes-body');
+            const articleOptions = articles.map(a => 
+                `<option value="${a.id}" data-prix="${a.prixVente || 0}">${a.designation}</option>`
+            ).join('');
+            
+            const html = `
+                <tr class="ligne-row">
+                    <td>
+                        <select class="form-select form-select-sm article-select" name="lignes[${ligneIndex}].article.id" required onchange="updatePrix(this)">
+                            <option value="">-- Sélectionner --</option>
+                            ${articleOptions}
+                        </select>
+                    </td>
+                    <td>
+                        <input type="number" class="form-control form-control-sm qty-input" name="lignes[${ligneIndex}].qtyDevis" step="0.01" min="0.01" required onchange="calculateTotal(this)" />
+                    </td>
+                    <td>
+                        <input type="number" class="form-control form-control-sm prix-input" name="lignes[${ligneIndex}].prixUnit" step="0.01" min="0" required onchange="calculateTotal(this)" />
+                    </td>
+                    <td>
+                        <input type="number" class="form-control form-control-sm remise-input" name="lignes[${ligneIndex}].remise" value="0" step="0.01" min="0" max="100" onchange="calculateTotal(this)" />
+                    </td>
+                    <td>
+                        <input type="text" class="form-control form-control-sm total-input" readonly value="0.00" />
+                    </td>
+                    <td class="text-center">
+                        <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeLigneDevis(this)">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </td>
+                </tr>
+            `;
+            tbody.insertAdjacentHTML('beforeend', html);
+            ligneIndex++;
+        }
+        
+        function removeLigneDevis(btn) {
+            btn.closest('.ligne-row').remove();
+            updateTotals();
+        }
+        
+        function updatePrix(select) {
+            const row = select.closest('tr');
+            const prixInput = row.querySelector('.prix-input');
+            const selected = select.options[select.selectedIndex];
+            if (selected && selected.dataset.prix) {
+                prixInput.value = parseFloat(selected.dataset.prix).toFixed(2);
+                calculateTotal(prixInput);
+            }
+        }
+        
+        function calculateTotal(input) {
+            const row = input.closest('tr');
+            const qty = parseFloat(row.querySelector('.qty-input').value) || 0;
+            const prix = parseFloat(row.querySelector('.prix-input').value) || 0;
+            const remise = parseFloat(row.querySelector('.remise-input').value) || 0;
+            const total = qty * prix * (1 - remise / 100);
+            row.querySelector('.total-input').value = total.toFixed(2);
+            updateTotals();
+        }
+        
+        function updateTotals() {
+            let totalHT = 0;
+            document.querySelectorAll('.total-input').forEach(input => {
+                totalHT += parseFloat(input.value) || 0;
+            });
+            const tva = totalHT * 0.20;
+            const ttc = totalHT + tva;
+            
+            document.getElementById('total-ht').textContent = totalHT.toFixed(2);
+            document.getElementById('total-tva').textContent = tva.toFixed(2);
+            document.getElementById('total-ttc').textContent = ttc.toFixed(2);
+        }
+        
+        // Client info
+        document.getElementById('client-select')?.addEventListener('change', function() {
+            const selected = this.options[this.selectedIndex];
+            const infoCard = document.getElementById('client-info');
+            if (selected.value) {
+                const limite = parseFloat(selected.dataset.limiteCredit) || 0;
+                const solde = parseFloat(selected.dataset.solde) || 0;
+                const dispo = limite - solde;
+                
+                document.getElementById('client-limite').textContent = limite.toLocaleString() + ' MGA';
+                document.getElementById('client-solde').textContent = solde.toLocaleString() + ' MGA';
+                document.getElementById('client-dispo').textContent = dispo.toLocaleString() + ' MGA';
+                document.getElementById('client-dispo').className = dispo >= 0 ? 'text-success' : 'text-danger';
+                
+                infoCard.style.display = 'block';
+            } else {
+                infoCard.style.display = 'none';
+            }
+        });
+        
+        // Init totals on page load
+        updateTotals();
+    </script>
+</div>
+</body>
+</html>

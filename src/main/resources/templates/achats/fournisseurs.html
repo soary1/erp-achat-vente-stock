@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" 
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{layout/main}">
+<head>
+    <title>Gestion des Fournisseurs</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        .fournisseur-map {
+            height: 450px;
+            border-radius: 12px;
+        }
+        .location-picker-map {
+            height: 280px;
+            border-radius: 8px;
+        }
+        .fournisseur-avatar {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            background: linear-gradient(135deg, #8b5cf6, #6d28d9);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+            font-size: 1.2rem;
+        }
+        .rating-stars {
+            color: #f59e0b;
+        }
+        .evaluation-badge {
+            padding: 0.25rem 0.5rem;
+            border-radius: 20px;
+            font-size: 0.75rem;
+        }
+    </style>
+</head>
+<body>
+<div layout:fragment="content">
+    <div class="page-header d-flex justify-content-between align-items-center">
+        <div>
+            <h1><i class="bi bi-truck me-2"></i>Gestion des Fournisseurs</h1>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a th:href="@{/}">Accueil</a></li>
+                    <li class="breadcrumb-item"><a th:href="@{/achats}">Achats</a></li>
+                    <li class="breadcrumb-item active">Fournisseurs</li>
+                </ol>
+            </nav>
+        </div>
+        <div>
+            <button class="btn btn-outline-secondary me-2" data-bs-toggle="modal" data-bs-target="#importModal">
+                <i class="bi bi-upload me-1"></i>Importer
+            </button>
+            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addFournisseurModal">
+                <i class="bi bi-plus-lg me-1"></i>Nouveau Fournisseur
+            </button>
+        </div>
+    </div>
+
+    <!-- Statistiques -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card border-0 bg-gradient" style="background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%);">
+                <div class="card-body text-white text-center">
+                    <div class="h2 mb-0" th:text="${totalFournisseurs ?: 0}">0</div>
+                    <small>Total Fournisseurs</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 bg-gradient" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);">
+                <div class="card-body text-white text-center">
+                    <div class="h2 mb-0" th:text="${fournisseursActifs ?: 0}">0</div>
+                    <small>Actifs</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 bg-gradient" style="background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);">
+                <div class="card-body text-white text-center">
+                    <div class="h2 mb-0" th:text="${fournisseursGeoref ?: 0}">0</div>
+                    <small>Géolocalisés</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 bg-gradient" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);">
+                <div class="card-body text-white text-center">
+                    <div class="h2 mb-0" th:text="${fournisseursEvalues ?: 0}">0</div>
+                    <small>Évalués</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Carte des fournisseurs -->
+        <div class="col-lg-8 mb-4">
+            <div class="card h-100">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="bi bi-geo-alt-fill me-2 text-purple"></i>Localisation des Fournisseurs</h5>
+                    <div class="dropdown">
+                        <button class="btn btn-outline-secondary btn-sm dropdown-toggle" data-bs-toggle="dropdown">
+                            <i class="bi bi-funnel me-1"></i>Filtrer
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li><a class="dropdown-item" href="#" onclick="showAllFournisseurs()">Tous</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="#" onclick="filterByEvaluation(5)">⭐⭐⭐⭐⭐ Excellents</a></li>
+                            <li><a class="dropdown-item" href="#" onclick="filterByEvaluation(4)">⭐⭐⭐⭐ Très bons</a></li>
+                            <li><a class="dropdown-item" href="#" onclick="filterByEvaluation(3)">⭐⭐⭐ Bons</a></li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="card-body p-0">
+                    <div id="fournisseursMap" class="fournisseur-map"></div>
+                </div>
+                <div class="card-footer bg-light d-flex justify-content-between align-items-center">
+                    <small class="text-muted">
+                        <i class="bi bi-info-circle me-1"></i>
+                        Cliquez sur un marqueur pour voir les détails
+                    </small>
+                    <div class="btn-group btn-group-sm">
+                        <button class="btn btn-outline-secondary" onclick="fitAllFournisseurs()">
+                            <i class="bi bi-arrows-fullscreen"></i>
+                        </button>
+                        <button class="btn btn-outline-secondary" onclick="toggleClustering()">
+                            <i class="bi bi-grid-3x3-gap"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Liste des fournisseurs -->
+        <div class="col-lg-4 mb-4">
+            <div class="card h-100">
+                <div class="card-header">
+                    <div class="input-group">
+                        <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
+                        <input type="text" class="form-control" placeholder="Rechercher..." id="searchFournisseur">
+                    </div>
+                </div>
+                <div class="card-body p-0" style="max-height: 500px; overflow-y: auto;">
+                    <div class="list-group list-group-flush" id="fournisseursList">
+                        <a th:each="fournisseur : ${fournisseurs}" 
+                           href="#"
+                           class="list-group-item list-group-item-action fournisseur-item"
+                           th:data-lat="${fournisseur.latitude}"
+                           th:data-lng="${fournisseur.longitude}"
+                           th:onclick="'focusFournisseur(' + ${fournisseur.latitude} + ',' + ${fournisseur.longitude} + '); return false;'">
+                            <div class="d-flex align-items-center">
+                                <div class="fournisseur-avatar me-3">
+                                    <span th:text="${#strings.substring(fournisseur.name, 0, 1)}">F</span>
+                                </div>
+                                <div class="flex-grow-1">
+                                    <h6 class="mb-0" th:text="${fournisseur.name}">Fournisseur</h6>
+                                    <small class="text-muted" th:text="${fournisseur.code}">CODE</small>
+                                    <div class="d-flex align-items-center mt-1">
+                                        <span th:if="${fournisseur.latitude != null}" class="badge bg-success me-2">
+                                            <i class="bi bi-geo-alt-fill"></i>
+                                        </span>
+                                        <span class="rating-stars" th:if="${fournisseur.evaluationNote != null}">
+                                            <i class="bi bi-star-fill" th:each="i : ${#numbers.sequence(1, fournisseur.evaluationNote)}"></i>
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tableau détaillé -->
+    <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">Liste Complète des Fournisseurs</h5>
+            <div class="btn-group btn-group-sm">
+                <button class="btn btn-outline-secondary" onclick="exportFournisseurs('excel')">
+                    <i class="bi bi-file-excel me-1"></i>Excel
+                </button>
+                <button class="btn btn-outline-secondary" onclick="exportFournisseurs('pdf')">
+                    <i class="bi bi-file-pdf me-1"></i>PDF
+                </button>
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover" id="fournisseursTable">
+                    <thead>
+                        <tr>
+                            <th>Code</th>
+                            <th>Nom</th>
+                            <th>Contact</th>
+                            <th>Email</th>
+                            <th>Téléphone</th>
+                            <th>Ville / Pays</th>
+                            <th>Évaluation</th>
+                            <th>Localisation</th>
+                            <th>Statut</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr th:each="fournisseur : ${fournisseurs}">
+                            <td><span class="badge bg-purple" th:text="${fournisseur.code}" style="background-color: #8b5cf6;"></span></td>
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    <div class="fournisseur-avatar me-2" style="width:32px; height:32px; font-size:0.8rem; border-radius:8px;">
+                                        <span th:text="${#strings.substring(fournisseur.name, 0, 1)}">F</span>
+                                    </div>
+                                    <span th:text="${fournisseur.name}"></span>
+                                </div>
+                            </td>
+                            <td th:text="${fournisseur.contactName}"></td>
+                            <td>
+                                <a th:href="'mailto:' + ${fournisseur.email}" th:text="${fournisseur.email}"></a>
+                            </td>
+                            <td th:text="${fournisseur.phone}"></td>
+                            <td>
+                                <span th:text="${fournisseur.city}"></span>
+                                <span th:if="${fournisseur.pays != null}" class="text-muted" th:text="' (' + ${fournisseur.pays.name} + ')'"></span>
+                            </td>
+                            <td>
+                                <div class="rating-stars" th:if="${fournisseur.evaluationNote != null}">
+                                    <i class="bi bi-star-fill" th:each="i : ${#numbers.sequence(1, fournisseur.evaluationNote ?: 0)}"></i>
+                                    <i class="bi bi-star" th:each="i : ${#numbers.sequence((fournisseur.evaluationNote ?: 0) + 1, 5)}"></i>
+                                </div>
+                                <span th:unless="${fournisseur.evaluationNote != null}" class="badge bg-secondary">Non évalué</span>
+                            </td>
+                            <td>
+                                <span th:if="${fournisseur.latitude != null && fournisseur.longitude != null}" 
+                                      class="badge bg-success cursor-pointer"
+                                      th:onclick="'focusFournisseur(' + ${fournisseur.latitude} + ',' + ${fournisseur.longitude} + ')'">
+                                    <i class="bi bi-geo-alt-fill"></i> Voir
+                                </span>
+                                <span th:unless="${fournisseur.latitude != null && fournisseur.longitude != null}" 
+                                      class="badge bg-secondary">
+                                    Non défini
+                                </span>
+                            </td>
+                            <td>
+                                <span th:if="${fournisseur.isActive}" class="badge bg-success">Actif</span>
+                                <span th:unless="${fournisseur.isActive}" class="badge bg-danger">Inactif</span>
+                            </td>
+                            <td>
+                                <div class="btn-group btn-group-sm">
+                                    <a th:href="@{/achats/fournisseurs/{id}(id=${fournisseur.id})}" 
+                                       class="btn btn-outline-info" title="Détails">
+                                        <i class="bi bi-eye"></i>
+                                    </a>
+                                    <button class="btn btn-outline-warning" 
+                                            th:onclick="'evaluateFournisseur(\'' + ${fournisseur.id} + '\')'" title="Évaluer">
+                                        <i class="bi bi-star"></i>
+                                    </button>
+                                    <button class="btn btn-outline-secondary" 
+                                            th:onclick="'editFournisseur(\'' + ${fournisseur.id} + '\')'" title="Modifier">
+                                        <i class="bi bi-pencil"></i>
+                                    </button>
+                                    <button class="btn btn-outline-danger" 
+                                            th:onclick="'deleteFournisseur(\'' + ${fournisseur.id} + '\')'" title="Supprimer">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Ajout Fournisseur -->
+    <div class="modal fade" id="addFournisseurModal" tabindex="-1">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header" style="background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%);">
+                    <h5 class="modal-title text-white"><i class="bi bi-truck me-2"></i>Nouveau Fournisseur</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <form th:action="@{/achats/fournisseurs}" method="post">
+                    <div class="modal-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h6 class="text-muted mb-3">Informations générales</h6>
+                                <div class="row">
+                                    <div class="col-6">
+                                        <div class="mb-3">
+                                            <label class="form-label">Code *</label>
+                                            <input type="text" class="form-control" name="code" required>
+                                        </div>
+                                    </div>
+                                    <div class="col-6">
+                                        <div class="mb-3">
+                                            <label class="form-label">Nom *</label>
+                                            <input type="text" class="form-control" name="name" required>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Personne de contact</label>
+                                    <input type="text" class="form-control" name="contactName">
+                                </div>
+                                <div class="row">
+                                    <div class="col-6">
+                                        <div class="mb-3">
+                                            <label class="form-label">Email</label>
+                                            <input type="email" class="form-control" name="email">
+                                        </div>
+                                    </div>
+                                    <div class="col-6">
+                                        <div class="mb-3">
+                                            <label class="form-label">Téléphone</label>
+                                            <input type="tel" class="form-control" name="phone">
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Adresse</label>
+                                    <textarea class="form-control" name="address" rows="2"></textarea>
+                                </div>
+                                <div class="row">
+                                    <div class="col-4">
+                                        <div class="mb-3">
+                                            <label class="form-label">Ville</label>
+                                            <input type="text" class="form-control" name="city">
+                                        </div>
+                                    </div>
+                                    <div class="col-4">
+                                        <div class="mb-3">
+                                            <label class="form-label">Code Postal</label>
+                                            <input type="text" class="form-control" name="postalCode">
+                                        </div>
+                                    </div>
+                                    <div class="col-4">
+                                        <div class="mb-3">
+                                            <label class="form-label">Pays</label>
+                                            <select class="form-select" name="paysId">
+                                                <option value="">Sélectionner</option>
+                                                <option th:each="pays : ${paysList}" 
+                                                        th:value="${pays.id}" th:text="${pays.name}"></option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <h6 class="text-muted mb-3">Localisation géographique</h6>
+                                <div class="mb-3">
+                                    <label class="form-label">
+                                        <i class="bi bi-geo-alt me-1"></i>
+                                        Cliquez sur la carte pour définir la position
+                                    </label>
+                                    <div id="fournisseurPickerMap" class="location-picker-map mb-2"></div>
+                                    <div class="row">
+                                        <div class="col-6">
+                                            <input type="number" step="0.0000001" class="form-control" 
+                                                   name="latitude" id="fournisseurLatitude" placeholder="Latitude">
+                                        </div>
+                                        <div class="col-6">
+                                            <input type="number" step="0.0000001" class="form-control" 
+                                                   name="longitude" id="fournisseurLongitude" placeholder="Longitude">
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <h6 class="text-muted mb-3 mt-4">Informations commerciales</h6>
+                                <div class="mb-3">
+                                    <label class="form-label">Délai de livraison moyen (jours)</label>
+                                    <input type="number" class="form-control" name="delaiLivraison" value="7">
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Conditions de paiement (jours)</label>
+                                    <input type="number" class="form-control" name="delaiPaiement" value="30">
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="isActive" checked>
+                                    <label class="form-check-label">Fournisseur actif</label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                        <button type="submit" class="btn text-white" style="background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%);">
+                            <i class="bi bi-check-lg me-1"></i>Enregistrer
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<th:block layout:fragment="scripts">
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        // Carte principale des fournisseurs
+        const fournisseursMap = L.map('fournisseursMap').setView([-18.8792, 47.5079], 5);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap'
+        }).addTo(fournisseursMap);
+
+        // Icône personnalisée pour les fournisseurs
+        const fournisseurIcon = L.divIcon({
+            className: 'custom-marker',
+            html: '<div style="background-color: #8b5cf6; width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: white; box-shadow: 0 2px 6px rgba(0,0,0,0.3); font-size: 14px;"><i class="bi bi-truck"></i></div>',
+            iconSize: [32, 32],
+            iconAnchor: [16, 16],
+            popupAnchor: [0, -16]
+        });
+
+        let allFournisseurMarkers = [];
+
+        // Charger les fournisseurs depuis l'API
+        fetch('/api/geo/fournisseurs')
+            .then(response => response.json())
+            .then(fournisseurs => {
+                fournisseurs.forEach(fournisseur => {
+                    const marker = L.marker([fournisseur.latitude, fournisseur.longitude], { icon: fournisseurIcon })
+                        .bindPopup(fournisseur.popupContent)
+                        .addTo(fournisseursMap);
+                    allFournisseurMarkers.push({ marker: marker, data: fournisseur });
+                });
+                fitAllFournisseurs();
+            });
+
+        function fitAllFournisseurs() {
+            if (allFournisseurMarkers.length > 0) {
+                const bounds = L.latLngBounds(allFournisseurMarkers.map(m => m.marker.getLatLng()));
+                fournisseursMap.fitBounds(bounds, { padding: [50, 50] });
+            }
+        }
+
+        function showAllFournisseurs() {
+            allFournisseurMarkers.forEach(m => m.marker.addTo(fournisseursMap));
+            fitAllFournisseurs();
+        }
+
+        function focusFournisseur(lat, lng) {
+            if (lat && lng) {
+                fournisseursMap.setView([lat, lng], 15);
+            }
+        }
+
+        function filterByEvaluation(minNote) {
+            allFournisseurMarkers.forEach(m => {
+                if (m.data.evaluation && m.data.evaluation >= minNote) {
+                    m.marker.addTo(fournisseursMap);
+                } else {
+                    fournisseursMap.removeLayer(m.marker);
+                }
+            });
+        }
+
+        function toggleClustering() {
+            // Placeholder for clustering toggle
+            alert('Clustering toggle - à implémenter avec Leaflet.markercluster');
+        }
+
+        // Picker map pour le modal
+        let pickerMap = null;
+        let pickerMarker = null;
+
+        document.getElementById('addFournisseurModal').addEventListener('shown.bs.modal', function () {
+            if (!pickerMap) {
+                pickerMap = L.map('fournisseurPickerMap').setView([-18.8792, 47.5079], 4);
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    attribution: '© OpenStreetMap'
+                }).addTo(pickerMap);
+
+                pickerMap.on('click', function(e) {
+                    document.getElementById('fournisseurLatitude').value = e.latlng.lat.toFixed(7);
+                    document.getElementById('fournisseurLongitude').value = e.latlng.lng.toFixed(7);
+                    
+                    if (pickerMarker) {
+                        pickerMarker.setLatLng(e.latlng);
+                    } else {
+                        pickerMarker = L.marker(e.latlng, { icon: fournisseurIcon }).addTo(pickerMap);
+                    }
+                });
+            }
+            setTimeout(() => pickerMap.invalidateSize(), 100);
+        });
+
+        // Recherche
+        document.getElementById('searchFournisseur').addEventListener('input', function() {
+            const search = this.value.toLowerCase();
+            document.querySelectorAll('.fournisseur-item').forEach(item => {
+                const text = item.textContent.toLowerCase();
+                item.style.display = text.includes(search) ? '' : 'none';
+            });
+        });
+
+        function editFournisseur(id) {
+            window.location.href = '/achats/fournisseurs/' + id + '/edit';
+        }
+
+        function deleteFournisseur(id) {
+            if (confirm('Êtes-vous sûr de vouloir supprimer ce fournisseur ?')) {
+                fetch('/achats/fournisseurs/' + id, { method: 'DELETE' })
+                    .then(() => location.reload());
+            }
+        }
+
+        function evaluateFournisseur(id) {
+            window.location.href = '/achats/fournisseurs/' + id + '/evaluate';
+        }
+
+        function exportFournisseurs(format) {
+            window.location.href = '/achats/fournisseurs/export?format=' + format;
+        }
+    </script>
+</th:block>
+</body>
+</html>

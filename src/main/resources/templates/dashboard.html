@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{layout/main}">
+<head>
+    <title>Tableau de bord</title>
+</head>
+<body>
+<div layout:fragment="content">
+    <!-- Page Header -->
+    <div class="page-header d-flex justify-content-between align-items-center">
+        <div>
+            <h1>Tableau de bord</h1>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item active">Accueil</li>
+                </ol>
+            </nav>
+        </div>
+        <div>
+            <span class="text-muted" th:text="${#dates.format(#dates.createNow(), 'EEEE dd MMMM yyyy')}"></span>
+        </div>
+    </div>
+    
+    <!-- KPIs Direction -->
+    <div class="row g-4 mb-4">
+        <div class="col-md-6 col-xl-3">
+            <div class="stat-card">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <div class="stat-label">CA du mois</div>
+                        <div class="stat-value" th:text="${#numbers.formatDecimal(kpisDirection['caMois'], 0, 'COMMA', 0, 'POINT')} + ' MGA'">0 MGA</div>
+                    </div>
+                    <div class="stat-icon bg-primary bg-opacity-10 text-primary">
+                        <i class="bi bi-currency-dollar"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6 col-xl-3">
+            <div class="stat-card">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <div class="stat-label">Créances clients</div>
+                        <div class="stat-value" th:text="${#numbers.formatDecimal(kpisDirection['creancesClients'], 0, 'COMMA', 0, 'POINT')} + ' MGA'">0 MGA</div>
+                    </div>
+                    <div class="stat-icon bg-success bg-opacity-10 text-success">
+                        <i class="bi bi-cash-stack"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6 col-xl-3">
+            <div class="stat-card">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <div class="stat-label">Dettes fournisseurs</div>
+                        <div class="stat-value" th:text="${#numbers.formatDecimal(kpisDirection['dettesFournisseurs'], 0, 'COMMA', 0, 'POINT')} + ' MGA'">0 MGA</div>
+                    </div>
+                    <div class="stat-icon bg-danger bg-opacity-10 text-danger">
+                        <i class="bi bi-credit-card"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6 col-xl-3">
+            <div class="stat-card">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <div class="stat-label">Commandes en cours</div>
+                        <div class="stat-value" th:text="${kpisDirection['commandesClientEnCours']}">0</div>
+                    </div>
+                    <div class="stat-icon bg-warning bg-opacity-10 text-warning">
+                        <i class="bi bi-cart"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Charts Row -->
+    <div class="row g-4 mb-4">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <span>Évolution du chiffre d'affaires</span>
+                    <div class="btn-group btn-group-sm">
+                        <button class="btn btn-outline-secondary active">6 mois</button>
+                        <button class="btn btn-outline-secondary">12 mois</button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <canvas id="caChart" height="280"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-4">
+            <div class="card">
+                <div class="card-header">Commandes par statut</div>
+                <div class="card-body">
+                    <canvas id="statusChart" height="280"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Module KPIs -->
+    <div class="row g-4">
+        <!-- Achats -->
+        <div class="col-md-6 col-xl-3">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <i class="bi bi-cart me-2"></i>Achats
+                </div>
+                <div class="card-body">
+                    <div class="d-flex justify-content-between mb-2">
+                        <span class="text-muted">BC en attente</span>
+                        <strong th:text="${kpisAchats['commandesBrouillon']}">0</strong>
+                    </div>
+                    <div class="d-flex justify-content-between mb-2">
+                        <span class="text-muted">BC envoyées</span>
+                        <strong th:text="${kpisAchats['commandesEnvoyees']}">0</strong>
+                    </div>
+                    <div class="d-flex justify-content-between">
+                        <span class="text-muted">Réceptions à valider</span>
+                        <strong th:text="${kpisAchats['receptionsEnAttente']}">0</strong>
+                    </div>
+                    <a th:href="@{/achats/commandes}" class="btn btn-outline-primary btn-sm w-100 mt-3">Voir détails</a>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Ventes -->
+        <div class="col-md-6 col-xl-3">
+            <div class="card">
+                <div class="card-header bg-success text-white">
+                    <i class="bi bi-bag me-2"></i>Ventes
+                </div>
+                <div class="card-body">
+                    <div class="d-flex justify-content-between mb-2">
+                        <span class="text-muted">Commandes confirmées</span>
+                        <strong th:text="${kpisVentes['commandesConfirmees']}">0</strong>
+                    </div>
+                    <div class="d-flex justify-content-between mb-2">
+                        <span class="text-muted">En préparation</span>
+                        <strong th:text="${kpisVentes['commandesPreparation']}">0</strong>
+                    </div>
+                    <div class="d-flex justify-content-between">
+                        <span class="text-muted">Livraisons du jour</span>
+                        <strong th:text="${kpisVentes['livraisonsDuJour']}">0</strong>
+                    </div>
+                    <a th:href="@{/ventes/commandes}" class="btn btn-outline-success btn-sm w-100 mt-3">Voir détails</a>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Stock -->
+        <div class="col-md-6 col-xl-3">
+            <div class="card">
+                <div class="card-header bg-warning text-dark">
+                    <i class="bi bi-boxes me-2"></i>Stock
+                </div>
+                <div class="card-body">
+                    <div class="d-flex justify-content-between mb-2">
+                        <span class="text-muted">Articles en stock</span>
+                        <strong th:text="${kpisStock['articlesEnStock']}">0</strong>
+                    </div>
+                    <div class="d-flex justify-content-between mb-2">
+                        <span class="text-muted">Stock faible</span>
+                        <strong class="text-warning" th:text="${kpisStock['articlesFaibleStock']}">0</strong>
+                    </div>
+                    <div class="d-flex justify-content-between">
+                        <span class="text-muted">Lots périmés</span>
+                        <strong class="text-danger" th:text="${kpisStock['lotsPerimes']}">0</strong>
+                    </div>
+                    <a th:href="@{/stock}" class="btn btn-outline-warning btn-sm w-100 mt-3">Voir détails</a>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Finance -->
+        <div class="col-md-6 col-xl-3">
+            <div class="card">
+                <div class="card-header bg-danger text-white">
+                    <i class="bi bi-graph-up me-2"></i>Finance
+                </div>
+                <div class="card-body">
+                    <div class="d-flex justify-content-between mb-2">
+                        <span class="text-muted">Factures client en retard</span>
+                        <strong class="text-danger" th:text="${kpisFinance['facturesClientRetard']}">0</strong>
+                    </div>
+                    <div class="d-flex justify-content-between mb-2">
+                        <span class="text-muted">Factures fourn. en retard</span>
+                        <strong class="text-danger" th:text="${kpisFinance['facturesFournisseurRetard']}">0</strong>
+                    </div>
+                    <div class="d-flex justify-content-between">
+                        <span class="text-muted">Créances totales</span>
+                        <strong th:text="${#numbers.formatDecimal(kpisFinance['creancesTotales'], 0, 'COMMA', 0, 'POINT')}">0</strong>
+                    </div>
+                    <a th:href="@{/finance}" class="btn btn-outline-danger btn-sm w-100 mt-3">Voir détails</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<th:block layout:fragment="scripts">
+<script th:inline="javascript">
+    // CA Evolution Chart
+    const evolutionCA = /*[[${evolutionCA}]]*/ [];
+    const caCtx = document.getElementById('caChart').getContext('2d');
+    new Chart(caCtx, {
+        type: 'line',
+        data: {
+            labels: evolutionCA.map(e => e.mois),
+            datasets: [{
+                label: 'Chiffre d\'affaires',
+                data: evolutionCA.map(e => e.ca),
+                borderColor: '#3b82f6',
+                backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                fill: true,
+                tension: 0.4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: function(value) {
+                            return new Intl.NumberFormat('fr-MG').format(value);
+                        }
+                    }
+                }
+            }
+        }
+    });
+    
+    // Status Chart
+    const repartition = /*[[${repartitionStatuts}]]*/ {};
+    const statusCtx = document.getElementById('statusChart').getContext('2d');
+    new Chart(statusCtx, {
+        type: 'doughnut',
+        data: {
+            labels: Object.keys(repartition),
+            datasets: [{
+                data: Object.values(repartition),
+                backgroundColor: ['#94a3b8', '#fbbf24', '#3b82f6', '#10b981']
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom'
+                }
+            }
+        }
+    });
+</script>
+</th:block>
+</body>
+</html>

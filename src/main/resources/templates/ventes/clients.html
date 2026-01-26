@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" 
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{layout/main}">
+<head>
+    <title>Gestion des Clients</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        .client-map {
+            height: 450px;
+            border-radius: 12px;
+        }
+        .location-picker-map {
+            height: 280px;
+            border-radius: 8px;
+        }
+        .client-card {
+            transition: all 0.3s ease;
+        }
+        .client-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.12);
+        }
+        .client-avatar {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+            font-size: 1.2rem;
+        }
+        .stats-card {
+            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+            border: none;
+        }
+    </style>
+</head>
+<body>
+<div layout:fragment="content">
+    <div class="page-header d-flex justify-content-between align-items-center">
+        <div>
+            <h1><i class="bi bi-people me-2"></i>Gestion des Clients</h1>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a th:href="@{/}">Accueil</a></li>
+                    <li class="breadcrumb-item"><a th:href="@{/ventes}">Ventes</a></li>
+                    <li class="breadcrumb-item active">Clients</li>
+                </ol>
+            </nav>
+        </div>
+        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addClientModal">
+            <i class="bi bi-plus-lg me-1"></i>Nouveau Client
+        </button>
+    </div>
+
+    <!-- Statistiques -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card stats-card">
+                <div class="card-body text-center">
+                    <div class="h2 mb-0 text-primary" th:text="${totalClients ?: 0}">0</div>
+                    <small class="text-muted">Total Clients</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card stats-card">
+                <div class="card-body text-center">
+                    <div class="h2 mb-0 text-success" th:text="${clientsActifs ?: 0}">0</div>
+                    <small class="text-muted">Clients Actifs</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card stats-card">
+                <div class="card-body text-center">
+                    <div class="h2 mb-0 text-info" th:text="${clientsGeoref ?: 0}">0</div>
+                    <small class="text-muted">Géolocalisés</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card stats-card">
+                <div class="card-body text-center">
+                    <div class="h2 mb-0 text-warning" th:text="${nouveauxClients ?: 0}">0</div>
+                    <small class="text-muted">Ce mois</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Carte des clients -->
+        <div class="col-lg-8 mb-4">
+            <div class="card h-100">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="bi bi-geo-alt-fill me-2 text-warning"></i>Localisation des Clients</h5>
+                    <div class="btn-group btn-group-sm">
+                        <button class="btn btn-outline-warning active" onclick="showAllClients()">
+                            <i class="bi bi-geo-alt"></i> Tous
+                        </button>
+                        <button class="btn btn-outline-warning" onclick="showClientsZone('nord')">Nord</button>
+                        <button class="btn btn-outline-warning" onclick="showClientsZone('centre')">Centre</button>
+                        <button class="btn btn-outline-warning" onclick="showClientsZone('sud')">Sud</button>
+                    </div>
+                </div>
+                <div class="card-body p-0">
+                    <div id="clientsMap" class="client-map"></div>
+                </div>
+                <div class="card-footer bg-light">
+                    <small class="text-muted">
+                        <i class="bi bi-info-circle me-1"></i>
+                        Cliquez sur un marqueur pour voir les détails du client
+                    </small>
+                </div>
+            </div>
+        </div>
+
+        <!-- Liste des clients -->
+        <div class="col-lg-4 mb-4">
+            <div class="card h-100">
+                <div class="card-header">
+                    <div class="input-group">
+                        <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
+                        <input type="text" class="form-control" placeholder="Rechercher..." id="searchClient">
+                    </div>
+                </div>
+                <div class="card-body p-0" style="max-height: 500px; overflow-y: auto;">
+                    <div class="list-group list-group-flush" id="clientsList">
+                        <a th:each="client : ${clients}" 
+                           href="#"
+                           class="list-group-item list-group-item-action client-item"
+                           th:data-lat="${client.latitude}"
+                           th:data-lng="${client.longitude}"
+                           th:onclick="'focusClient(' + ${client.latitude} + ',' + ${client.longitude} + '); return false;'">
+                            <div class="d-flex align-items-center">
+                                <div class="client-avatar me-3">
+                                    <span th:text="${#strings.substring(client.name, 0, 1)}">C</span>
+                                </div>
+                                <div class="flex-grow-1">
+                                    <h6 class="mb-0" th:text="${client.name}">Client</h6>
+                                    <small class="text-muted" th:text="${client.code}">CODE</small>
+                                    <div th:if="${client.latitude != null}">
+                                        <small class="text-success">
+                                            <i class="bi bi-geo-alt-fill"></i> Géolocalisé
+                                        </small>
+                                    </div>
+                                </div>
+                                <div>
+                                    <span th:if="${client.isActive}" class="badge bg-success">Actif</span>
+                                    <span th:unless="${client.isActive}" class="badge bg-secondary">Inactif</span>
+                                </div>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tableau détaillé -->
+    <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">Liste Complète des Clients</h5>
+            <div class="btn-group btn-group-sm">
+                <button class="btn btn-outline-secondary" onclick="exportClients('excel')">
+                    <i class="bi bi-file-excel me-1"></i>Excel
+                </button>
+                <button class="btn btn-outline-secondary" onclick="exportClients('pdf')">
+                    <i class="bi bi-file-pdf me-1"></i>PDF
+                </button>
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover" id="clientsTable">
+                    <thead>
+                        <tr>
+                            <th>Code</th>
+                            <th>Nom</th>
+                            <th>Contact</th>
+                            <th>Email</th>
+                            <th>Téléphone</th>
+                            <th>Ville</th>
+                            <th>Localisation</th>
+                            <th>Statut</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr th:each="client : ${clients}">
+                            <td><span class="badge bg-warning text-dark" th:text="${client.code}"></span></td>
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    <div class="client-avatar me-2" style="width:32px; height:32px; font-size:0.8rem;">
+                                        <span th:text="${#strings.substring(client.name, 0, 1)}">C</span>
+                                    </div>
+                                    <span th:text="${client.name}"></span>
+                                </div>
+                            </td>
+                            <td th:text="${client.contactName}"></td>
+                            <td>
+                                <a th:href="'mailto:' + ${client.email}" th:text="${client.email}"></a>
+                            </td>
+                            <td th:text="${client.phone}"></td>
+                            <td th:text="${client.city}"></td>
+                            <td>
+                                <span th:if="${client.latitude != null && client.longitude != null}" 
+                                      class="badge bg-success cursor-pointer"
+                                      th:onclick="'focusClient(' + ${client.latitude} + ',' + ${client.longitude} + ')'">
+                                    <i class="bi bi-geo-alt-fill"></i> Voir
+                                </span>
+                                <span th:unless="${client.latitude != null && client.longitude != null}" 
+                                      class="badge bg-secondary">
+                                    Non défini
+                                </span>
+                            </td>
+                            <td>
+                                <span th:if="${client.isActive}" class="badge bg-success">Actif</span>
+                                <span th:unless="${client.isActive}" class="badge bg-danger">Inactif</span>
+                            </td>
+                            <td>
+                                <div class="btn-group btn-group-sm">
+                                    <a th:href="@{/ventes/clients/{id}(id=${client.id})}" 
+                                       class="btn btn-outline-info" title="Détails">
+                                        <i class="bi bi-eye"></i>
+                                    </a>
+                                    <button class="btn btn-outline-secondary" 
+                                            th:onclick="'editClient(\'' + ${client.id} + '\')'" title="Modifier">
+                                        <i class="bi bi-pencil"></i>
+                                    </button>
+                                    <button class="btn btn-outline-danger" 
+                                            th:onclick="'deleteClient(\'' + ${client.id} + '\')'" title="Supprimer">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Ajout Client -->
+    <div class="modal fade" id="addClientModal" tabindex="-1">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header bg-warning text-dark">
+                    <h5 class="modal-title"><i class="bi bi-person-plus me-2"></i>Nouveau Client</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <form th:action="@{/ventes/clients}" method="post">
+                    <div class="modal-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h6 class="text-muted mb-3">Informations générales</h6>
+                                <div class="row">
+                                    <div class="col-6">
+                                        <div class="mb-3">
+                                            <label class="form-label">Code *</label>
+                                            <input type="text" class="form-control" name="code" required>
+                                        </div>
+                                    </div>
+                                    <div class="col-6">
+                                        <div class="mb-3">
+                                            <label class="form-label">Nom *</label>
+                                            <input type="text" class="form-control" name="name" required>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Personne de contact</label>
+                                    <input type="text" class="form-control" name="contactName">
+                                </div>
+                                <div class="row">
+                                    <div class="col-6">
+                                        <div class="mb-3">
+                                            <label class="form-label">Email</label>
+                                            <input type="email" class="form-control" name="email">
+                                        </div>
+                                    </div>
+                                    <div class="col-6">
+                                        <div class="mb-3">
+                                            <label class="form-label">Téléphone</label>
+                                            <input type="tel" class="form-control" name="phone">
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Adresse</label>
+                                    <textarea class="form-control" name="address" rows="2"></textarea>
+                                </div>
+                                <div class="row">
+                                    <div class="col-6">
+                                        <div class="mb-3">
+                                            <label class="form-label">Ville</label>
+                                            <input type="text" class="form-control" name="city">
+                                        </div>
+                                    </div>
+                                    <div class="col-6">
+                                        <div class="mb-3">
+                                            <label class="form-label">Code Postal</label>
+                                            <input type="text" class="form-control" name="postalCode">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <h6 class="text-muted mb-3">Localisation géographique</h6>
+                                <div class="mb-3">
+                                    <label class="form-label">
+                                        <i class="bi bi-geo-alt me-1"></i>
+                                        Cliquez sur la carte pour définir la position
+                                    </label>
+                                    <div id="clientPickerMap" class="location-picker-map mb-2"></div>
+                                    <div class="row">
+                                        <div class="col-6">
+                                            <input type="number" step="0.0000001" class="form-control" 
+                                                   name="latitude" id="clientLatitude" placeholder="Latitude">
+                                        </div>
+                                        <div class="col-6">
+                                            <input type="number" step="0.0000001" class="form-control" 
+                                                   name="longitude" id="clientLongitude" placeholder="Longitude">
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <h6 class="text-muted mb-3 mt-4">Informations commerciales</h6>
+                                <div class="mb-3">
+                                    <label class="form-label">Liste tarifaire</label>
+                                    <select class="form-select" name="listeTarifaireId">
+                                        <option value="">Standard</option>
+                                        <option th:each="liste : ${listesTarifaires}" 
+                                                th:value="${liste.id}" th:text="${liste.name}"></option>
+                                    </select>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Conditions de paiement (jours)</label>
+                                    <input type="number" class="form-control" name="delaiPaiement" value="30">
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="isActive" checked>
+                                    <label class="form-check-label">Client actif</label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                        <button type="submit" class="btn btn-warning">
+                            <i class="bi bi-check-lg me-1"></i>Enregistrer
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<th:block layout:fragment="scripts">
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        // Carte principale des clients
+        const clientsMap = L.map('clientsMap').setView([-18.8792, 47.5079], 6);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap'
+        }).addTo(clientsMap);
+
+        // Icône personnalisée pour les clients
+        const clientIcon = L.divIcon({
+            className: 'custom-marker',
+            html: '<div style="background-color: #f59e0b; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; box-shadow: 0 2px 6px rgba(0,0,0,0.3); font-size: 14px;"><i class="bi bi-person-fill"></i></div>',
+            iconSize: [32, 32],
+            iconAnchor: [16, 16],
+            popupAnchor: [0, -16]
+        });
+
+        let allClientMarkers = [];
+
+        // Charger les clients depuis l'API
+        fetch('/api/geo/clients')
+            .then(response => response.json())
+            .then(clients => {
+                clients.forEach(client => {
+                    const marker = L.marker([client.latitude, client.longitude], { icon: clientIcon })
+                        .bindPopup(client.popupContent)
+                        .addTo(clientsMap);
+                    allClientMarkers.push({ marker: marker, data: client });
+                });
+                fitToClientMarkers();
+            });
+
+        function fitToClientMarkers() {
+            if (allClientMarkers.length > 0) {
+                const bounds = L.latLngBounds(allClientMarkers.map(m => m.marker.getLatLng()));
+                clientsMap.fitBounds(bounds, { padding: [50, 50] });
+            }
+        }
+
+        function showAllClients() {
+            allClientMarkers.forEach(m => m.marker.addTo(clientsMap));
+            fitToClientMarkers();
+        }
+
+        function focusClient(lat, lng) {
+            if (lat && lng) {
+                clientsMap.setView([lat, lng], 15);
+            }
+        }
+
+        function showClientsZone(zone) {
+            // Filtrer par zone géographique (simplifiée pour Madagascar)
+            const zones = {
+                'nord': { minLat: -16, maxLat: -12 },
+                'centre': { minLat: -21, maxLat: -16 },
+                'sud': { minLat: -26, maxLat: -21 }
+            };
+            const z = zones[zone];
+            allClientMarkers.forEach(m => {
+                const lat = m.data.latitude;
+                if (lat >= z.minLat && lat <= z.maxLat) {
+                    m.marker.addTo(clientsMap);
+                } else {
+                    clientsMap.removeLayer(m.marker);
+                }
+            });
+        }
+
+        // Picker map pour le modal
+        let pickerMap = null;
+        let pickerMarker = null;
+
+        document.getElementById('addClientModal').addEventListener('shown.bs.modal', function () {
+            if (!pickerMap) {
+                pickerMap = L.map('clientPickerMap').setView([-18.8792, 47.5079], 6);
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    attribution: '© OpenStreetMap'
+                }).addTo(pickerMap);
+
+                pickerMap.on('click', function(e) {
+                    document.getElementById('clientLatitude').value = e.latlng.lat.toFixed(7);
+                    document.getElementById('clientLongitude').value = e.latlng.lng.toFixed(7);
+                    
+                    if (pickerMarker) {
+                        pickerMarker.setLatLng(e.latlng);
+                    } else {
+                        pickerMarker = L.marker(e.latlng, { icon: clientIcon }).addTo(pickerMap);
+                    }
+                });
+            }
+            setTimeout(() => pickerMap.invalidateSize(), 100);
+        });
+
+        // Recherche
+        document.getElementById('searchClient').addEventListener('input', function() {
+            const search = this.value.toLowerCase();
+            document.querySelectorAll('.client-item').forEach(item => {
+                const text = item.textContent.toLowerCase();
+                item.style.display = text.includes(search) ? '' : 'none';
+            });
+        });
+
+        function editClient(id) {
+            window.location.href = '/ventes/clients/' + id + '/edit';
+        }
+
+        function deleteClient(id) {
+            if (confirm('Êtes-vous sûr de vouloir supprimer ce client ?')) {
+                fetch('/ventes/clients/' + id, { method: 'DELETE' })
+                    .then(() => location.reload());
+            }
+        }
+
+        function exportClients(format) {
+            window.location.href = '/ventes/clients/export?format=' + format;
+        }
+    </script>
+</th:block>
+</body>
+</html>

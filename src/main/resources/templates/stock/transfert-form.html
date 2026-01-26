@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{layout/main}">
+<head>
+    <title>Nouveau transfert</title>
+</head>
+<body>
+<div layout:fragment="content">
+    <div class="page-header mb-4">
+        <h1>Nouveau transfert inter-dépôt</h1>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a th:href="@{/dashboard}">Accueil</a></li>
+                <li class="breadcrumb-item"><a th:href="@{/stock/transferts}">Transferts</a></li>
+                <li class="breadcrumb-item active">Nouveau</li>
+            </ol>
+        </nav>
+    </div>
+    
+    <form th:action="@{/stock/transferts/save}" method="post">
+        <div class="row g-4">
+            <div class="col-lg-8">
+                <div class="card">
+                    <div class="card-header">Dépôts</div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-md-5">
+                                <label class="form-label">Dépôt source <span class="text-danger">*</span></label>
+                                <select class="form-select" name="depotSourceId" required id="depot-source">
+                                    <option value="">-- Sélectionner --</option>
+                                    <option th:each="depot : ${depots}" th:value="${depot.id}" th:text="${depot.nom}"></option>
+                                </select>
+                            </div>
+                            <div class="col-md-2 text-center d-flex align-items-end justify-content-center">
+                                <i class="bi bi-arrow-right fs-3 text-muted mb-2"></i>
+                            </div>
+                            <div class="col-md-5">
+                                <label class="form-label">Dépôt destination <span class="text-danger">*</span></label>
+                                <select class="form-select" name="depotDestinationId" required id="depot-dest">
+                                    <option value="">-- Sélectionner --</option>
+                                    <option th:each="depot : ${depots}" th:value="${depot.id}" th:text="${depot.nom}"></option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="row g-3 mt-2">
+                            <div class="col-12">
+                                <label class="form-label">Motif du transfert</label>
+                                <textarea class="form-control" name="motif" rows="2" placeholder="Raison du transfert..."></textarea>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Lignes de transfert -->
+                <div class="card mt-4">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <span>Articles à transférer</span>
+                        <button type="button" class="btn btn-sm btn-outline-primary" onclick="addLigneTransfert()" id="btn-add-ligne" disabled>
+                            <i class="bi bi-plus-lg me-1"></i>Ajouter article
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <div id="select-depot-msg" class="text-center py-4 text-muted">
+                            <i class="bi bi-box-seam fs-1 d-block mb-2"></i>
+                            Sélectionnez un dépôt source pour afficher le stock disponible
+                        </div>
+                        <div class="table-responsive" id="lignes-container" style="display: none;">
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 40%">Article</th>
+                                        <th style="width: 15%">Stock dispo</th>
+                                        <th style="width: 20%">Quantité à transférer</th>
+                                        <th style="width: 15%">Lot</th>
+                                        <th style="width: 10%"></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="lignes-body">
+                                    <!-- Dynamic content -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Actions -->
+            <div class="col-lg-4">
+                <div class="card mb-4">
+                    <div class="card-header">Actions</div>
+                    <div class="card-body">
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-arrow-left-right me-2"></i>Créer le transfert
+                            </button>
+                            <a th:href="@{/stock/mouvements}" class="btn btn-outline-secondary">
+                                <i class="bi bi-x-lg me-2"></i>Annuler
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <div class="card-header">Information</div>
+                    <div class="card-body">
+                        <div class="alert alert-info mb-0">
+                            <i class="bi bi-info-circle me-2"></i>
+                            <strong>Transfert inter-dépôt</strong><br>
+                            Le stock sera débité du dépôt source et crédité au dépôt destination immédiatement après validation.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </form>
+    
+    <script th:inline="javascript">
+        const stocks = /*[[${stocks}]]*/ [];
+        let ligneIndex = 0;
+        
+        document.getElementById('depot-source').addEventListener('change', function() {
+            const depotId = this.value;
+            const msg = document.getElementById('select-depot-msg');
+            const container = document.getElementById('lignes-container');
+            const btnAdd = document.getElementById('btn-add-ligne');
+            
+            if (!depotId) {
+                msg.style.display = 'block';
+                container.style.display = 'none';
+                btnAdd.disabled = true;
+                return;
+            }
+            
+            msg.style.display = 'none';
+            container.style.display = 'block';
+            btnAdd.disabled = false;
+            
+            // Clear existing lines
+            document.getElementById('lignes-body').innerHTML = '';
+            ligneIndex = 0;
+        });
+        
+        function addLigneTransfert() {
+            const depotId = document.getElementById('depot-source').value;
+            const depotStocks = stocks.filter(s => s.depot?.id === depotId && s.quantite > 0);
+            
+            const articleOptions = depotStocks.map(s => 
+                `<option value="${s.article.id}" data-stock="${s.quantite}">${s.article.designation} (${s.article.sku})</option>`
+            ).join('');
+            
+            const html = `
+                <tr class="ligne-row">
+                    <td>
+                        <select class="form-select form-select-sm article-select" name="lignes[${ligneIndex}].articleId" required onchange="updateStockInfo(this)">
+                            <option value="">-- Sélectionner --</option>
+                            ${articleOptions}
+                        </select>
+                    </td>
+                    <td class="stock-dispo text-end">-</td>
+                    <td>
+                        <input type="number" class="form-control form-control-sm" name="lignes[${ligneIndex}].quantite" min="0.01" step="0.01" required />
+                    </td>
+                    <td>
+                        <select class="form-select form-select-sm" name="lignes[${ligneIndex}].lotId">
+                            <option value="">Tous lots</option>
+                        </select>
+                    </td>
+                    <td class="text-center">
+                        <button type="button" class="btn btn-sm btn-outline-danger" onclick="this.closest('tr').remove()">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </td>
+                </tr>
+            `;
+            
+            document.getElementById('lignes-body').insertAdjacentHTML('beforeend', html);
+            ligneIndex++;
+        }
+        
+        function updateStockInfo(select) {
+            const row = select.closest('tr');
+            const selected = select.options[select.selectedIndex];
+            const stockDispo = selected.dataset.stock || 0;
+            
+            row.querySelector('.stock-dispo').textContent = stockDispo;
+            row.querySelector('input[type="number"]').max = stockDispo;
+        }
+    </script>
+</div>
+</body>
+</html>
