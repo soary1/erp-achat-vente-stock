@@ -13,7 +13,7 @@ import java.util.UUID;
 
 @Entity
 @Table(name = "commande_client")
-@Getter @Setter
+@Data
 @NoArgsConstructor @AllArgsConstructor
 @Builder
 public class CommandeClient {
@@ -68,7 +68,7 @@ public class CommandeClient {
     public void recalculerTotaux() {
         this.totalHT = lignes.stream()
             .map(l -> l.getPriceUnit().multiply(l.getQtyOrdered()))
-            .reduce(BigDecimal.ZERO, BigDecimal::add);
+            .reduce(BigDecimal.ZERO, (a, b) -> a.add(b));
         this.totalTTC = this.totalHT;
     }
 }

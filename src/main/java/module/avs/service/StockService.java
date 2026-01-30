@@ -30,6 +30,7 @@ public class StockService {
     private final BonReceptionRepository bonReceptionRepository;
     private final LigneBonReceptionRepository ligneBonReceptionRepository;
     private final LigneCommandeAchatRepository ligneCommandeAchatRepository;
+    private final ControleQualiteRepository controleQualiteRepository;
     private final AuditService auditService;
     private final AchatService achatService;
     
@@ -152,7 +153,17 @@ public class StockService {
         return allocated;
     }
     
+    // ============ STOCK PAGINATION ============
+    
+    public Page<Stock> findAllStocks(Pageable pageable) {
+        return stockRepository.findAll(pageable);
+    }
+    
     // ============ LOTS ============
+    
+    public List<Lot> findAllLots() {
+        return lotRepository.findAll();
+    }
     
     public List<Lot> findLotsByArticle(UUID articleId) {
         return lotRepository.findByArticleId(articleId);
@@ -329,5 +340,50 @@ public class StockService {
             .build();
         
         mouvementStockRepository.save(mouvement);
+    }
+    
+    // Méthode simplifiée de transfert (recherche les entités par ID)
+    public void transfererStockSimple(UUID articleId, UUID depotSourceId, UUID depotDestId, 
+                                      BigDecimal qty, Utilisateur user) {
+        // Trouve le premier stock disponible pour cet article dans le dépôt source
+        List<Stock> stocks = stockRepository.findByDepotIdAndArticleId(depotSourceId, articleId);
+        if (stocks.isEmpty()) {
+            throw new RuntimeException("Aucun stock trouvé pour cet article dans ce dépôt");
+        }
+        
+        Stock stockSource = stocks.get(0);
+        if (stockSource.getQtyDisponible().compareTo(qty) < 0) {
+            throw new RuntimeException("Stock insuffisant pour le transfert");
+        }
+        
+        Depot depotDest = stockSource.getDepot().getSite().getSociete() != null ? 
+            stockRepository.findByDepotId(depotDestId).stream().findFirst()
+                .map(Stock::getDepot)
+                .orElseThrow(() -> new RuntimeException("Dépôt destination non trouvé")) : null;
+        
+        if (depotDest == null) {
+            throw new RuntimeException("Dépôt destination non trouvé");
+        }
+        
+        transfererStock(stockSource.getDepot(), stockSource.getEmplacement(),
+                       depotDest, null,
+                       stockSource.getArticle(), stockSource.getLot(), qty, user);
+    }
+    
+    // ============ CONTRÔLE QUALITÉ ============
+    
+    public List<ControleQualite> findAllControles() {
+        return controleQualiteRepository.findAll();
+    }
+    
+    public void updateLotQualite(UUID lotId, boolean conforme, String notes, Utilisateur user) {
+        Lot lot = lotRepository.findById(lotId)
+            .orElseThrow(() -> new RuntimeException("Lot non trouvé"));
+        
+        lot.setStatutQualiteCode(conforme ? "CONFORME" : "REJETE");
+        lotRepository.save(lot);
+        
+        auditService.logAction("LOT", lotId, conforme ? "CONFORME" : "REJET", user, 
+            notes);
     }
 }

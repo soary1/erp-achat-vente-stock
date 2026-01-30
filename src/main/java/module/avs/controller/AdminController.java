@@ -70,7 +70,7 @@ public class AdminController {
     @PostMapping("/utilisateurs/{id}/toggle")
     public String toggleUtilisateur(@PathVariable UUID id, RedirectAttributes redirectAttributes) {
         utilisateurService.findById(id).ifPresent(u -> {
-            u.setActif(!u.getActif());
+            u.setIsActive(!u.getIsActive());
             utilisateurService.save(u);
         });
         redirectAttributes.addFlashAttribute("success", "Statut modifié");

@@ -12,7 +12,7 @@ import java.util.UUID;
 
 @Entity
 @Table(name = "devis_client")
-@Getter @Setter
+@Data
 @NoArgsConstructor @AllArgsConstructor
 @Builder
 public class DevisClient {
@@ -63,7 +63,7 @@ public class DevisClient {
     public void recalculerTotaux() {
         this.totalHT = lignes.stream()
             .map(l -> l.getPriceUnit().multiply(l.getQty()))
-            .reduce(BigDecimal.ZERO, BigDecimal::add);
+            .reduce(BigDecimal.ZERO, (a, b) -> a.add(b));
         this.totalTTC = this.totalHT;
     }
 }

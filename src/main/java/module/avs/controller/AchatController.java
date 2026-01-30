@@ -28,7 +28,7 @@ public class AchatController {
     private final UtilisateurService utilisateurService;
     
     private Utilisateur getCurrentUser(Authentication auth) {
-        return utilisateurService.findByLogin(auth.getName())
+        return utilisateurService.findByUsername(auth.getName())
             .orElseThrow(() -> new RuntimeException("Utilisateur non trouvé"));
     }
     
@@ -87,11 +87,12 @@ public class AchatController {
     
     @PostMapping("/demandes/{id}/approve")
     public String approuverDemande(@PathVariable UUID id, 
+                                   @RequestParam(required = false, defaultValue = "") String commentaire,
                                    Authentication auth,
                                    RedirectAttributes redirectAttributes) {
         try {
             Utilisateur user = getCurrentUser(auth);
-            achatService.approuverDemande(id, user);
+            achatService.approuverDemande(id, user, commentaire);
             redirectAttributes.addFlashAttribute("success", "Demande approuvée");
         } catch (Exception e) {
             redirectAttributes.addFlashAttribute("error", e.getMessage());
@@ -161,7 +162,8 @@ public class AchatController {
                                     RedirectAttributes redirectAttributes) {
         try {
             Utilisateur user = getCurrentUser(auth);
-            achatService.soumettreCommande(id, user);
+            // Soumet = passe en statut VALIDEE
+            achatService.validerCommande(id, user);
             redirectAttributes.addFlashAttribute("success", "Commande soumise pour validation");
         } catch (Exception e) {
             redirectAttributes.addFlashAttribute("error", e.getMessage());
@@ -175,7 +177,7 @@ public class AchatController {
                                     RedirectAttributes redirectAttributes) {
         try {
             Utilisateur user = getCurrentUser(auth);
-            achatService.approuverCommande(id, user);
+            achatService.validerCommande(id, user);
             redirectAttributes.addFlashAttribute("success", "Commande approuvée");
         } catch (Exception e) {
             redirectAttributes.addFlashAttribute("error", e.getMessage());
@@ -190,7 +192,11 @@ public class AchatController {
                                   RedirectAttributes redirectAttributes) {
         try {
             Utilisateur user = getCurrentUser(auth);
-            achatService.rejeterCommande(id, user, motif);
+            // Pour rejeter, on met simplement le statut à BROUILLON avec un log
+            achatService.findCommandeAchatById(id).ifPresent(cmd -> {
+                cmd.setStatutCode("BROUILLON");
+                achatService.saveCommandeAchat(cmd);
+            });
             redirectAttributes.addFlashAttribute("success", "Commande rejetée");
         } catch (Exception e) {
             redirectAttributes.addFlashAttribute("error", e.getMessage());
@@ -217,8 +223,8 @@ public class AchatController {
     @GetMapping("/a-approuver")
     public String demandesAApprouver(Authentication auth, Model model) {
         Utilisateur user = getCurrentUser(auth);
-        model.addAttribute("demandes", achatService.findDemandesByStatut("SOUMISE"));
-        model.addAttribute("commandes", achatService.findCommandesByStatut("SOUMISE"));
+        model.addAttribute("demandes", achatService.findDemandesAchatByStatut("SOUMISE"));
+        model.addAttribute("commandes", achatService.findCommandesAchatByStatut("BROUILLON"));
         return "achats/a-approuver";
     }
 }

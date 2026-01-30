@@ -9,7 +9,7 @@ import java.util.UUID;
 
 @Entity
 @Table(name = "saisie_inventaire")
-@Getter @Setter
+@Data
 @NoArgsConstructor @AllArgsConstructor
 @Builder
 public class SaisieInventaire {

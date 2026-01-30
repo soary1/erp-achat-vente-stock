@@ -9,8 +9,6 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 
@@ -23,19 +21,23 @@ public class SecurityConfig {
     private final UtilisateurService utilisateurService;
     
     @Bean
-    public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder();
-    }
-    
-    @Bean
     public UserDetailsService userDetailsService() {
-        return username -> utilisateurService.findByLogin(username)
-            .map(utilisateur -> org.springframework.security.core.userdetails.User.builder()
-                .username(utilisateur.getLogin())
-                .password(utilisateur.getPasswordHash())
-                .roles(utilisateur.getRole() != null ? utilisateur.getRole().getCode() : "USER")
-                .disabled(!utilisateur.getActif())
-                .build())
+        return username -> utilisateurService.findByUsername(username)
+            .map(utilisateur -> {
+                // Récupère les rôles de l'utilisateur
+                String[] roles = utilisateur.getRoles().stream()
+                    .map(r -> r.getCode())
+                    .toArray(String[]::new);
+                if (roles.length == 0) {
+                    roles = new String[]{"USER"};
+                }
+                return org.springframework.security.core.userdetails.User.builder()
+                    .username(utilisateur.getUsername())
+                    .password(utilisateur.getPasswordHash())
+                    .roles(roles)
+                    .disabled(utilisateur.getIsActive() == null || !utilisateur.getIsActive())
+                    .build();
+            })
             .orElseThrow(() -> new UsernameNotFoundException("Utilisateur non trouvé: " + username));
     }
     

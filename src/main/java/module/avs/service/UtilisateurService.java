@@ -43,9 +43,6 @@ public class UtilisateurService {
     }
     
     public Utilisateur save(Utilisateur utilisateur) {
-        if (utilisateur.getId() == null) {
-            utilisateur.setPasswordHash(passwordEncoder.encode(utilisateur.getPasswordHash()));
-        }
         return utilisateurRepository.save(utilisateur);
     }
     
@@ -141,11 +138,6 @@ public class UtilisateurService {
     // Pagination pour les utilisateurs
     public Page<Utilisateur> findAllUtilisateurs(Pageable pageable) {
         return utilisateurRepository.findAll(pageable);
-    }
-    
-    // Recherche par login
-    public Optional<Utilisateur> findByLogin(String login) {
-        return utilisateurRepository.findByLogin(login);
     }
     
     // Save role

@@ -11,7 +11,7 @@ import java.util.UUID;
 
 @Entity
 @Table(name = "demande_achat")
-@Getter @Setter
+@Data
 @NoArgsConstructor @AllArgsConstructor
 @Builder
 public class DemandeAchat {

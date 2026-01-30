@@ -7,7 +7,7 @@ import java.util.UUID;
 
 @Entity
 @Table(name = "historique_workflow")
-@Getter @Setter
+@Data
 @NoArgsConstructor @AllArgsConstructor
 @Builder
 public class HistoriqueWorkflow {

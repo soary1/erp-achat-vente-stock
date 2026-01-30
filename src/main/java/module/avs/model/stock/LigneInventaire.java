@@ -13,7 +13,7 @@ import java.util.UUID;
 
 @Entity
 @Table(name = "ligne_inventaire")
-@Getter @Setter
+@Data
 @NoArgsConstructor @AllArgsConstructor
 @Builder
 public class LigneInventaire {

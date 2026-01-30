@@ -347,7 +347,7 @@
         
         <div class="sidebar-nav">
             <!-- Dashboard -->
-            <a th:href="@{/dashboard}" class="nav-link" th:classappend="${#strings.startsWith(#httpServletRequest.requestURI, '/dashboard') or #httpServletRequest.requestURI == '/'} ? 'active' : ''">
+            <a th:href="@{/dashboard}" class="nav-link" th:classappend="${#strings.startsWith(currentUri, '/dashboard') or currentUri == '/'} ? 'active' : ''">
                 <i class="bi bi-speedometer2"></i>
                 <span>Tableau de bord</span>
             </a>
@@ -355,17 +355,17 @@
             <!-- Achats -->
             <div class="nav-section mt-3">Achats</div>
             <a th:href="@{/achats/demandes}" class="nav-link" sec:authorize="hasAnyRole('ACHETEUR','MANAGER_ACHATS','ADMIN')"
-               th:classappend="${#strings.contains(#httpServletRequest.requestURI, '/achats/demandes')} ? 'active' : ''">
+               th:classappend="${#strings.contains(currentUri, '/achats/demandes')} ? 'active' : ''">
                 <i class="bi bi-file-earmark-text"></i>
                 <span>Demandes d'achat</span>
             </a>
             <a th:href="@{/achats/commandes}" class="nav-link" sec:authorize="hasAnyRole('ACHETEUR','MANAGER_ACHATS','ADMIN')"
-               th:classappend="${#strings.contains(#httpServletRequest.requestURI, '/achats/commandes')} ? 'active' : ''">
+               th:classappend="${#strings.contains(currentUri, '/achats/commandes')} ? 'active' : ''">
                 <i class="bi bi-cart"></i>
                 <span>Commandes d'achat</span>
             </a>
             <a th:href="@{/achats/a-approuver}" class="nav-link" sec:authorize="hasAnyRole('MANAGER_ACHATS','ADMIN')"
-               th:classappend="${#strings.contains(#httpServletRequest.requestURI, '/achats/a-approuver')} ? 'active' : ''">
+               th:classappend="${#strings.contains(currentUri, '/achats/a-approuver')} ? 'active' : ''">
                 <i class="bi bi-check2-square"></i>
                 <span>À approuver</span>
             </a>
@@ -373,17 +373,17 @@
             <!-- Ventes -->
             <div class="nav-section mt-3">Ventes</div>
             <a th:href="@{/ventes/devis}" class="nav-link" sec:authorize="hasAnyRole('COMMERCIAL','MANAGER_VENTES','ADMIN')"
-               th:classappend="${#strings.contains(#httpServletRequest.requestURI, '/ventes/devis')} ? 'active' : ''">
+               th:classappend="${#strings.contains(currentUri, '/ventes/devis')} ? 'active' : ''">
                 <i class="bi bi-file-earmark-ruled"></i>
                 <span>Devis</span>
             </a>
             <a th:href="@{/ventes/commandes}" class="nav-link" sec:authorize="hasAnyRole('COMMERCIAL','MANAGER_VENTES','ADMIN')"
-               th:classappend="${#strings.contains(#httpServletRequest.requestURI, '/ventes/commandes')} ? 'active' : ''">
+               th:classappend="${#strings.contains(currentUri, '/ventes/commandes')} ? 'active' : ''">
                 <i class="bi bi-bag"></i>
                 <span>Commandes clients</span>
             </a>
             <a th:href="@{/ventes/livraisons}" class="nav-link" sec:authorize="hasAnyRole('COMMERCIAL','MANAGER_VENTES','ADMIN')"
-               th:classappend="${#strings.contains(#httpServletRequest.requestURI, '/ventes/livraisons')} ? 'active' : ''">
+               th:classappend="${#strings.contains(currentUri, '/ventes/livraisons')} ? 'active' : ''">
                 <i class="bi bi-truck"></i>
                 <span>Livraisons</span>
             </a>
@@ -391,27 +391,27 @@
             <!-- Stock -->
             <div class="nav-section mt-3">Stock</div>
             <a th:href="@{/stock}" class="nav-link" sec:authorize="hasAnyRole('MAGASINIER','MANAGER_STOCK','ADMIN')"
-               th:classappend="${#httpServletRequest.requestURI == '/stock'} ? 'active' : ''">
+               th:classappend="${currentUri == '/stock'} ? 'active' : ''">
                 <i class="bi bi-boxes"></i>
                 <span>État des stocks</span>
             </a>
             <a th:href="@{/stock/receptions}" class="nav-link" sec:authorize="hasAnyRole('MAGASINIER','MANAGER_STOCK','ADMIN')"
-               th:classappend="${#strings.contains(#httpServletRequest.requestURI, '/stock/receptions')} ? 'active' : ''">
+               th:classappend="${#strings.contains(currentUri, '/stock/receptions')} ? 'active' : ''">
                 <i class="bi bi-box-arrow-in-down"></i>
                 <span>Réceptions</span>
             </a>
             <a th:href="@{/stock/mouvements}" class="nav-link" sec:authorize="hasAnyRole('MAGASINIER','MANAGER_STOCK','ADMIN')"
-               th:classappend="${#strings.contains(#httpServletRequest.requestURI, '/stock/mouvements')} ? 'active' : ''">
+               th:classappend="${#strings.contains(currentUri, '/stock/mouvements')} ? 'active' : ''">
                 <i class="bi bi-arrow-left-right"></i>
                 <span>Mouvements</span>
             </a>
             <a th:href="@{/stock/lots}" class="nav-link" sec:authorize="hasAnyRole('MAGASINIER','MANAGER_STOCK','ADMIN')"
-               th:classappend="${#strings.contains(#httpServletRequest.requestURI, '/stock/lots')} ? 'active' : ''">
+               th:classappend="${#strings.contains(currentUri, '/stock/lots')} ? 'active' : ''">
                 <i class="bi bi-upc-scan"></i>
                 <span>Lots</span>
             </a>
             <a th:href="@{/inventaires}" class="nav-link" sec:authorize="hasAnyRole('MAGASINIER','MANAGER_STOCK','CONTROLEUR','ADMIN')"
-               th:classappend="${#strings.contains(#httpServletRequest.requestURI, '/inventaires')} ? 'active' : ''">
+               th:classappend="${#strings.contains(currentUri, '/inventaires')} ? 'active' : ''">
                 <i class="bi bi-clipboard-check"></i>
                 <span>Inventaires</span>
             </a>
@@ -419,27 +419,27 @@
             <!-- Cartographie -->
             <div class="nav-section mt-3">Cartographie</div>
             <a th:href="@{/carte}" class="nav-link"
-               th:classappend="${#httpServletRequest.requestURI == '/carte'} ? 'active' : ''">
+               th:classappend="${currentUri == '/carte'} ? 'active' : ''">
                 <i class="bi bi-geo-alt-fill"></i>
                 <span>Vue d'ensemble</span>
             </a>
             <a th:href="@{/carte/sites}" class="nav-link"
-               th:classappend="${#strings.contains(#httpServletRequest.requestURI, '/carte/sites')} ? 'active' : ''">
+               th:classappend="${#strings.contains(currentUri, '/carte/sites')} ? 'active' : ''">
                 <i class="bi bi-building"></i>
                 <span>Sites</span>
             </a>
             <a th:href="@{/carte/depots}" class="nav-link"
-               th:classappend="${#strings.contains(#httpServletRequest.requestURI, '/carte/depots')} ? 'active' : ''">
+               th:classappend="${#strings.contains(currentUri, '/carte/depots')} ? 'active' : ''">
                 <i class="bi bi-box-seam"></i>
                 <span>Dépôts</span>
             </a>
             <a th:href="@{/carte/clients}" class="nav-link"
-               th:classappend="${#strings.contains(#httpServletRequest.requestURI, '/carte/clients')} ? 'active' : ''">
+               th:classappend="${#strings.contains(currentUri, '/carte/clients')} ? 'active' : ''">
                 <i class="bi bi-people"></i>
                 <span>Clients</span>
             </a>
             <a th:href="@{/carte/fournisseurs}" class="nav-link"
-               th:classappend="${#strings.contains(#httpServletRequest.requestURI, '/carte/fournisseurs')} ? 'active' : ''">
+               th:classappend="${#strings.contains(currentUri, '/carte/fournisseurs')} ? 'active' : ''">
                 <i class="bi bi-truck"></i>
                 <span>Fournisseurs</span>
             </a>
@@ -447,17 +447,17 @@
             <!-- Finance -->
             <div class="nav-section mt-3">Finance</div>
             <a th:href="@{/finance}" class="nav-link" sec:authorize="hasAnyRole('COMPTABLE','DAF','ADMIN')"
-               th:classappend="${#httpServletRequest.requestURI == '/finance'} ? 'active' : ''">
+               th:classappend="${currentUri == '/finance'} ? 'active' : ''">
                 <i class="bi bi-graph-up"></i>
                 <span>Tableau financier</span>
             </a>
             <a th:href="@{/finance/factures-fournisseur}" class="nav-link" sec:authorize="hasAnyRole('COMPTABLE','DAF','ADMIN')"
-               th:classappend="${#strings.contains(#httpServletRequest.requestURI, '/finance/factures-fournisseur')} ? 'active' : ''">
+               th:classappend="${#strings.contains(currentUri, '/finance/factures-fournisseur')} ? 'active' : ''">
                 <i class="bi bi-receipt"></i>
                 <span>Factures fournisseur</span>
             </a>
             <a th:href="@{/finance/factures-client}" class="nav-link" sec:authorize="hasAnyRole('COMPTABLE','DAF','ADMIN')"
-               th:classappend="${#strings.contains(#httpServletRequest.requestURI, '/finance/factures-client')} ? 'active' : ''">
+               th:classappend="${#strings.contains(currentUri, '/finance/factures-client')} ? 'active' : ''">
                 <i class="bi bi-file-text"></i>
                 <span>Factures client</span>
             </a>
@@ -465,7 +465,7 @@
             <!-- Référentiels -->
             <div class="nav-section mt-3">Référentiels</div>
             <a th:href="@{/referentiels/devises}" class="nav-link" sec:authorize="hasAnyRole('ADMIN','MANAGER_ACHATS','MANAGER_VENTES','DAF')"
-               th:classappend="${#strings.contains(#httpServletRequest.requestURI, '/referentiels')} ? 'active' : ''">
+               th:classappend="${#strings.contains(currentUri, '/referentiels')} ? 'active' : ''">
                 <i class="bi bi-database"></i>
                 <span>Référentiels</span>
             </a>
@@ -473,17 +473,17 @@
             <!-- Administration -->
             <div class="nav-section mt-3" sec:authorize="hasRole('ADMIN')">Administration</div>
             <a th:href="@{/admin/utilisateurs}" class="nav-link" sec:authorize="hasRole('ADMIN')"
-               th:classappend="${#strings.contains(#httpServletRequest.requestURI, '/admin/utilisateurs')} ? 'active' : ''">
+               th:classappend="${#strings.contains(currentUri, '/admin/utilisateurs')} ? 'active' : ''">
                 <i class="bi bi-people"></i>
                 <span>Utilisateurs</span>
             </a>
             <a th:href="@{/admin/roles}" class="nav-link" sec:authorize="hasRole('ADMIN')"
-               th:classappend="${#strings.contains(#httpServletRequest.requestURI, '/admin/roles')} ? 'active' : ''">
+               th:classappend="${#strings.contains(currentUri, '/admin/roles')} ? 'active' : ''">
                 <i class="bi bi-shield-lock"></i>
                 <span>Rôles</span>
             </a>
             <a th:href="@{/admin/audit}" class="nav-link" sec:authorize="hasRole('ADMIN')"
-               th:classappend="${#strings.contains(#httpServletRequest.requestURI, '/admin/audit')} ? 'active' : ''">
+               th:classappend="${#strings.contains(currentUri, '/admin/audit')} ? 'active' : ''">
                 <i class="bi bi-journal-text"></i>
                 <span>Journal d'audit</span>
             </a>

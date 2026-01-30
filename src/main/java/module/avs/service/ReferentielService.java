@@ -129,6 +129,10 @@ public class ReferentielService {
         return modePaiementRepository.findAll();
     }
     
+    public Optional<ModePaiement> findModePaiementByCode(String code) {
+        return modePaiementRepository.findById(code);
+    }
+    
     // ============ ORGANISATION ============
     public List<GroupeSociete> findAllGroupes() {
         return groupeSocieteRepository.findAll();

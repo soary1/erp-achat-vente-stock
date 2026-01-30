@@ -8,7 +8,7 @@ import java.util.UUID;
 
 @Entity
 @Table(name = "ligne_demande_achat")
-@Getter @Setter
+@Data
 @NoArgsConstructor @AllArgsConstructor
 @Builder
 public class LigneDemandeAchat {

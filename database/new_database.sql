@@ -7,7 +7,6 @@ CREATE DATABASE avs_db;
 -- 0. CONFIGURATION & EXTENSIONS
 -- ==============================================================================
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
-CREATE EXTENSION IF NOT EXISTS "postgis";
 
 -- ==============================================================================
 -- 1. TABLES DE RÉFÉRENCE GLOBALES
@@ -109,7 +108,8 @@ CREATE TABLE site (
     code VARCHAR(50) NOT NULL,
     name VARCHAR(200) NOT NULL,
     address TEXT,
-    geo_location GEOMETRY(Point, 4326),
+    latitude DECIMAL(10, 7),
+    longitude DECIMAL(11, 7),
     is_active BOOLEAN DEFAULT TRUE,
     UNIQUE(societe_id, code)
 );
@@ -119,7 +119,8 @@ CREATE TABLE depot (
     site_id UUID NOT NULL REFERENCES site(id),
     code VARCHAR(50) NOT NULL,
     name VARCHAR(200) NOT NULL,
-    geo_location GEOMETRY(Point, 4326),
+    latitude DECIMAL(10, 7),
+    longitude DECIMAL(11, 7),
     is_active BOOLEAN DEFAULT TRUE
 );
 
@@ -255,8 +256,12 @@ CREATE TABLE client (
     name VARCHAR(200) NOT NULL,
     tax_id VARCHAR(50),
     email VARCHAR(200),
-    geo_location GEOMETRY(Point, 4326),
-    devise_code VARCHAR(3) REFERENCES devise(code)
+    telephone VARCHAR(50),
+    adresse TEXT,
+    latitude DECIMAL(10, 7),
+    longitude DECIMAL(11, 7),
+    devise_code VARCHAR(3) REFERENCES devise(code),
+    is_active BOOLEAN DEFAULT TRUE
 );
 
 CREATE TABLE fournisseur (
@@ -265,8 +270,12 @@ CREATE TABLE fournisseur (
     name VARCHAR(200) NOT NULL,
     tax_id VARCHAR(50),
     email VARCHAR(200),
-    geo_location GEOMETRY(Point, 4326),
-    devise_code VARCHAR(3) REFERENCES devise(code)
+    telephone VARCHAR(50),
+    adresse TEXT,
+    latitude DECIMAL(10, 7),
+    longitude DECIMAL(11, 7),
+    devise_code VARCHAR(3) REFERENCES devise(code),
+    is_active BOOLEAN DEFAULT TRUE
 );
 
 CREATE TABLE liste_tarifaire (

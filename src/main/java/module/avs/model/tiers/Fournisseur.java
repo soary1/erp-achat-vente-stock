@@ -8,7 +8,7 @@ import java.util.UUID;
 
 @Entity
 @Table(name = "fournisseur")
-@Getter @Setter
+@Data
 @NoArgsConstructor @AllArgsConstructor
 @Builder
 public class Fournisseur {

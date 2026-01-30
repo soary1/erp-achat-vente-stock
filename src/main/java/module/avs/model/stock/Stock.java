@@ -10,7 +10,7 @@ import java.util.UUID;
 
 @Entity
 @Table(name = "stock")
-@Getter @Setter
+@Data
 @NoArgsConstructor @AllArgsConstructor
 @Builder
 public class Stock {

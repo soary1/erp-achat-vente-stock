@@ -28,7 +28,7 @@ public class VenteController {
     private final UtilisateurService utilisateurService;
     
     private Utilisateur getCurrentUser(Authentication auth) {
-        return utilisateurService.findByLogin(auth.getName())
+        return utilisateurService.findByUsername(auth.getName())
             .orElseThrow(() -> new RuntimeException("Utilisateur non trouvé"));
     }
     

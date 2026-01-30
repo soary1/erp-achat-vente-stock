@@ -31,7 +31,7 @@ public class FinanceController {
     private final UtilisateurService utilisateurService;
     
     private Utilisateur getCurrentUser(Authentication auth) {
-        return utilisateurService.findByLogin(auth.getName())
+        return utilisateurService.findByUsername(auth.getName())
             .orElseThrow(() -> new RuntimeException("Utilisateur non trouvé"));
     }
     
@@ -134,10 +134,13 @@ public class FinanceController {
             FactureFournisseur facture = financeService.findFactureFournisseurById(id)
                 .orElseThrow(() -> new RuntimeException("Facture non trouvée"));
             
+            var modePaiement = referentielService.findModePaiementByCode(modeCode)
+                .orElseThrow(() -> new RuntimeException("Mode de paiement non trouvé"));
+            
             PaiementFournisseur paiement = PaiementFournisseur.builder()
                 .facture(facture)
                 .montant(montant)
-                .modePaiementCode(modeCode)
+                .modePaiement(modePaiement)
                 .reference(reference)
                 .datePaiement(LocalDate.now())
                 .build();
@@ -209,10 +212,13 @@ public class FinanceController {
             FactureClient facture = financeService.findFactureClientById(id)
                 .orElseThrow(() -> new RuntimeException("Facture non trouvée"));
             
+            var modePaiement = referentielService.findModePaiementByCode(modeCode)
+                .orElseThrow(() -> new RuntimeException("Mode de paiement non trouvé"));
+            
             EncaissementClient encaissement = EncaissementClient.builder()
                 .facture(facture)
                 .montant(montant)
-                .modePaiementCode(modeCode)
+                .modePaiement(modePaiement)
                 .reference(reference)
                 .dateEncaissement(LocalDate.now())
                 .build();

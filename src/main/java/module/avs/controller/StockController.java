@@ -29,7 +29,7 @@ public class StockController {
     private final UtilisateurService utilisateurService;
     
     private Utilisateur getCurrentUser(Authentication auth) {
-        return utilisateurService.findByLogin(auth.getName())
+        return utilisateurService.findByUsername(auth.getName())
             .orElseThrow(() -> new RuntimeException("Utilisateur non trouvé"));
     }
     
@@ -40,7 +40,7 @@ public class StockController {
                            @RequestParam(defaultValue = "20") int size,
                            Model model) {
         Pageable pageable = PageRequest.of(page, size);
-        Page<Stock> stocks = stockService.findAllStock(pageable);
+        Page<Stock> stocks = stockService.findAllStocks(pageable);
         model.addAttribute("stocks", stocks);
         return "stock/stocks";
     }
@@ -67,14 +67,14 @@ public class StockController {
     
     @GetMapping("/lots/perimes")
     public String lotsPerimes(Model model) {
-        model.addAttribute("lots", stockService.getLotsPerimes());
+        model.addAttribute("lots", stockService.findExpiredLots());
         model.addAttribute("titre", "Lots périmés");
         return "stock/lots";
     }
     
     @GetMapping("/lots/expirant")
     public String lotsExpirant(@RequestParam(defaultValue = "30") int jours, Model model) {
-        model.addAttribute("lots", stockService.getLotsExpirantBientot(jours));
+        model.addAttribute("lots", stockService.findLotsExpiringSoon(jours));
         model.addAttribute("titre", "Lots expirant dans " + jours + " jours");
         return "stock/lots";
     }
@@ -162,7 +162,7 @@ public class StockController {
                                     RedirectAttributes redirectAttributes) {
         try {
             Utilisateur user = getCurrentUser(auth);
-            stockService.transfererStock(articleId, depotSourceId, depotDestId, quantite, user);
+            stockService.transfererStockSimple(articleId, depotSourceId, depotDestId, quantite, user);
             redirectAttributes.addFlashAttribute("success", "Transfert effectué avec succès");
         } catch (Exception e) {
             redirectAttributes.addFlashAttribute("error", e.getMessage());
@@ -174,7 +174,7 @@ public class StockController {
     
     @GetMapping("/controles")
     public String listControles(Model model) {
-        model.addAttribute("controles", stockService.findAllControlesQualite());
+        model.addAttribute("controles", stockService.findAllControles());
         return "stock/controles";
     }
     
@@ -187,7 +187,7 @@ public class StockController {
         try {
             Utilisateur user = getCurrentUser(auth);
             boolean conforme = "CONFORME".equals(resultat);
-            stockService.enregistrerControleQualite(id, user, conforme, notes);
+            stockService.updateLotQualite(id, conforme, notes, user);
             redirectAttributes.addFlashAttribute("success", "Contrôle qualité enregistré");
         } catch (Exception e) {
             redirectAttributes.addFlashAttribute("error", e.getMessage());

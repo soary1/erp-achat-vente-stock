@@ -98,13 +98,13 @@ BEGIN
     RETURNING id INTO v_soc_id;
 
     -- Site 1 : Siège (Administratif)
-    INSERT INTO site (societe_id, code, name, address, geo_location)
-    VALUES (v_soc_id, 'SITE_ANDRA', 'Siège Andraharo', 'Zone Galaxy, Antananarivo 101', ST_SetSRID(ST_MakePoint(47.51, -18.88), 4326))
+    INSERT INTO site (societe_id, code, name, address, latitude, longitude)
+    VALUES (v_soc_id, 'SITE_ANDRA', 'Siège Andraharo', 'Zone Galaxy, Antananarivo 101', -18.88, 47.51)
     RETURNING id INTO v_site_tana_id;
 
     -- Site 2 : Logistique (Port de Tamatave)
-    INSERT INTO site (societe_id, code, name, address, geo_location)
-    VALUES (v_soc_id, 'SITE_TMM', 'Hub Logistique Toamasina', 'Bd Joffre, Toamasina', ST_SetSRID(ST_MakePoint(49.40, -18.15), 4326))
+    INSERT INTO site (societe_id, code, name, address, latitude, longitude)
+    VALUES (v_soc_id, 'SITE_TMM', 'Hub Logistique Toamasina', 'Bd Joffre, Toamasina', -18.15, 49.40)
     RETURNING id INTO v_site_tmm_id;
 
     -- Dépôts
@@ -141,43 +141,43 @@ BEGIN
     
     -- DIRECTION : Andry (DG) - Valide tout
     INSERT INTO utilisateur (username, email, password_hash, departement_id) 
-    VALUES ('andry.dg', 'dg@madadis.mg', 'hash1', v_dept_dir_id) RETURNING id INTO v_user_dg_id;
+    VALUES ('andry.dg', 'dg@madadis.mg', 'admin', v_dept_dir_id) RETURNING id INTO v_user_dg_id;
     INSERT INTO utilisateur_role VALUES (v_user_dg_id, v_role_dir_id);
 
     -- FINANCE : Bakoly (DAF) et Mamy (Comptable)
     INSERT INTO utilisateur (username, email, password_hash, departement_id) 
-    VALUES ('bakoly.daf', 'daf@madadis.mg', 'hash2', v_dept_fin_id) RETURNING id INTO v_user_daf_id;
+    VALUES ('bakoly.daf', 'daf@madadis.mg', 'admin', v_dept_fin_id) RETURNING id INTO v_user_daf_id;
     INSERT INTO utilisateur_role VALUES (v_user_daf_id, v_role_mgr_id);
 
     INSERT INTO utilisateur (username, email, password_hash, departement_id) 
-    VALUES ('mamy.compta', 'compta@madadis.mg', 'hash3', v_dept_fin_id) RETURNING id INTO v_user_compta_id;
+    VALUES ('mamy.compta', 'compta@madadis.mg', 'admin', v_dept_fin_id) RETURNING id INTO v_user_compta_id;
     INSERT INTO utilisateur_role VALUES (v_user_compta_id, v_role_op_id);
 
     -- ACHATS : Faly (Mgr) et Sitraka (Op)
     INSERT INTO utilisateur (username, email, password_hash, departement_id) 
-    VALUES ('faly.ach', 'achat.mgr@madadis.mg', 'hash4', v_dept_ach_id) RETURNING id INTO v_user_ach_mgr_id;
+    VALUES ('faly.ach', 'achat.mgr@madadis.mg', 'admin', v_dept_ach_id) RETURNING id INTO v_user_ach_mgr_id;
     INSERT INTO utilisateur_role VALUES (v_user_ach_mgr_id, v_role_mgr_id);
 
     INSERT INTO utilisateur (username, email, password_hash, departement_id) 
-    VALUES ('sitraka.ach', 'achat.op@madadis.mg', 'hash5', v_dept_ach_id) RETURNING id INTO v_user_ach_op_id;
+    VALUES ('sitraka.ach', 'achat.op@madadis.mg', 'admin', v_dept_ach_id) RETURNING id INTO v_user_ach_op_id;
     INSERT INTO utilisateur_role VALUES (v_user_ach_op_id, v_role_op_id);
 
     -- MAGASIN : Tiana (Chef Mag) et Koto (Manutention)
     INSERT INTO utilisateur (username, email, password_hash, departement_id) 
-    VALUES ('tiana.stock', 'stock.chef@madadis.mg', 'hash6', v_dept_mag_id) RETURNING id INTO v_user_mag_chef_id;
+    VALUES ('tiana.stock', 'stock.chef@madadis.mg', 'admin', v_dept_mag_id) RETURNING id INTO v_user_mag_chef_id;
     INSERT INTO utilisateur_role VALUES (v_user_mag_chef_id, v_role_sup_id);
 
     INSERT INTO utilisateur (username, email, password_hash, departement_id) 
-    VALUES ('koto.stock', 'magasinier@madadis.mg', 'hash7', v_dept_mag_id) RETURNING id INTO v_user_mag_op_id;
+    VALUES ('koto.stock', 'magasinier@madadis.mg', 'admin', v_dept_mag_id) RETURNING id INTO v_user_mag_op_id;
     INSERT INTO utilisateur_role VALUES (v_user_mag_op_id, v_role_op_id);
 
     -- VENTES : Soa (Mgr) et Rivo (Commercial)
     INSERT INTO utilisateur (username, email, password_hash, departement_id) 
-    VALUES ('soa.vte', 'sales.mgr@madadis.mg', 'hash8', v_dept_vte_id) RETURNING id INTO v_user_vte_mgr_id;
+    VALUES ('soa.vte', 'sales.mgr@madadis.mg', 'admin', v_dept_vte_id) RETURNING id INTO v_user_vte_mgr_id;
     INSERT INTO utilisateur_role VALUES (v_user_vte_mgr_id, v_role_mgr_id);
 
     INSERT INTO utilisateur (username, email, password_hash, departement_id) 
-    VALUES ('rivo.vte', 'commercial@madadis.mg', 'hash9', v_dept_vte_id) RETURNING id INTO v_user_vte_op_id;
+    VALUES ('rivo.vte', 'commercial@madadis.mg', 'admin', v_dept_vte_id) RETURNING id INTO v_user_vte_op_id;
     INSERT INTO utilisateur_role VALUES (v_user_vte_op_id, v_role_op_id);
 
     -- Règles d'approbation (ABAC - PDF §4.1)

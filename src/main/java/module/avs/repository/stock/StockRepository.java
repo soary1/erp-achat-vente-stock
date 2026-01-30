@@ -21,6 +21,8 @@ public interface StockRepository extends JpaRepository<Stock, UUID> {
     
     List<Stock> findByDepotId(UUID depotId);
     
+    List<Stock> findByDepotIdAndArticleId(UUID depotId, UUID articleId);
+    
     @Query("SELECT s FROM Stock s WHERE s.article.id = :articleId AND s.qtyReel > 0")
     List<Stock> findAvailableStockByArticle(UUID articleId);
     

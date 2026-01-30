@@ -12,7 +12,7 @@ import java.util.UUID;
 
 @Entity
 @Table(name = "bon_reception")
-@Getter @Setter
+@Data
 @NoArgsConstructor @AllArgsConstructor
 @Builder
 public class BonReception {

@@ -14,7 +14,7 @@ import java.util.UUID;
 
 @Entity
 @Table(name = "commande_achat")
-@Getter @Setter
+@Data
 @NoArgsConstructor @AllArgsConstructor
 @Builder
 public class CommandeAchat {
@@ -78,7 +78,7 @@ public class CommandeAchat {
     public void recalculerTotaux() {
         this.totalHT = lignes.stream()
             .map(l -> l.getUnitPrice().multiply(l.getQtyOrdered()))
-            .reduce(BigDecimal.ZERO, BigDecimal::add);
+            .reduce(BigDecimal.ZERO, (a, b) -> a.add(b));
         // Calculer TTC avec taxes si nécessaire
         this.totalTTC = this.totalHT;
     }

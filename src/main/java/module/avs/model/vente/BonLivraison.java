@@ -9,7 +9,7 @@ import java.util.UUID;
 
 @Entity
 @Table(name = "bon_livraison")
-@Getter @Setter
+@Data
 @NoArgsConstructor @AllArgsConstructor
 @Builder
 public class BonLivraison {
