@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{layout/main}">
+<head>
+    <title>Référentiels</title>
+</head>
+<body>
+<div layout:fragment="content">
+    <div class="page-header mb-4">
+        <h1>Devises</h1>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a th:href="@{/dashboard}">Accueil</a></li>
+                <li class="breadcrumb-item active">Référentiels - Devises</li>
+            </ol>
+        </nav>
+    </div>
+    
+    <!-- Onglets référentiels -->
+    <ul class="nav nav-tabs mb-4">
+        <li class="nav-item">
+            <a class="nav-link active" th:href="@{/referentiels/devises}">Devises</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" th:href="@{/referentiels/pays}">Pays</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" th:href="@{/referentiels/unites}">Unités de mesure</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" th:href="@{/referentiels/taxes}">Types de taxes</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" th:href="@{/referentiels/modes-paiement}">Modes de paiement</a>
+        </li>
+    </ul>
+    
+    <div class="d-flex justify-content-end mb-3">
+        <a th:href="@{/referentiels/devises/add}" class="btn btn-primary">
+            <i class="bi bi-plus-lg me-2"></i>Nouvelle devise
+        </a>
+    </div>
+    
+    <div class="card">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Code</th>
+                            <th>Libellé</th>
+                            <th>Symbole</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr th:each="devise : ${devises}">
+                            <td><code th:text="${devise.code}"></code></td>
+                            <td th:text="${devise.libelle}"></td>
+                            <td th:text="${devise.symbole}"></td>
+                            <td>
+                                <div class="btn-group btn-group-sm">
+                                    <a th:href="@{/referentiels/devises/edit/{code}(code=${devise.code})}" class="btn btn-outline-secondary" title="Modifier">
+                                        <i class="bi bi-pencil"></i>
+                                    </a>
+                                    <a th:href="@{/referentiels/devises/delete/{code}(code=${devise.code})}" class="btn btn-outline-danger" title="Supprimer"
+                                       onclick="return confirm('Êtes-vous sûr de vouloir supprimer cette devise ?')">
+                                        <i class="bi bi-trash"></i>
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                        <tr th:if="${#lists.isEmpty(devises)}">
+                            <td colspan="4" class="text-center text-muted py-4">
+                                Aucune devise configurée
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+</html>

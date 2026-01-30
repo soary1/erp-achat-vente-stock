@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" 
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{layout/main}">
+<head>
+    <title>Gestion des Dépôts</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        .depot-map {
+            height: 400px;
+            border-radius: 12px;
+        }
+        .location-picker-map {
+            height: 300px;
+            border-radius: 8px;
+        }
+        .depot-card {
+            transition: all 0.3s ease;
+            border-left: 4px solid #10b981;
+        }
+        .depot-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+        }
+        .depot-stats {
+            display: flex;
+            gap: 1rem;
+            margin-top: 0.5rem;
+        }
+        .depot-stat {
+            font-size: 0.85rem;
+            color: #6b7280;
+        }
+    </style>
+</head>
+<body>
+<div layout:fragment="content">
+    <div class="page-header d-flex justify-content-between align-items-center">
+        <div>
+            <h1><i class="bi bi-box-seam me-2"></i>Gestion des Dépôts</h1>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a th:href="@{/}">Accueil</a></li>
+                    <li class="breadcrumb-item"><a th:href="@{/stock}">Stock</a></li>
+                    <li class="breadcrumb-item active">Dépôts</li>
+                </ol>
+            </nav>
+        </div>
+        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addDepotModal">
+            <i class="bi bi-plus-lg me-1"></i>Nouveau Dépôt
+        </button>
+    </div>
+
+    <div class="row">
+        <!-- Carte des dépôts -->
+        <div class="col-lg-7 mb-4">
+            <div class="card h-100">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="bi bi-geo-alt me-2"></i>Carte des Dépôts</h5>
+                    <div class="btn-group btn-group-sm">
+                        <button class="btn btn-outline-primary active" onclick="showAllDepots()">Tous</button>
+                        <button class="btn btn-outline-primary" onclick="filterByType('principal')">Principaux</button>
+                        <button class="btn btn-outline-primary" onclick="filterByType('secondaire')">Secondaires</button>
+                    </div>
+                </div>
+                <div class="card-body p-0">
+                    <div id="depotsMap" class="depot-map"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Statistiques et filtres -->
+        <div class="col-lg-5 mb-4">
+            <div class="card mb-3">
+                <div class="card-body">
+                    <h6 class="text-muted mb-3">Statistiques</h6>
+                    <div class="row text-center">
+                        <div class="col-4">
+                            <div class="h3 mb-0 text-primary" th:text="${totalDepots ?: 0}">0</div>
+                            <small class="text-muted">Dépôts</small>
+                        </div>
+                        <div class="col-4">
+                            <div class="h3 mb-0 text-success" th:text="${depotsActifs ?: 0}">0</div>
+                            <small class="text-muted">Actifs</small>
+                        </div>
+                        <div class="col-4">
+                            <div class="h3 mb-0 text-info" th:text="${depotsGeoref ?: 0}">0</div>
+                            <small class="text-muted">Géoréférencés</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="bi bi-search"></i></span>
+                        <input type="text" class="form-control" placeholder="Rechercher un dépôt..." id="searchDepot">
+                    </div>
+                </div>
+                <div class="card-body p-0" style="max-height: 400px; overflow-y: auto;">
+                    <div class="list-group list-group-flush" id="depotsList">
+                        <div th:each="depot : ${depots}" 
+                             class="list-group-item depot-item"
+                             th:data-lat="${depot.latitude}"
+                             th:data-lng="${depot.longitude}"
+                             th:data-id="${depot.id}">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <h6 class="mb-1">
+                                        <i class="bi bi-box-seam me-1 text-success"></i>
+                                        <span th:text="${depot.name}"></span>
+                                    </h6>
+                                    <small class="text-muted" th:text="${depot.code}"></small>
+                                    <div class="depot-stats">
+                                        <span class="depot-stat" th:if="${depot.latitude != null}">
+                                            <i class="bi bi-geo-alt"></i> Géolocalisé
+                                        </span>
+                                    </div>
+                                </div>
+                                <div class="btn-group btn-group-sm">
+                                    <button class="btn btn-outline-primary btn-sm" 
+                                            th:onclick="'focusDepot(' + ${depot.latitude} + ',' + ${depot.longitude} + ')'">
+                                        <i class="bi bi-geo-alt"></i>
+                                    </button>
+                                    <button class="btn btn-outline-secondary btn-sm"
+                                            th:onclick="'editDepot(\'' + ${depot.id} + '\')'">
+                                        <i class="bi bi-pencil"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tableau détaillé -->
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0">Liste Détaillée des Dépôts</h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Code</th>
+                            <th>Nom</th>
+                            <th>Site</th>
+                            <th>Adresse</th>
+                            <th>Emplacements</th>
+                            <th>Statut</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr th:each="depot : ${depots}">
+                            <td><span class="badge bg-secondary" th:text="${depot.code}"></span></td>
+                            <td th:text="${depot.name}"></td>
+                            <td th:text="${depot.site?.name}"></td>
+                            <td th:text="${depot.address}"></td>
+                            <td>
+                                <span class="badge bg-info" th:text="${depot.emplacements?.size() ?: 0}"></span>
+                            </td>
+                            <td>
+                                <span th:if="${depot.isActive}" class="badge bg-success">Actif</span>
+                                <span th:unless="${depot.isActive}" class="badge bg-danger">Inactif</span>
+                            </td>
+                            <td>
+                                <div class="btn-group btn-group-sm">
+                                    <a th:href="@{/stock/depots/{id}/emplacements(id=${depot.id})}" 
+                                       class="btn btn-outline-info" title="Emplacements">
+                                        <i class="bi bi-grid-3x3"></i>
+                                    </a>
+                                    <button class="btn btn-outline-primary" th:onclick="'focusDepot(' + ${depot.latitude} + ',' + ${depot.longitude} + ')'" title="Carte">
+                                        <i class="bi bi-geo-alt"></i>
+                                    </button>
+                                    <button class="btn btn-outline-secondary" th:onclick="'editDepot(\'' + ${depot.id} + '\')'" title="Modifier">
+                                        <i class="bi bi-pencil"></i>
+                                    </button>
+                                    <button class="btn btn-outline-danger" th:onclick="'deleteDepot(\'' + ${depot.id} + '\')'" title="Supprimer">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Ajout Dépôt -->
+    <div class="modal fade" id="addDepotModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="bi bi-box-seam me-2"></i>Nouveau Dépôt</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <form th:action="@{/stock/depots}" method="post">
+                    <div class="modal-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Code *</label>
+                                    <input type="text" class="form-control" name="code" required>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Nom *</label>
+                                    <input type="text" class="form-control" name="name" required>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Site *</label>
+                            <select class="form-select" name="siteId" required>
+                                <option value="" selected disabled>Sélectionner un site</option>
+                                <option th:each="site : ${sites}" th:value="${site.id}" th:text="${site.name}"></option>
+                            </select>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Adresse</label>
+                            <textarea class="form-control" name="address" rows="2"></textarea>
+                        </div>
+                        
+                        <!-- Carte de sélection -->
+                        <div class="mb-3">
+                            <label class="form-label"><i class="bi bi-geo-alt me-1"></i>Localisation (cliquez sur la carte)</label>
+                            <div id="depotPickerMap" class="location-picker-map mb-2"></div>
+                            <div class="row">
+                                <div class="col-6">
+                                    <input type="number" step="0.0000001" class="form-control" name="latitude" id="depotLatitude" placeholder="Latitude">
+                                </div>
+                                <div class="col-6">
+                                    <input type="number" step="0.0000001" class="form-control" name="longitude" id="depotLongitude" placeholder="Longitude">
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="isActive" checked>
+                            <label class="form-check-label">Dépôt actif</label>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check-lg me-1"></i>Enregistrer
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<th:block layout:fragment="scripts">
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        // Carte principale des dépôts
+        const depotsMap = L.map('depotsMap').setView([-18.8792, 47.5079], 6);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap'
+        }).addTo(depotsMap);
+
+        // Icône personnalisée pour les dépôts
+        const depotIcon = L.divIcon({
+            className: 'custom-marker',
+            html: '<div style="background-color: #10b981; width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; box-shadow: 0 2px 6px rgba(0,0,0,0.3); font-size: 16px;"><i class="bi bi-box-seam"></i></div>',
+            iconSize: [36, 36],
+            iconAnchor: [18, 18],
+            popupAnchor: [0, -18]
+        });
+
+        let allMarkers = [];
+
+        // Charger les dépôts depuis l'API
+        fetch('/api/geo/depots')
+            .then(response => response.json())
+            .then(depots => {
+                depots.forEach(depot => {
+                    const marker = L.marker([depot.latitude, depot.longitude], { icon: depotIcon })
+                        .bindPopup(depot.popupContent)
+                        .addTo(depotsMap);
+                    allMarkers.push({ marker: marker, data: depot });
+                });
+                fitToMarkers();
+            });
+
+        function fitToMarkers() {
+            if (allMarkers.length > 0) {
+                const bounds = L.latLngBounds(allMarkers.map(m => m.marker.getLatLng()));
+                depotsMap.fitBounds(bounds, { padding: [50, 50] });
+            }
+        }
+
+        function showAllDepots() {
+            allMarkers.forEach(m => m.marker.addTo(depotsMap));
+            fitToMarkers();
+        }
+
+        function focusDepot(lat, lng) {
+            if (lat && lng) {
+                depotsMap.setView([lat, lng], 15);
+            }
+        }
+
+        // Picker map pour le modal
+        let pickerMap = null;
+        let pickerMarker = null;
+
+        document.getElementById('addDepotModal').addEventListener('shown.bs.modal', function () {
+            if (!pickerMap) {
+                pickerMap = L.map('depotPickerMap').setView([-18.8792, 47.5079], 6);
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    attribution: '© OpenStreetMap'
+                }).addTo(pickerMap);
+
+                pickerMap.on('click', function(e) {
+                    document.getElementById('depotLatitude').value = e.latlng.lat.toFixed(7);
+                    document.getElementById('depotLongitude').value = e.latlng.lng.toFixed(7);
+                    
+                    if (pickerMarker) {
+                        pickerMarker.setLatLng(e.latlng);
+                    } else {
+                        pickerMarker = L.marker(e.latlng, { icon: depotIcon }).addTo(pickerMap);
+                    }
+                });
+            }
+            setTimeout(() => pickerMap.invalidateSize(), 100);
+        });
+
+        // Recherche
+        document.getElementById('searchDepot').addEventListener('input', function() {
+            const search = this.value.toLowerCase();
+            document.querySelectorAll('.depot-item').forEach(item => {
+                const text = item.textContent.toLowerCase();
+                item.style.display = text.includes(search) ? '' : 'none';
+            });
+        });
+
+        function editDepot(id) {
+            window.location.href = '/stock/depots/' + id + '/edit';
+        }
+
+        function deleteDepot(id) {
+            if (confirm('Êtes-vous sûr de vouloir supprimer ce dépôt ?')) {
+                fetch('/stock/depots/' + id, { method: 'DELETE' })
+                    .then(() => location.reload());
+            }
+        }
+    </script>
+</th:block>
+</body>
+</html>

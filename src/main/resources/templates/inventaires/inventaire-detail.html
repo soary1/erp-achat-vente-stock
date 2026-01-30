@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{layout/main}">
+<head>
+    <title>Détail inventaire</title>
+</head>
+<body>
+<div layout:fragment="content">
+    <div class="page-header d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1>Inventaire <span th:text="${inventaire.numero}"></span></h1>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a th:href="@{/dashboard}">Accueil</a></li>
+                    <li class="breadcrumb-item"><a th:href="@{/inventaires}">Inventaires</a></li>
+                    <li class="breadcrumb-item active" th:text="${inventaire.numero}"></li>
+                </ol>
+            </nav>
+        </div>
+        <span class="badge fs-6" 
+              th:classappend="${inventaire.statutCode == 'PLANIFIE'} ? 'bg-secondary' : 
+                             (${inventaire.statutCode == 'EN_COURS'} ? 'bg-warning' : 
+                             (${inventaire.statutCode == 'ANALYSE'} ? 'bg-info' : 'bg-success'))"
+              th:text="${inventaire.statutCode}"></span>
+    </div>
+    
+    <div class="row g-4">
+        <!-- Informations et lignes -->
+        <div class="col-lg-8">
+            <!-- Infos générales -->
+            <div class="card mb-4">
+                <div class="card-header">Informations</div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p><strong>Type:</strong> <span th:text="${inventaire.typeCode}"></span></p>
+                            <p><strong>Dépôt:</strong> <span th:text="${inventaire.depot?.nom}"></span></p>
+                            <p><strong>Créé par:</strong> <span th:text="${inventaire.creePar?.nom + ' ' + inventaire.creePar?.prenom}"></span></p>
+                        </div>
+                        <div class="col-md-6">
+                            <p><strong>Date début:</strong> <span th:text="${inventaire.dateDebut != null ? #temporals.format(inventaire.dateDebut, 'dd/MM/yyyy HH:mm') : 'Non démarré'}"></span></p>
+                            <p><strong>Date clôture:</strong> <span th:text="${inventaire.dateCloture != null ? #temporals.format(inventaire.dateCloture, 'dd/MM/yyyy HH:mm') : '-'}"></span></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Statistiques -->
+            <div class="row g-3 mb-4">
+                <div class="col-md-4">
+                    <div class="stat-card text-center">
+                        <div class="stat-value" th:text="${stats['totalLignes']}">0</div>
+                        <div class="stat-label">Lignes totales</div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="stat-card text-center">
+                        <div class="stat-value text-warning" th:text="${stats['lignesTraitees']}">0</div>
+                        <div class="stat-label">Lignes traitées</div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="stat-card text-center">
+                        <div class="stat-value text-success" th:text="${stats['lignesValidees']}">0</div>
+                        <div class="stat-label">Lignes validées</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Lignes d'inventaire -->
+            <div class="card">
+                <div class="card-header">Lignes d'inventaire</div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Article</th>
+                                    <th>Emplacement</th>
+                                    <th>Lot</th>
+                                    <th class="text-end">Qty théorique</th>
+                                    <th class="text-end">Qty réelle</th>
+                                    <th class="text-end">Écart</th>
+                                    <th>État</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr th:each="ligne : ${inventaire.lignes}"
+                                    th:classappend="${ligne.ecartFinal != null and ligne.ecartFinal.abs().compareTo(T(java.math.BigDecimal).ZERO) > 0} ? 'table-warning' : ''">
+                                    <td th:text="${ligne.article?.designation}"></td>
+                                    <td th:text="${ligne.emplacement?.code}"></td>
+                                    <td th:text="${ligne.lot?.numeroLot}"></td>
+                                    <td class="text-end" th:text="${#numbers.formatDecimal(ligne.qtyTheorique, 0, 'COMMA', 2, 'POINT')}"></td>
+                                    <td class="text-end" th:text="${ligne.qtyReelleRetenue != null ? #numbers.formatDecimal(ligne.qtyReelleRetenue, 0, 'COMMA', 2, 'POINT') : '-'}"></td>
+                                    <td class="text-end fw-bold" 
+                                        th:classappend="${ligne.ecartFinal != null and ligne.ecartFinal.compareTo(T(java.math.BigDecimal).ZERO) != 0} ? 'text-danger' : ''"
+                                        th:text="${ligne.ecartFinal != null ? #numbers.formatDecimal(ligne.ecartFinal, 0, 'COMMA', 2, 'POINT') : '-'}"></td>
+                                    <td>
+                                        <span th:if="${ligne.estValidee}" class="badge bg-success">Validé</span>
+                                        <span th:if="${ligne.estTraitee and !ligne.estValidee}" class="badge bg-warning">À valider</span>
+                                        <span th:if="${!ligne.estTraitee}" class="badge bg-secondary">En attente</span>
+                                    </td>
+                                    <td>
+                                        <div class="btn-group btn-group-sm" th:if="${inventaire.statutCode == 'EN_COURS'}">
+                                            <a th:href="@{/inventaires/{invId}/lignes/{ligneId}/saisie(invId=${inventaire.id}, ligneId=${ligne.id})}" 
+                                               class="btn btn-outline-primary" title="Saisir comptage">
+                                                <i class="bi bi-pencil"></i>
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Actions -->
+        <div class="col-lg-4">
+            <div class="card mb-4">
+                <div class="card-header">Actions</div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <form th:if="${inventaire.statutCode == 'PLANIFIE'}" th:action="@{/inventaires/{id}/start(id=${inventaire.id})}" method="post">
+                            <button type="submit" class="btn btn-primary w-100">
+                                <i class="bi bi-play-fill me-2"></i>Démarrer l'inventaire
+                            </button>
+                        </form>
+                        <form th:if="${inventaire.statutCode == 'EN_COURS'}" th:action="@{/inventaires/{id}/analyze(id=${inventaire.id})}" method="post">
+                            <button type="submit" class="btn btn-info w-100">
+                                <i class="bi bi-search me-2"></i>Passer en analyse
+                            </button>
+                        </form>
+                        <form th:if="${inventaire.statutCode == 'ANALYSE'}" th:action="@{/inventaires/{id}/close(id=${inventaire.id})}" method="post">
+                            <button type="submit" class="btn btn-success w-100">
+                                <i class="bi bi-check2-circle me-2"></i>Clôturer et appliquer
+                            </button>
+                        </form>
+                        <button class="btn btn-outline-secondary">
+                            <i class="bi bi-printer me-2"></i>Imprimer
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Écart total -->
+            <div class="card">
+                <div class="card-header">Écart total</div>
+                <div class="card-body text-center">
+                    <div class="display-6" th:classappend="${stats['totalEcart'].compareTo(T(java.math.BigDecimal).ZERO) != 0} ? 'text-danger' : 'text-success'"
+                         th:text="${#numbers.formatDecimal(stats['totalEcart'], 0, 'COMMA', 2, 'POINT')}">0</div>
+                    <p class="text-muted">unités</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+</html>

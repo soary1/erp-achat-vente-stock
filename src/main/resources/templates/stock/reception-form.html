@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{layout/main}">
+<head>
+    <title>Nouvelle réception</title>
+</head>
+<body>
+<div layout:fragment="content">
+    <div class="page-header mb-4">
+        <h1>Nouvelle réception</h1>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a th:href="@{/dashboard}">Accueil</a></li>
+                <li class="breadcrumb-item"><a th:href="@{/stock/receptions}">Réceptions</a></li>
+                <li class="breadcrumb-item active">Nouvelle</li>
+            </ol>
+        </nav>
+    </div>
+    
+    <form th:action="@{/stock/receptions/save}" method="post" th:object="${reception}">
+        <input type="hidden" th:field="*{id}" />
+        
+        <div class="row g-4">
+            <div class="col-lg-8">
+                <div class="card">
+                    <div class="card-header">Informations de réception</div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Commande fournisseur <span class="text-danger">*</span></label>
+                                <select class="form-select" th:field="*{commandeAchat.id}" required id="commande-select">
+                                    <option value="">-- Sélectionner une commande --</option>
+                                    <option th:each="cmd : ${commandesEnvoyees}" th:value="${cmd.id}" 
+                                            th:text="${cmd.numero + ' - ' + cmd.fournisseur?.raisonSociale}"></option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Dépôt de destination <span class="text-danger">*</span></label>
+                                <select class="form-select" th:field="*{depot.id}" required>
+                                    <option value="">-- Sélectionner un dépôt --</option>
+                                    <option th:each="depot : ${depots}" th:value="${depot.id}" th:text="${depot.nom}"></option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">N° BL fournisseur</label>
+                                <input type="text" class="form-control" th:field="*{numeroBLFournisseur}" placeholder="Numéro du bon de livraison fournisseur" />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Date réception</label>
+                                <input type="date" class="form-control" th:field="*{dateReception}" />
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label">Commentaire</label>
+                                <textarea class="form-control" th:field="*{commentaire}" rows="2" placeholder="Observations..."></textarea>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Lignes de réception -->
+                <div class="card mt-4">
+                    <div class="card-header">Articles à réceptionner</div>
+                    <div class="card-body">
+                        <div id="lignes-loading" class="text-center py-4 text-muted">
+                            <i class="bi bi-arrow-repeat fs-1 d-block mb-2"></i>
+                            Sélectionnez une commande pour afficher les articles
+                        </div>
+                        <div class="table-responsive" id="lignes-container" style="display: none;">
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Article</th>
+                                        <th class="text-end">Commandé</th>
+                                        <th class="text-end">Déjà reçu</th>
+                                        <th class="text-end">À recevoir</th>
+                                        <th>N° Lot</th>
+                                        <th>Date péremption</th>
+                                        <th>Emplacement</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="lignes-body">
+                                    <!-- Populated dynamically -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Contrôle qualité -->
+                <div class="card mt-4">
+                    <div class="card-header">Contrôle qualité</div>
+                    <div class="card-body">
+                        <div class="form-check form-switch mb-3">
+                            <input class="form-check-input" type="checkbox" id="controle-requis" name="controleQualiteRequis" />
+                            <label class="form-check-label" for="controle-requis">
+                                Cette réception nécessite un contrôle qualité
+                            </label>
+                        </div>
+                        <div id="controle-details" style="display: none;">
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="form-label">Type de contrôle</label>
+                                    <select class="form-select" name="typeControle">
+                                        <option value="VISUEL">Contrôle visuel</option>
+                                        <option value="ECHANTILLON">Échantillonnage</option>
+                                        <option value="COMPLET">Contrôle complet</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Critères de contrôle</label>
+                                    <input type="text" class="form-control" name="criteresControle" placeholder="Critères spécifiques..." />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Actions -->
+            <div class="col-lg-4">
+                <div class="card mb-4">
+                    <div class="card-header">Actions</div>
+                    <div class="card-body">
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-save me-2"></i>Enregistrer (brouillon)
+                            </button>
+                            <button type="submit" name="action" value="validate" class="btn btn-success">
+                                <i class="bi bi-check-lg me-2"></i>Valider la réception
+                            </button>
+                            <a th:href="@{/stock/receptions}" class="btn btn-outline-secondary">
+                                <i class="bi bi-x-lg me-2"></i>Annuler
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <div class="card-header">Récapitulatif</div>
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between mb-2">
+                            <span>Lignes</span>
+                            <strong id="recap-lignes">0</strong>
+                        </div>
+                        <div class="d-flex justify-content-between">
+                            <span>Articles reçus</span>
+                            <strong id="recap-articles">0</strong>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </form>
+    
+    <script th:inline="javascript">
+        const emplacements = /*[[${emplacements}]]*/ [];
+        
+        // Toggle contrôle qualité details
+        document.getElementById('controle-requis').addEventListener('change', function() {
+            document.getElementById('controle-details').style.display = this.checked ? 'block' : 'none';
+        });
+        
+        // Load lignes when commande is selected
+        document.getElementById('commande-select')?.addEventListener('change', function() {
+            const commandeId = this.value;
+            if (!commandeId) {
+                document.getElementById('lignes-loading').style.display = 'block';
+                document.getElementById('lignes-container').style.display = 'none';
+                return;
+            }
+            
+            // In a real app, this would fetch from the server
+            // For now, we show the structure
+            document.getElementById('lignes-loading').style.display = 'none';
+            document.getElementById('lignes-container').style.display = 'block';
+            
+            // Fetch lignes via AJAX would go here
+            // fetch(`/api/achats/commandes/${commandeId}/lignes`)
+            //     .then(response => response.json())
+            //     .then(lignes => populateLignes(lignes));
+        });
+        
+        function populateLignes(lignes) {
+            const tbody = document.getElementById('lignes-body');
+            const emplacementOptions = emplacements.map(e => 
+                `<option value="${e.id}">${e.code}</option>`
+            ).join('');
+            
+            tbody.innerHTML = lignes.map((ligne, index) => `
+                <tr>
+                    <td>
+                        ${ligne.article.designation}
+                        <small class="d-block text-muted">${ligne.article.sku}</small>
+                        <input type="hidden" name="lignes[${index}].ligneCommandeId" value="${ligne.id}" />
+                        <input type="hidden" name="lignes[${index}].article.id" value="${ligne.article.id}" />
+                    </td>
+                    <td class="text-end">${ligne.qtyOrdered}</td>
+                    <td class="text-end">${ligne.qtyReceived || 0}</td>
+                    <td>
+                        <input type="number" class="form-control form-control-sm" name="lignes[${index}].qtyRecue" 
+                               value="${ligne.qtyOrdered - (ligne.qtyReceived || 0)}" 
+                               min="0" max="${ligne.qtyOrdered - (ligne.qtyReceived || 0)}" step="0.01" />
+                    </td>
+                    <td>
+                        <input type="text" class="form-control form-control-sm" name="lignes[${index}].numeroLot" placeholder="Lot..." />
+                    </td>
+                    <td>
+                        <input type="date" class="form-control form-control-sm" name="lignes[${index}].datePeremption" />
+                    </td>
+                    <td>
+                        <select class="form-select form-select-sm" name="lignes[${index}].emplacement.id">
+                            <option value="">-- --</option>
+                            ${emplacementOptions}
+                        </select>
+                    </td>
+                </tr>
+            `).join('');
+            
+            updateRecap(lignes.length);
+        }
+        
+        function updateRecap(count) {
+            document.getElementById('recap-lignes').textContent = count;
+            document.getElementById('recap-articles').textContent = count;
+        }
+    </script>
+</div>
+</body>
+</html>

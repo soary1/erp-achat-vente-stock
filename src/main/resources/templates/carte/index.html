@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" 
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{layout/main}">
+<head>
+    <title>Carte des Localisations</title>
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        #map {
+            height: 600px;
+            width: 100%;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+        }
+        .map-legend {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+        .legend-color {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+        }
+        .filter-card {
+            background: white;
+            padding: 1rem;
+            border-radius: 12px;
+            margin-bottom: 1rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+    </style>
+</head>
+<body>
+<div layout:fragment="content">
+    <div class="page-header d-flex justify-content-between align-items-center">
+        <div>
+            <h1><i class="bi bi-geo-alt-fill me-2"></i>Carte des Localisations</h1>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a th:href="@{/}">Accueil</a></li>
+                    <li class="breadcrumb-item active">Carte</li>
+                </ol>
+            </nav>
+        </div>
+    </div>
+
+    <!-- Filtres -->
+    <div class="filter-card">
+        <div class="row align-items-center">
+            <div class="col-md-8">
+                <div class="btn-group" role="group">
+                    <input type="checkbox" class="btn-check" id="filter-sites" checked>
+                    <label class="btn btn-outline-primary" for="filter-sites">
+                        <i class="bi bi-building"></i> Sites
+                    </label>
+                    
+                    <input type="checkbox" class="btn-check" id="filter-depots" checked>
+                    <label class="btn btn-outline-success" for="filter-depots">
+                        <i class="bi bi-box-seam"></i> Dépôts
+                    </label>
+                    
+                    <input type="checkbox" class="btn-check" id="filter-clients" checked>
+                    <label class="btn btn-outline-warning" for="filter-clients">
+                        <i class="bi bi-people"></i> Clients
+                    </label>
+                    
+                    <input type="checkbox" class="btn-check" id="filter-fournisseurs" checked>
+                    <label class="btn btn-outline-danger" for="filter-fournisseurs">
+                        <i class="bi bi-truck"></i> Fournisseurs
+                    </label>
+                </div>
+            </div>
+            <div class="col-md-4 text-end">
+                <button class="btn btn-outline-secondary" onclick="resetMap()">
+                    <i class="bi bi-arrow-counterclockwise"></i> Réinitialiser
+                </button>
+                <button class="btn btn-outline-secondary" onclick="map.locate({setView: true, maxZoom: 16})">
+                    <i class="bi bi-geo"></i> Ma position
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Carte -->
+    <div class="row">
+        <div class="col-lg-9">
+            <div id="map"></div>
+        </div>
+        <div class="col-lg-3">
+            <!-- Légende -->
+            <div class="map-legend mb-3">
+                <h6 class="mb-3"><i class="bi bi-info-circle me-2"></i>Légende</h6>
+                <div class="legend-item">
+                    <div class="legend-color" style="background-color: #3b82f6;"></div>
+                    <span>Sites</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background-color: #22c55e;"></div>
+                    <span>Dépôts</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background-color: #f97316;"></div>
+                    <span>Clients</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background-color: #ef4444;"></div>
+                    <span>Fournisseurs</span>
+                </div>
+            </div>
+
+            <!-- Statistiques -->
+            <div class="map-legend">
+                <h6 class="mb-3"><i class="bi bi-bar-chart me-2"></i>Statistiques</h6>
+                <div class="d-flex justify-content-between mb-2">
+                    <span>Sites:</span>
+                    <strong id="count-sites">0</strong>
+                </div>
+                <div class="d-flex justify-content-between mb-2">
+                    <span>Dépôts:</span>
+                    <strong id="count-depots">0</strong>
+                </div>
+                <div class="d-flex justify-content-between mb-2">
+                    <span>Clients:</span>
+                    <strong id="count-clients">0</strong>
+                </div>
+                <div class="d-flex justify-content-between">
+                    <span>Fournisseurs:</span>
+                    <strong id="count-fournisseurs">0</strong>
+                </div>
+            </div>
+
+            <!-- Liste des emplacements -->
+            <div class="map-legend mt-3" style="max-height: 300px; overflow-y: auto;">
+                <h6 class="mb-3"><i class="bi bi-list me-2"></i>Emplacements</h6>
+                <div id="location-list"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<th:block layout:fragment="scripts">
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        // Initialisation de la carte centrée sur Madagascar
+        const map = L.map('map').setView([-18.8792, 47.5079], 6);
+        
+        // Couche de tuiles OpenStreetMap
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
+
+        // Groupes de couches pour filtrer
+        const layerGroups = {
+            sites: L.layerGroup().addTo(map),
+            depots: L.layerGroup().addTo(map),
+            clients: L.layerGroup().addTo(map),
+            fournisseurs: L.layerGroup().addTo(map)
+        };
+
+        // Icônes personnalisées
+        const icons = {
+            SITE: L.divIcon({
+                className: 'custom-marker',
+                html: '<div style="background-color: #3b82f6; width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; box-shadow: 0 2px 6px rgba(0,0,0,0.3);"><i class="bi bi-building"></i></div>',
+                iconSize: [30, 30],
+                iconAnchor: [15, 15],
+                popupAnchor: [0, -15]
+            }),
+            DEPOT: L.divIcon({
+                className: 'custom-marker',
+                html: '<div style="background-color: #22c55e; width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; box-shadow: 0 2px 6px rgba(0,0,0,0.3);"><i class="bi bi-box-seam"></i></div>',
+                iconSize: [30, 30],
+                iconAnchor: [15, 15],
+                popupAnchor: [0, -15]
+            }),
+            CLIENT: L.divIcon({
+                className: 'custom-marker',
+                html: '<div style="background-color: #f97316; width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; box-shadow: 0 2px 6px rgba(0,0,0,0.3);"><i class="bi bi-people"></i></div>',
+                iconSize: [30, 30],
+                iconAnchor: [15, 15],
+                popupAnchor: [0, -15]
+            }),
+            FOURNISSEUR: L.divIcon({
+                className: 'custom-marker',
+                html: '<div style="background-color: #ef4444; width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; box-shadow: 0 2px 6px rgba(0,0,0,0.3);"><i class="bi bi-truck"></i></div>',
+                iconSize: [30, 30],
+                iconAnchor: [15, 15],
+                popupAnchor: [0, -15]
+            })
+        };
+
+        // Données
+        let allLocations = [];
+
+        // Charger les données depuis l'API
+        async function loadLocations() {
+            try {
+                const response = await fetch('/api/geo/all');
+                allLocations = await response.json();
+                displayLocations(allLocations);
+                updateStats(allLocations);
+                updateLocationList(allLocations);
+            } catch (error) {
+                console.error('Erreur lors du chargement des localisations:', error);
+            }
+        }
+
+        // Afficher les localisations sur la carte
+        function displayLocations(locations) {
+            // Vider les couches
+            Object.values(layerGroups).forEach(group => group.clearLayers());
+            
+            locations.forEach(loc => {
+                const marker = L.marker([loc.latitude, loc.longitude], {
+                    icon: icons[loc.type]
+                }).bindPopup(loc.popupContent);
+                
+                const groupKey = loc.type.toLowerCase() + 's';
+                if (layerGroups[groupKey]) {
+                    marker.addTo(layerGroups[groupKey]);
+                }
+            });
+
+            // Ajuster la vue si des marqueurs existent
+            const allMarkers = [];
+            Object.values(layerGroups).forEach(group => {
+                group.eachLayer(layer => allMarkers.push(layer.getLatLng()));
+            });
+            if (allMarkers.length > 0) {
+                map.fitBounds(L.latLngBounds(allMarkers), { padding: [50, 50] });
+            }
+        }
+
+        // Mettre à jour les statistiques
+        function updateStats(locations) {
+            const counts = {
+                SITE: 0,
+                DEPOT: 0,
+                CLIENT: 0,
+                FOURNISSEUR: 0
+            };
+            locations.forEach(loc => counts[loc.type]++);
+            
+            document.getElementById('count-sites').textContent = counts.SITE;
+            document.getElementById('count-depots').textContent = counts.DEPOT;
+            document.getElementById('count-clients').textContent = counts.CLIENT;
+            document.getElementById('count-fournisseurs').textContent = counts.FOURNISSEUR;
+        }
+
+        // Mettre à jour la liste des emplacements
+        function updateLocationList(locations) {
+            const list = document.getElementById('location-list');
+            list.innerHTML = locations.map(loc => `
+                <div class="d-flex align-items-center justify-content-between py-2 border-bottom" style="cursor: pointer;" onclick="focusLocation(${loc.latitude}, ${loc.longitude})">
+                    <div>
+                        <small class="text-muted">${loc.type}</small><br>
+                        <strong>${loc.name}</strong>
+                    </div>
+                    <i class="bi bi-chevron-right text-muted"></i>
+                </div>
+            `).join('');
+        }
+
+        // Focus sur une localisation
+        function focusLocation(lat, lng) {
+            map.setView([lat, lng], 15);
+        }
+
+        // Réinitialiser la carte
+        function resetMap() {
+            map.setView([-18.8792, 47.5079], 6);
+        }
+
+        // Gestionnaires de filtres
+        document.getElementById('filter-sites').addEventListener('change', function() {
+            if (this.checked) {
+                map.addLayer(layerGroups.sites);
+            } else {
+                map.removeLayer(layerGroups.sites);
+            }
+        });
+
+        document.getElementById('filter-depots').addEventListener('change', function() {
+            if (this.checked) {
+                map.addLayer(layerGroups.depots);
+            } else {
+                map.removeLayer(layerGroups.depots);
+            }
+        });
+
+        document.getElementById('filter-clients').addEventListener('change', function() {
+            if (this.checked) {
+                map.addLayer(layerGroups.clients);
+            } else {
+                map.removeLayer(layerGroups.clients);
+            }
+        });
+
+        document.getElementById('filter-fournisseurs').addEventListener('change', function() {
+            if (this.checked) {
+                map.addLayer(layerGroups.fournisseurs);
+            } else {
+                map.removeLayer(layerGroups.fournisseurs);
+            }
+        });
+
+        // Charger les données au démarrage
+        loadLocations();
+    </script>
+</th:block>
+</body>
+</html>

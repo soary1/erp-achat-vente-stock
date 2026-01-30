@@ -1,0 +1,290 @@
+-- ============================================
+-- DONNÉES DE RÉFÉRENCE POUR ERP ACHAT-VENTE-STOCK
+-- ============================================
+
+-- Nettoyage des tables
+TRUNCATE TABLE journal_audit CASCADE;
+TRUNCATE TABLE historique_workflow CASCADE;
+TRUNCATE TABLE saisie_inventaire CASCADE;
+TRUNCATE TABLE ligne_inventaire CASCADE;
+TRUNCATE TABLE inventaire CASCADE;
+TRUNCATE TABLE encaissement_client CASCADE;
+TRUNCATE TABLE facture_client CASCADE;
+TRUNCATE TABLE ligne_bon_livraison CASCADE;
+TRUNCATE TABLE bon_livraison CASCADE;
+TRUNCATE TABLE reservation_stock CASCADE;
+TRUNCATE TABLE ligne_commande_client CASCADE;
+TRUNCATE TABLE commande_client CASCADE;
+TRUNCATE TABLE ligne_devis_client CASCADE;
+TRUNCATE TABLE devis_client CASCADE;
+TRUNCATE TABLE paiement_fournisseur CASCADE;
+TRUNCATE TABLE rapprochement_achat CASCADE;
+TRUNCATE TABLE facture_fournisseur CASCADE;
+TRUNCATE TABLE controle_qualite CASCADE;
+TRUNCATE TABLE ligne_bon_reception CASCADE;
+TRUNCATE TABLE bon_reception CASCADE;
+TRUNCATE TABLE mouvement_stock CASCADE;
+TRUNCATE TABLE stock CASCADE;
+TRUNCATE TABLE lot CASCADE;
+TRUNCATE TABLE ligne_commande_achat CASCADE;
+TRUNCATE TABLE commande_achat CASCADE;
+TRUNCATE TABLE ligne_demande_achat CASCADE;
+TRUNCATE TABLE demande_achat CASCADE;
+TRUNCATE TABLE ligne_liste_tarifaire CASCADE;
+TRUNCATE TABLE liste_tarifaire CASCADE;
+TRUNCATE TABLE article CASCADE;
+TRUNCATE TABLE famille_article CASCADE;
+TRUNCATE TABLE client CASCADE;
+TRUNCATE TABLE fournisseur CASCADE;
+TRUNCATE TABLE perimetre_acces CASCADE;
+TRUNCATE TABLE delegation_acces CASCADE;
+TRUNCATE TABLE regle_approbation CASCADE;
+TRUNCATE TABLE utilisateur CASCADE;
+TRUNCATE TABLE role CASCADE;
+TRUNCATE TABLE departement CASCADE;
+TRUNCATE TABLE emplacement CASCADE;
+TRUNCATE TABLE depot CASCADE;
+TRUNCATE TABLE site CASCADE;
+TRUNCATE TABLE societe CASCADE;
+TRUNCATE TABLE groupe_societe CASCADE;
+TRUNCATE TABLE type_mouvement CASCADE;
+TRUNCATE TABLE methode_valorisation CASCADE;
+TRUNCATE TABLE mode_paiement CASCADE;
+TRUNCATE TABLE type_taxe CASCADE;
+TRUNCATE TABLE unite_mesure CASCADE;
+TRUNCATE TABLE pays CASCADE;
+TRUNCATE TABLE devise CASCADE;
+
+-- ============================================
+-- RÉFÉRENTIELS
+-- ============================================
+
+-- Devises
+INSERT INTO devise (code, libelle, symbole) VALUES
+('MGA', 'Ariary Malgache', 'Ar'),
+('EUR', 'Euro', '€'),
+('USD', 'Dollar US', '$');
+
+-- Pays
+INSERT INTO pays (code, nom, code_iso3, devise_code) VALUES
+('MG', 'Madagascar', 'MDG', 'MGA'),
+('FR', 'France', 'FRA', 'EUR'),
+('US', 'États-Unis', 'USA', 'USD');
+
+-- Unités de mesure
+INSERT INTO unite_mesure (code, libelle, type) VALUES
+('PCE', 'Pièce', 'QUANTITE'),
+('KG', 'Kilogramme', 'POIDS'),
+('L', 'Litre', 'VOLUME'),
+('M', 'Mètre', 'LONGUEUR'),
+('M2', 'Mètre carré', 'SURFACE'),
+('M3', 'Mètre cube', 'VOLUME'),
+('BOX', 'Carton', 'QUANTITE'),
+('PAL', 'Palette', 'QUANTITE');
+
+-- Types de taxes
+INSERT INTO type_taxe (code, libelle, taux, is_applicable_achat, is_applicable_vente) VALUES
+('TVA20', 'TVA 20%', 20.00, true, true),
+('TVA0', 'TVA 0%', 0.00, true, true),
+('TVA5', 'TVA 5%', 5.00, true, true);
+
+-- Modes de paiement
+INSERT INTO mode_paiement (code, libelle, delai_jours, type_echeance) VALUES
+('COMPTANT', 'Comptant', 0, 'IMMEDIATE'),
+('30J', '30 jours fin de mois', 30, 'FIN_MOIS'),
+('60J', '60 jours fin de mois', 60, 'FIN_MOIS'),
+('CHEQUE', 'Chèque', 7, 'IMMEDIATE'),
+('VIREMENT', 'Virement bancaire', 3, 'IMMEDIATE');
+
+-- Méthodes de valorisation
+INSERT INTO methode_valorisation (code, libelle, description) VALUES
+('FIFO', 'First In First Out', 'Premier entré, premier sorti'),
+('FEFO', 'First Expired First Out', 'Premier périmé, premier sorti'),
+('CUMP', 'Coût Unitaire Moyen Pondéré', 'Moyenne pondérée des coûts');
+
+-- Types de mouvement
+INSERT INTO type_mouvement (code, libelle, sens, impact_stock) VALUES
+('RECEPTION', 'Réception fournisseur', 'ENTREE', 'AUGMENTATION'),
+('RETOUR_CLIENT', 'Retour client', 'ENTREE', 'AUGMENTATION'),
+('AJUSTEMENT_POSITIF', 'Ajustement inventaire +', 'ENTREE', 'AUGMENTATION'),
+('LIVRAISON', 'Livraison client', 'SORTIE', 'DIMINUTION'),
+('RETOUR_FOURNISSEUR', 'Retour fournisseur', 'SORTIE', 'DIMINUTION'),
+('AJUSTEMENT_NEGATIF', 'Ajustement inventaire -', 'SORTIE', 'DIMINUTION'),
+('TRANSFERT_SORTIE', 'Transfert sortant', 'SORTIE', 'DIMINUTION'),
+('TRANSFERT_ENTREE', 'Transfert entrant', 'ENTREE', 'AUGMENTATION'),
+('PERTE', 'Perte/Casse', 'SORTIE', 'DIMINUTION');
+
+-- ============================================
+-- ORGANISATION
+-- ============================================
+
+-- Groupe société
+INSERT INTO groupe_societe (id, code, nom, description) VALUES
+('11111111-1111-1111-1111-111111111111', 'MALADISTRI', 'Malagasy Distribution Group', 'Groupe de distribution à Madagascar');
+
+-- Sociétés
+INSERT INTO societe (id, code, nom, siret, adresse, pays_code, devise_code, groupe_id) VALUES
+('22222222-2222-2222-2222-222222222222', 'DISTRI-TANA', 'Malagasy Distri Antananarivo', '12345678901234', 'Lot II J 45 Analakely', 'MG', 'MGA', '11111111-1111-1111-1111-111111111111'),
+('22222222-2222-2222-2222-222222222223', 'DISTRI-TAMA', 'Malagasy Distri Tamatave', '12345678901235', 'Boulevard de la Liberté', 'MG', 'MGA', '11111111-1111-1111-1111-111111111111');
+
+-- Sites
+INSERT INTO site (id, code, nom, adresse, societe_id) VALUES
+('33333333-3333-3333-3333-333333333333', 'SITE-TANA-1', 'Site Principal Antananarivo', 'Zone industrielle Tanjombato', '22222222-2222-2222-2222-222222222222'),
+('33333333-3333-3333-3333-333333333334', 'SITE-TAMA-1', 'Site Principal Tamatave', 'Zone portuaire', '22222222-2222-2222-2222-222222222223');
+
+-- Dépôts
+INSERT INTO depot (id, code, nom, type, site_id, methode_valorisation_code) VALUES
+('44444444-4444-4444-4444-444444444444', 'DEP-CENTRAL', 'Dépôt Central Tana', 'PRINCIPAL', '33333333-3333-3333-3333-333333333333', 'FIFO'),
+('44444444-4444-4444-4444-444444444445', 'DEP-QUARANT', 'Dépôt Quarantaine', 'QUARANTAINE', '33333333-3333-3333-3333-333333333333', 'FIFO'),
+('44444444-4444-4444-4444-444444444446', 'DEP-TAMA', 'Dépôt Tamatave', 'PRINCIPAL', '33333333-3333-3333-3333-333333333334', 'FIFO');
+
+-- Emplacements
+INSERT INTO emplacement (id, code, type, capacite_max, depot_id) VALUES
+('55555555-5555-5555-5555-555555555551', 'A-01-01', 'RAYONNAGE', 1000, '44444444-4444-4444-4444-444444444444'),
+('55555555-5555-5555-5555-555555555552', 'A-01-02', 'RAYONNAGE', 1000, '44444444-4444-4444-4444-444444444444'),
+('55555555-5555-5555-5555-555555555553', 'A-02-01', 'RAYONNAGE', 1000, '44444444-4444-4444-4444-444444444444'),
+('55555555-5555-5555-5555-555555555554', 'B-01-01', 'PICKING', 500, '44444444-4444-4444-4444-444444444444'),
+('55555555-5555-5555-5555-555555555555', 'Q-01-01', 'RAYONNAGE', 500, '44444444-4444-4444-4444-444444444445');
+
+-- ============================================
+-- SÉCURITÉ
+-- ============================================
+
+-- Départements
+INSERT INTO departement (id, code, nom, societe_id) VALUES
+('66666666-6666-6666-6666-666666666661', 'DIR', 'Direction Générale', '22222222-2222-2222-2222-222222222222'),
+('66666666-6666-6666-6666-666666666662', 'ACH', 'Achats', '22222222-2222-2222-2222-222222222222'),
+('66666666-6666-6666-6666-666666666663', 'VTE', 'Ventes', '22222222-2222-2222-2222-222222222222'),
+('66666666-6666-6666-6666-666666666664', 'LOG', 'Logistique', '22222222-2222-2222-2222-666666666665'),
+('66666666-6666-6666-6666-666666666665', 'FIN', 'Finance', '22222222-2222-2222-2222-222222222222'),
+('66666666-6666-6666-6666-666666666666', 'IT', 'Informatique', '22222222-2222-2222-2222-222222222222');
+
+-- Rôles
+INSERT INTO role (id, code, libelle, description, niveau_hierarchique) VALUES
+('77777777-7777-7777-7777-777777777771', 'ADMIN', 'Administrateur', 'Accès complet au système', 0),
+('77777777-7777-7777-7777-777777777772', 'DIR_GEN', 'Directeur Général', 'Direction générale', 1),
+('77777777-7777-7777-7777-777777777773', 'RESP_ACHAT', 'Responsable Achats', 'Responsable du département achats', 2),
+('77777777-7777-7777-7777-777777777774', 'ACHETEUR', 'Acheteur', 'Agent acheteur', 3),
+('77777777-7777-7777-7777-777777777775', 'RESP_VENTE', 'Responsable Ventes', 'Responsable du département ventes', 2),
+('77777777-7777-7777-7777-777777777776', 'COMMERCIAL', 'Commercial', 'Agent commercial', 3),
+('77777777-7777-7777-7777-777777777777', 'RESP_STOCK', 'Responsable Stock', 'Responsable logistique et stock', 2),
+('77777777-7777-7777-7777-777777777778', 'MAGASINIER', 'Magasinier', 'Agent magasinier', 3),
+('77777777-7777-7777-7777-777777777779', 'RESP_FIN', 'Responsable Financier', 'Responsable comptabilité et finance', 2),
+('77777777-7777-7777-7777-77777777777A', 'COMPTABLE', 'Comptable', 'Agent comptable', 3),
+('77777777-7777-7777-7777-77777777777B', 'CONTROLEUR', 'Contrôleur Inventaire', 'Agent de contrôle inventaire', 3);
+
+-- Utilisateurs (mot de passe: password123 encodé avec BCrypt)
+INSERT INTO utilisateur (id, login, password, email, nom, prenom, telephone, actif, role_id, departement_id, societe_id) VALUES
+-- Admin
+('88888888-8888-8888-8888-888888888881', 'admin', 'admin', 'admin@maladistri.mg', 'ADMIN', 'System', '+261340000001', true, '77777777-7777-7777-7777-777777777771', '66666666-6666-6666-6666-666666666666', '22222222-2222-2222-2222-222222222222'),
+-- Direction
+('88888888-8888-8888-8888-888888888882', 'dg', 'admin', 'dg@maladistri.mg', 'RAKOTO', 'Jean', '+261340000002', true, '77777777-7777-7777-7777-777777777772', '66666666-6666-6666-6666-666666666661', '22222222-2222-2222-2222-222222222222'),
+-- Achats
+('88888888-8888-8888-8888-888888888883', 'resp.achat', 'admin', 'resp.achat@maladistri.mg', 'RABE', 'Marie', '+261340000003', true, '77777777-7777-7777-7777-777777777773', '66666666-6666-6666-6666-666666666662', '22222222-2222-2222-2222-222222222222'),
+('88888888-8888-8888-8888-888888888884', 'acheteur1', 'admin', 'acheteur1@maladistri.mg', 'RANDRIA', 'Paul', '+261340000004', true, '77777777-7777-7777-7777-777777777774', '66666666-6666-6666-6666-666666666662', '22222222-2222-2222-2222-222222222222'),
+-- Ventes
+('88888888-8888-8888-8888-888888888885', 'resp.vente', 'admin', 'resp.vente@maladistri.mg', 'RASOA', 'Hary', '+261340000005', true, '77777777-7777-7777-7777-777777777775', '66666666-6666-6666-6666-666666666663', '22222222-2222-2222-2222-222222222222'),
+('88888888-8888-8888-8888-888888888886', 'commercial1', 'admin', 'commercial1@maladistri.mg', 'RAIVO', 'Luc', '+261340000006', true, '77777777-7777-7777-7777-777777777776', '66666666-6666-6666-6666-666666666663', '22222222-2222-2222-2222-222222222222'),
+-- Stock
+('88888888-8888-8888-8888-888888888887', 'resp.stock', 'admin', 'resp.stock@maladistri.mg', 'RATSIMA', 'Eric', '+261340000007', true, '77777777-7777-7777-7777-777777777777', '66666666-6666-6666-6666-666666666664', '22222222-2222-2222-2222-222222222222'),
+('88888888-8888-8888-8888-888888888888', 'magasinier1', 'admin', 'magasinier1@maladistri.mg', 'RAKOTOBE', 'Aina', '+261340000008', true, '77777777-7777-7777-7777-777777777778', '66666666-6666-6666-6666-666666666664', '22222222-2222-2222-2222-222222222222'),
+-- Finance
+('88888888-8888-8888-8888-888888888889', 'resp.finance', 'admin', 'resp.finance@maladistri.mg', 'ANDRIA', 'Fanja', '+261340000009', true, '77777777-7777-7777-7777-777777777779', '66666666-6666-6666-6666-666666666665', '22222222-2222-2222-2222-222222222222'),
+('88888888-8888-8888-8888-88888888888A', 'comptable1', 'admin', 'comptable1@maladistri.mg', 'RAZAFY', 'Solo', '+261340000010', true, '77777777-7777-7777-7777-77777777777A', '66666666-6666-6666-6666-666666666665', '22222222-2222-2222-2222-222222222222');
+
+-- Périmètres d'accès (ex: un utilisateur peut voir certains sites)
+INSERT INTO perimetre_acces (id, utilisateur_id, site_id, depot_id) VALUES
+('99999999-9999-9999-9999-999999999991', '88888888-8888-8888-8888-888888888881', '33333333-3333-3333-3333-333333333333', '44444444-4444-4444-4444-444444444444'),
+('99999999-9999-9999-9999-999999999992', '88888888-8888-8888-8888-888888888881', '33333333-3333-3333-3333-333333333334', '44444444-4444-4444-4444-444444444446');
+
+-- Règles d'approbation
+INSERT INTO regle_approbation (id, type_document, montant_min, montant_max, role_approbateur_id, societe_id, ordre_approbation) VALUES
+('AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA', 'DEMANDE_ACHAT', 0, 5000000, '77777777-7777-7777-7777-777777777773', '22222222-2222-2222-2222-222222222222', 1),
+('AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAB', 'DEMANDE_ACHAT', 5000000, 50000000, '77777777-7777-7777-7777-777777777772', '22222222-2222-2222-2222-222222222222', 2),
+('AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAC', 'COMMANDE_ACHAT', 0, 10000000, '77777777-7777-7777-7777-777777777773', '22222222-2222-2222-2222-222222222222', 1),
+('AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAD', 'COMMANDE_ACHAT', 10000000, 100000000, '77777777-7777-7777-7777-777777777772', '22222222-2222-2222-2222-222222222222', 2);
+
+-- ============================================
+-- ARTICLES
+-- ============================================
+
+-- Familles d'articles
+INSERT INTO famille_article (id, code, libelle, famille_parente_id, societe_id) VALUES
+('BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBB01', 'ALIM', 'Alimentaire', NULL, '22222222-2222-2222-2222-222222222222'),
+('BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBB02', 'BOISSON', 'Boissons', 'BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBB01', '22222222-2222-2222-2222-222222222222'),
+('BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBB03', 'EPICERIE', 'Épicerie', 'BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBB01', '22222222-2222-2222-2222-222222222222'),
+('BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBB04', 'HYGIENE', 'Hygiène et Beauté', NULL, '22222222-2222-2222-2222-222222222222'),
+('BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBB05', 'ELECTRO', 'Électroménager', NULL, '22222222-2222-2222-2222-222222222222');
+
+-- Articles
+INSERT INTO article (id, sku, designation, description, famille_id, unite_mesure_code, type_taxe_code, prix_achat, prix_vente, stock_minimum, stock_maximum, delai_reappro_jours, actif, gere_lot, gere_serie, societe_id) VALUES
+-- Boissons
+('CCCCCCCC-CCCC-CCCC-CCCC-CCCCCCCCCC01', 'BOI-001', 'Coca-Cola 1.5L', 'Bouteille de Coca-Cola 1.5 litres', 'BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBB02', 'PCE', 'TVA20', 3500, 5000, 100, 1000, 7, true, true, false, '22222222-2222-2222-2222-222222222222'),
+('CCCCCCCC-CCCC-CCCC-CCCC-CCCCCCCCCC02', 'BOI-002', 'Fanta Orange 1.5L', 'Bouteille de Fanta Orange 1.5 litres', 'BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBB02', 'PCE', 'TVA20', 3500, 5000, 100, 1000, 7, true, true, false, '22222222-2222-2222-2222-222222222222'),
+('CCCCCCCC-CCCC-CCCC-CCCC-CCCCCCCCCC03', 'BOI-003', 'Eau Vive 1L', 'Bouteille d''eau minérale 1 litre', 'BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBB02', 'PCE', 'TVA0', 1000, 1500, 200, 2000, 5, true, true, false, '22222222-2222-2222-2222-222222222222'),
+-- Épicerie
+('CCCCCCCC-CCCC-CCCC-CCCC-CCCCCCCCCC04', 'EPI-001', 'Riz Makalioka 25kg', 'Sac de riz local 25 kg', 'BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBB03', 'KG', 'TVA0', 85000, 110000, 50, 500, 14, true, true, false, '22222222-2222-2222-2222-222222222222'),
+('CCCCCCCC-CCCC-CCCC-CCCC-CCCCCCCCCC05', 'EPI-002', 'Huile Soja 1L', 'Bouteille d''huile de soja 1 litre', 'BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBB03', 'PCE', 'TVA20', 12000, 16000, 100, 1000, 10, true, true, false, '22222222-2222-2222-2222-222222222222'),
+('CCCCCCCC-CCCC-CCCC-CCCC-CCCCCCCCCC06', 'EPI-003', 'Sucre 1kg', 'Sachet de sucre 1 kilogramme', 'BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBB03', 'KG', 'TVA0', 4500, 6000, 100, 1000, 7, true, true, false, '22222222-2222-2222-2222-222222222222'),
+-- Hygiène
+('CCCCCCCC-CCCC-CCCC-CCCC-CCCCCCCCCC07', 'HYG-001', 'Savon Fa 100g', 'Savon de toilette Fa', 'BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBB04', 'PCE', 'TVA20', 3000, 4500, 50, 500, 14, true, false, false, '22222222-2222-2222-2222-222222222222'),
+('CCCCCCCC-CCCC-CCCC-CCCC-CCCCCCCCCC08', 'HYG-002', 'Dentifrice Colgate 100ml', 'Tube de dentifrice Colgate', 'BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBB04', 'PCE', 'TVA20', 5000, 7500, 50, 500, 14, true, false, false, '22222222-2222-2222-2222-222222222222'),
+-- Électroménager
+('CCCCCCCC-CCCC-CCCC-CCCC-CCCCCCCCCC09', 'ELE-001', 'Ventilateur Stand 16"', 'Ventilateur sur pied 16 pouces', 'BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBB05', 'PCE', 'TVA20', 85000, 120000, 10, 100, 21, true, false, true, '22222222-2222-2222-2222-222222222222'),
+('CCCCCCCC-CCCC-CCCC-CCCC-CCCCCCCCCC10', 'ELE-002', 'Fer à repasser', 'Fer à repasser électrique', 'BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBB05', 'PCE', 'TVA20', 45000, 65000, 10, 100, 21, true, false, true, '22222222-2222-2222-2222-222222222222');
+
+-- ============================================
+-- TIERS
+-- ============================================
+
+-- Fournisseurs
+INSERT INTO fournisseur (id, code, raison_sociale, adresse, telephone, email, nif, stat, contact_nom, contact_telephone, pays_code, devise_code, mode_paiement_code, delai_paiement_jours, actif, societe_id) VALUES
+('DDDDDDDD-DDDD-DDDD-DDDD-DDDDDDDDDD01', 'FRN-001', 'STAR Madagascar', 'Zone industrielle Ankorondrano', '+261202254100', 'commercial@star.mg', '1234567890', '12345678901', 'M. Rakoto', '+261340001122', 'MG', 'MGA', '30J', 30, true, '22222222-2222-2222-2222-222222222222'),
+('DDDDDDDD-DDDD-DDDD-DDDD-DDDDDDDDDD02', 'FRN-002', 'TIKO Group', 'Tanjombato', '+261202242000', 'achat@tiko.mg', '2345678901', '23456789012', 'Mme Rasoa', '+261340002233', 'MG', 'MGA', '30J', 30, true, '22222222-2222-2222-2222-222222222222'),
+('DDDDDDDD-DDDD-DDDD-DDDD-DDDDDDDDDD03', 'FRN-003', 'Importex SARL', 'Port Toamasina', '+261202053200', 'import@importex.mg', '3456789012', '34567890123', 'M. Jean', '+261340003344', 'MG', 'MGA', '60J', 60, true, '22222222-2222-2222-2222-222222222222');
+
+-- Clients
+INSERT INTO client (id, code, raison_sociale, adresse, telephone, email, nif, stat, contact_nom, contact_telephone, pays_code, devise_code, mode_paiement_code, limite_credit, solde, actif, commercial_id, societe_id) VALUES
+('EEEEEEEE-EEEE-EEEE-EEEE-EEEEEEEEEE01', 'CLI-001', 'Shoprite Analakely', '12 Rue de l''Indépendance', '+261202261500', 'achat@shoprite.mg', '4567890123', '45678901234', 'Mme Marie', '+261340004455', 'MG', 'MGA', '30J', 50000000, 0, true, '88888888-8888-8888-8888-888888888886', '22222222-2222-2222-2222-222222222222'),
+('EEEEEEEE-EEEE-EEEE-EEEE-EEEEEEEEEE02', 'CLI-002', 'Leader Price Tana', 'Ankorondrano', '+261202234500', 'commande@leaderprice.mg', '5678901234', '56789012345', 'M. Hery', '+261340005566', 'MG', 'MGA', '30J', 30000000, 0, true, '88888888-8888-8888-8888-888888888886', '22222222-2222-2222-2222-222222222222'),
+('EEEEEEEE-EEEE-EEEE-EEEE-EEEEEEEEEE03', 'CLI-003', 'Score Ivandry', 'Ivandry', '+261202267800', 'contact@score.mg', '6789012345', '67890123456', 'M. Faly', '+261340006677', 'MG', 'MGA', 'COMPTANT', 10000000, 0, true, '88888888-8888-8888-8888-888888888886', '22222222-2222-2222-2222-222222222222');
+
+-- ============================================
+-- STOCK INITIAL
+-- ============================================
+
+-- Lots
+INSERT INTO lot (id, numero_lot, article_id, date_fabrication, date_peremption, depot_id, emplacement_id, quantite_initiale, quantite_actuelle, statut_code) VALUES
+('FFFFFFFF-FFFF-FFFF-FFFF-FFFFFFFFFFFF01', 'LOT-2024-001', 'CCCCCCCC-CCCC-CCCC-CCCC-CCCCCCCCCC01', '2024-01-15', '2025-01-15', '44444444-4444-4444-4444-444444444444', '55555555-5555-5555-5555-555555555551', 500, 500, 'DISPONIBLE'),
+('FFFFFFFF-FFFF-FFFF-FFFF-FFFFFFFFFFFF02', 'LOT-2024-002', 'CCCCCCCC-CCCC-CCCC-CCCC-CCCCCCCCCC02', '2024-01-15', '2025-01-15', '44444444-4444-4444-4444-444444444444', '55555555-5555-5555-5555-555555555551', 500, 500, 'DISPONIBLE'),
+('FFFFFFFF-FFFF-FFFF-FFFF-FFFFFFFFFFFF03', 'LOT-2024-003', 'CCCCCCCC-CCCC-CCCC-CCCC-CCCCCCCCCC03', '2024-01-20', '2026-01-20', '44444444-4444-4444-4444-444444444444', '55555555-5555-5555-5555-555555555552', 1000, 1000, 'DISPONIBLE'),
+('FFFFFFFF-FFFF-FFFF-FFFF-FFFFFFFFFFFF04', 'LOT-2024-004', 'CCCCCCCC-CCCC-CCCC-CCCC-CCCCCCCCCC04', '2024-02-01', '2025-02-01', '44444444-4444-4444-4444-444444444444', '55555555-5555-5555-5555-555555555553', 200, 200, 'DISPONIBLE');
+
+-- Stock par dépôt/article
+INSERT INTO stock (id, article_id, depot_id, quantite, quantite_reservee, valeur_stock, cump, date_dernier_mouvement) VALUES
+('11111111-0000-0000-0000-000000000001', 'CCCCCCCC-CCCC-CCCC-CCCC-CCCCCCCCCC01', '44444444-4444-4444-4444-444444444444', 500, 0, 1750000, 3500, NOW()),
+('11111111-0000-0000-0000-000000000002', 'CCCCCCCC-CCCC-CCCC-CCCC-CCCCCCCCCC02', '44444444-4444-4444-4444-444444444444', 500, 0, 1750000, 3500, NOW()),
+('11111111-0000-0000-0000-000000000003', 'CCCCCCCC-CCCC-CCCC-CCCC-CCCCCCCCCC03', '44444444-4444-4444-4444-444444444444', 1000, 0, 1000000, 1000, NOW()),
+('11111111-0000-0000-0000-000000000004', 'CCCCCCCC-CCCC-CCCC-CCCC-CCCCCCCCCC04', '44444444-4444-4444-4444-444444444444', 200, 0, 17000000, 85000, NOW()),
+('11111111-0000-0000-0000-000000000005', 'CCCCCCCC-CCCC-CCCC-CCCC-CCCCCCCCCC05', '44444444-4444-4444-4444-444444444444', 300, 0, 3600000, 12000, NOW()),
+('11111111-0000-0000-0000-000000000006', 'CCCCCCCC-CCCC-CCCC-CCCC-CCCCCCCCCC06', '44444444-4444-4444-4444-444444444444', 400, 0, 1800000, 4500, NOW()),
+('11111111-0000-0000-0000-000000000007', 'CCCCCCCC-CCCC-CCCC-CCCC-CCCCCCCCCC07', '44444444-4444-4444-4444-444444444444', 150, 0, 450000, 3000, NOW()),
+('11111111-0000-0000-0000-000000000008', 'CCCCCCCC-CCCC-CCCC-CCCC-CCCCCCCCCC08', '44444444-4444-4444-4444-444444444444', 100, 0, 500000, 5000, NOW()),
+('11111111-0000-0000-0000-000000000009', 'CCCCCCCC-CCCC-CCCC-CCCC-CCCCCCCCCC09', '44444444-4444-4444-4444-444444444444', 25, 0, 2125000, 85000, NOW()),
+('11111111-0000-0000-0000-000000000010', 'CCCCCCCC-CCCC-CCCC-CCCC-CCCCCCCCCC10', '44444444-4444-4444-4444-444444444444', 30, 0, 1350000, 45000, NOW());
+
+-- Liste tarifaire
+INSERT INTO liste_tarifaire (id, code, libelle, type, date_debut, date_fin, actif, societe_id) VALUES
+('GGGGGGGG-GGGG-GGGG-GGGG-GGGGGGGGGG01', 'TARIF-STD', 'Tarif Standard', 'VENTE', '2024-01-01', '2024-12-31', true, '22222222-2222-2222-2222-222222222222'),
+('GGGGGGGG-GGGG-GGGG-GGGG-GGGGGGGGGG02', 'TARIF-GMS', 'Tarif Grandes Surfaces', 'VENTE', '2024-01-01', '2024-12-31', true, '22222222-2222-2222-2222-222222222222');
+
+-- Lignes liste tarifaire
+INSERT INTO ligne_liste_tarifaire (id, liste_tarifaire_id, article_id, prix, remise_max_pct) VALUES
+('HHHHHHHH-HHHH-HHHH-HHHH-HHHHHHHHHH01', 'GGGGGGGG-GGGG-GGGG-GGGG-GGGGGGGGGG01', 'CCCCCCCC-CCCC-CCCC-CCCC-CCCCCCCCCC01', 5000, 5),
+('HHHHHHHH-HHHH-HHHH-HHHH-HHHHHHHHHH02', 'GGGGGGGG-GGGG-GGGG-GGGG-GGGGGGGGGG01', 'CCCCCCCC-CCCC-CCCC-CCCC-CCCCCCCCCC02', 5000, 5),
+('HHHHHHHH-HHHH-HHHH-HHHH-HHHHHHHHHH03', 'GGGGGGGG-GGGG-GGGG-GGGG-GGGGGGGGGG02', 'CCCCCCCC-CCCC-CCCC-CCCC-CCCCCCCCCC01', 4500, 10),
+('HHHHHHHH-HHHH-HHHH-HHHH-HHHHHHHHHH04', 'GGGGGGGG-GGGG-GGGG-GGGG-GGGGGGGGGG02', 'CCCCCCCC-CCCC-CCCC-CCCC-CCCCCCCCCC02', 4500, 10);
+
+-- ============================================
+-- FIN DU SCRIPT
+-- ============================================

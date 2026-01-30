@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{layout/main}">
+<head>
+    <title>Commandes d'achat</title>
+</head>
+<body>
+<div layout:fragment="content">
+    <div class="page-header d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1>Commandes d'achat</h1>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a th:href="@{/dashboard}">Accueil</a></li>
+                    <li class="breadcrumb-item active">Commandes d'achat</li>
+                </ol>
+            </nav>
+        </div>
+        <a th:href="@{/achats/commandes/add}" class="btn btn-primary">
+            <i class="bi bi-plus-lg me-2"></i>Nouvelle commande
+        </a>
+    </div>
+    
+    <!-- Filtres -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <form class="row g-3">
+                <div class="col-md-3">
+                    <label class="form-label">Statut</label>
+                    <select class="form-select" name="statut">
+                        <option value="">Tous</option>
+                        <option value="BROUILLON">Brouillon</option>
+                        <option value="SOUMISE">Soumise</option>
+                        <option value="VALIDEE">Validée</option>
+                        <option value="ENVOYEE">Envoyée</option>
+                        <option value="PARTIEL">Livré partiellement</option>
+                        <option value="CLOTUREE">Clôturée</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Fournisseur</label>
+                    <select class="form-select" name="fournisseur">
+                        <option value="">Tous</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Date début</label>
+                    <input type="date" class="form-control" name="dateDebut">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Date fin</label>
+                    <input type="date" class="form-control" name="dateFin">
+                </div>
+                <div class="col-md-2 d-flex align-items-end">
+                    <button type="submit" class="btn btn-outline-primary w-100">
+                        <i class="bi bi-search me-2"></i>Filtrer
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <div class="card">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Numéro</th>
+                            <th>Date</th>
+                            <th>Fournisseur</th>
+                            <th>Site</th>
+                            <th>Total TTC</th>
+                            <th>Statut</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr th:each="commande : ${commandes.content}">
+                            <td>
+                                <a th:href="@{/achats/commandes/{id}(id=${commande.id})}" th:text="${commande.numero}"></a>
+                            </td>
+                            <td th:text="${#temporals.format(commande.createdAt, 'dd/MM/yyyy')}"></td>
+                            <td th:text="${commande.fournisseur?.raisonSociale}"></td>
+                            <td th:text="${commande.site?.nom}"></td>
+                            <td th:text="${#numbers.formatDecimal(commande.totalTTC, 0, 'COMMA', 0, 'POINT')} + ' ' + ${commande.devise?.code}"></td>
+                            <td>
+                                <span class="badge badge-status" 
+                                      th:classappend="'badge-' + ${commande.statutCode?.toLowerCase()}"
+                                      th:text="${commande.statutCode}"></span>
+                            </td>
+                            <td>
+                                <div class="btn-group btn-group-sm">
+                                    <a th:href="@{/achats/commandes/{id}(id=${commande.id})}" class="btn btn-outline-primary" title="Voir">
+                                        <i class="bi bi-eye"></i>
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                        <tr th:if="${commandes.content.isEmpty()}">
+                            <td colspan="7" class="text-center text-muted py-4">
+                                <i class="bi bi-inbox fs-1 d-block mb-2"></i>
+                                Aucune commande d'achat
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- Pagination -->
+            <nav th:if="${commandes.totalPages > 1}" class="mt-4">
+                <ul class="pagination justify-content-center">
+                    <li class="page-item" th:classappend="${commandes.first} ? 'disabled'">
+                        <a class="page-link" th:href="@{/achats/commandes(page=${commandes.number - 1})}">Précédent</a>
+                    </li>
+                    <li class="page-item" th:each="i : ${#numbers.sequence(0, commandes.totalPages - 1)}"
+                        th:classappend="${i == commandes.number} ? 'active'">
+                        <a class="page-link" th:href="@{/achats/commandes(page=${i})}" th:text="${i + 1}"></a>
+                    </li>
+                    <li class="page-item" th:classappend="${commandes.last} ? 'disabled'">
+                        <a class="page-link" th:href="@{/achats/commandes(page=${commandes.number + 1})}">Suivant</a>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+    </div>
+</div>
+</body>
+</html>

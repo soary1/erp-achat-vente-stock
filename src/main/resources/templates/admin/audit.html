@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{layout/main}">
+<head>
+    <title>Journal d'audit</title>
+</head>
+<body>
+<div layout:fragment="content">
+    <div class="page-header mb-4">
+        <h1>Journal d'audit</h1>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a th:href="@{/dashboard}">Accueil</a></li>
+                <li class="breadcrumb-item"><a th:href="@{/admin}">Administration</a></li>
+                <li class="breadcrumb-item active">Audit</li>
+            </ol>
+        </nav>
+    </div>
+    
+    <div class="card">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Date/Heure</th>
+                            <th>Utilisateur</th>
+                            <th>Type document</th>
+                            <th>Action</th>
+                            <th>ID Document</th>
+                            <th>Détails</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr th:each="log : ${logs.content}">
+                            <td th:text="${#temporals.format(log.timestamp, 'dd/MM/yyyy HH:mm:ss')}"></td>
+                            <td th:text="${log.utilisateur?.nom + ' ' + log.utilisateur?.prenom}"></td>
+                            <td><span class="badge bg-secondary" th:text="${log.entityType}"></span></td>
+                            <td>
+                                <span class="badge" 
+                                      th:classappend="${log.action == 'CREATION'} ? 'bg-success' : 
+                                                     (${log.action == 'MODIFICATION'} ? 'bg-info' : 
+                                                     (${log.action == 'SUPPRESSION'} ? 'bg-danger' : 'bg-primary'))"
+                                      th:text="${log.action}"></span>
+                            </td>
+                            <td><code th:text="${log.entityId}"></code></td>
+                            <td>
+                                <small class="text-muted" th:text="${#strings.abbreviate(log.details, 50)}"></small>
+                            </td>
+                        </tr>
+                        <tr th:if="${logs.content.isEmpty()}">
+                            <td colspan="6" class="text-center text-muted py-4">
+                                <i class="bi bi-journal-text fs-1 d-block mb-2"></i>
+                                Aucune entrée dans le journal
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- Pagination -->
+            <nav th:if="${logs.totalPages > 1}" class="mt-4">
+                <ul class="pagination justify-content-center">
+                    <li class="page-item" th:classappend="${logs.first} ? 'disabled'">
+                        <a class="page-link" th:href="@{/admin/audit(page=${logs.number - 1})}">Précédent</a>
+                    </li>
+                    <li class="page-item" th:each="i : ${#numbers.sequence(0, T(java.lang.Math).min(logs.totalPages - 1, 9))}"
+                        th:classappend="${i == logs.number} ? 'active'">
+                        <a class="page-link" th:href="@{/admin/audit(page=${i})}" th:text="${i + 1}"></a>
+                    </li>
+                    <li class="page-item" th:classappend="${logs.last} ? 'disabled'">
+                        <a class="page-link" th:href="@{/admin/audit(page=${logs.number + 1})}">Suivant</a>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+    </div>
+</div>
+</body>
+</html>

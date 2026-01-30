@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{layout/main}">
+<head>
+    <title>Nouvelle demande d'achat</title>
+</head>
+<body>
+<div layout:fragment="content">
+    <div class="page-header mb-4">
+        <h1 th:text="${demande?.id != null ? 'Modifier demande ' + demande.numero : 'Nouvelle demande d''achat'}"></h1>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a th:href="@{/dashboard}">Accueil</a></li>
+                <li class="breadcrumb-item"><a th:href="@{/achats/demandes}">Demandes</a></li>
+                <li class="breadcrumb-item active">Nouvelle</li>
+            </ol>
+        </nav>
+    </div>
+    
+    <form th:action="@{/achats/demandes/save}" method="post" th:object="${demande}">
+        <input type="hidden" th:field="*{id}" />
+        
+        <div class="row g-4">
+            <div class="col-lg-8">
+                <div class="card">
+                    <div class="card-header">Informations générales</div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Site <span class="text-danger">*</span></label>
+                                <select class="form-select" th:field="*{site.id}" required>
+                                    <option value="">-- Sélectionner un site --</option>
+                                    <option th:each="site : ${sites}" th:value="${site.id}" th:text="${site.nom}"></option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Devise <span class="text-danger">*</span></label>
+                                <select class="form-select" th:field="*{devise.code}" required>
+                                    <option value="">-- Sélectionner une devise --</option>
+                                    <option th:each="devise : ${devises}" th:value="${devise.code}" th:text="${devise.libelle + ' (' + devise.code + ')'}"></option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Fournisseur suggéré</label>
+                                <select class="form-select" th:field="*{fournisseurSuggere.id}">
+                                    <option value="">-- Aucun fournisseur suggéré --</option>
+                                    <option th:each="fournisseur : ${fournisseurs}" th:value="${fournisseur.id}" th:text="${fournisseur.raisonSociale}"></option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Date limite</label>
+                                <input type="date" class="form-control" th:field="*{dateLimite}" />
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label">Justification</label>
+                                <textarea class="form-control" th:field="*{justification}" rows="3" placeholder="Raison de la demande d'achat..."></textarea>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Lignes de demande -->
+                <div class="card mt-4">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <span>Articles demandés</span>
+                        <button type="button" class="btn btn-sm btn-outline-primary" onclick="addLigne()">
+                            <i class="bi bi-plus-lg me-1"></i>Ajouter article
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <div id="lignes-container">
+                            <div class="ligne-item row g-2 mb-3 align-items-end" th:each="ligne, stat : ${demande?.lignes ?: #lists.emptyList()}">
+                                <input type="hidden" th:name="'lignes[' + ${stat.index} + '].id'" th:value="${ligne.id}" />
+                                <div class="col-md-5">
+                                    <label class="form-label">Article</label>
+                                    <select class="form-select" th:name="'lignes[' + ${stat.index} + '].article.id'" required>
+                                        <option th:each="article : ${articles}" th:value="${article.id}" th:text="${article.designation}" th:selected="${article.id == ligne.article?.id}"></option>
+                                    </select>
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label">Quantité</label>
+                                    <input type="number" class="form-control" th:name="'lignes[' + ${stat.index} + '].qtyDemandee'" th:value="${ligne.qtyDemandee}" step="0.01" min="0.01" required />
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label">Prix estimé</label>
+                                    <input type="number" class="form-control" th:name="'lignes[' + ${stat.index} + '].prixEstime'" th:value="${ligne.prixEstime}" step="0.01" min="0" />
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label">Spécif.</label>
+                                    <input type="text" class="form-control" th:name="'lignes[' + ${stat.index} + '].specificationTechnique'" th:value="${ligne.specificationTechnique}" placeholder="Réf..." />
+                                </div>
+                                <div class="col-md-1">
+                                    <button type="button" class="btn btn-outline-danger" onclick="removeLigne(this)">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        <div id="no-lignes" class="text-center text-muted py-4" th:if="${demande?.lignes == null or #lists.isEmpty(demande.lignes)}">
+                            <i class="bi bi-cart-x fs-1 d-block mb-2"></i>
+                            Aucun article ajouté. Cliquez sur "Ajouter article" pour commencer.
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Panneau latéral -->
+            <div class="col-lg-4">
+                <div class="card">
+                    <div class="card-header">Actions</div>
+                    <div class="card-body">
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-save me-2"></i>Enregistrer brouillon
+                            </button>
+                            <button type="submit" name="action" value="submit" class="btn btn-success">
+                                <i class="bi bi-send me-2"></i>Soumettre pour validation
+                            </button>
+                            <a th:href="@{/achats/demandes}" class="btn btn-outline-secondary">
+                                <i class="bi bi-x-lg me-2"></i>Annuler
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </form>
+    
+    <!-- Template pour nouvelle ligne -->
+    <template id="ligne-template">
+        <div class="ligne-item row g-2 mb-3 align-items-end">
+            <div class="col-md-5">
+                <label class="form-label">Article</label>
+                <select class="form-select" name="lignes[INDEX].article.id" required>
+                    <option value="">-- Sélectionner --</option>
+                    <option th:each="article : ${articles}" th:value="${article.id}" th:text="${article.designation}"></option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Quantité</label>
+                <input type="number" class="form-control" name="lignes[INDEX].qtyDemandee" step="0.01" min="0.01" required />
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Prix estimé</label>
+                <input type="number" class="form-control" name="lignes[INDEX].prixEstime" step="0.01" min="0" />
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Spécif.</label>
+                <input type="text" class="form-control" name="lignes[INDEX].specificationTechnique" placeholder="Réf..." />
+            </div>
+            <div class="col-md-1">
+                <button type="button" class="btn btn-outline-danger" onclick="removeLigne(this)">
+                    <i class="bi bi-trash"></i>
+                </button>
+            </div>
+        </div>
+    </template>
+    
+    <script>
+        let ligneIndex = [[${demande?.lignes?.size() ?: 0}]];
+        
+        function addLigne() {
+            const template = document.getElementById('ligne-template');
+            const container = document.getElementById('lignes-container');
+            const noLignes = document.getElementById('no-lignes');
+            
+            if (noLignes) noLignes.style.display = 'none';
+            
+            let html = template.innerHTML.replace(/INDEX/g, ligneIndex);
+            container.insertAdjacentHTML('beforeend', html);
+            ligneIndex++;
+        }
+        
+        function removeLigne(btn) {
+            btn.closest('.ligne-item').remove();
+            const container = document.getElementById('lignes-container');
+            const noLignes = document.getElementById('no-lignes');
+            if (container.children.length === 0 && noLignes) {
+                noLignes.style.display = 'block';
+            }
+        }
+    </script>
+</div>
+</body>
+</html>

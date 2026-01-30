@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{layout/main}">
+<head>
+    <title>Rôles</title>
+</head>
+<body>
+<div layout:fragment="content">
+    <div class="page-header d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1>Gestion des rôles</h1>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a th:href="@{/dashboard}">Accueil</a></li>
+                    <li class="breadcrumb-item"><a th:href="@{/admin}">Administration</a></li>
+                    <li class="breadcrumb-item active">Rôles</li>
+                </ol>
+            </nav>
+        </div>
+        <a th:href="@{/admin/roles/add}" class="btn btn-primary">
+            <i class="bi bi-plus-lg me-2"></i>Nouveau rôle
+        </a>
+    </div>
+    
+    <div class="card">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Code</th>
+                            <th>Libellé</th>
+                            <th>Description</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr th:each="role : ${roles}">
+                            <td><code th:text="${role.code}"></code></td>
+                            <td th:text="${role.libelle}"></td>
+                            <td th:text="${role.description}"></td>
+                            <td>
+                                <div class="btn-group btn-group-sm">
+                                    <button class="btn btn-outline-secondary" title="Modifier">
+                                        <i class="bi bi-pencil"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        <tr th:if="${#lists.isEmpty(roles)}">
+                            <td colspan="4" class="text-center text-muted py-4">
+                                Aucun rôle configuré
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+</html>

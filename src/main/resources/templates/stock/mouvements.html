@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{layout/main}">
+<head>
+    <title>Mouvements de stock</title>
+</head>
+<body>
+<div layout:fragment="content">
+    <div class="page-header mb-4">
+        <h1>Mouvements de stock</h1>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a th:href="@{/dashboard}">Accueil</a></li>
+                <li class="breadcrumb-item active">Mouvements</li>
+            </ol>
+        </nav>
+    </div>
+    
+    <div class="card">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Type</th>
+                            <th>Référence</th>
+                            <th>Article</th>
+                            <th>Dépôt source</th>
+                            <th>Dépôt dest.</th>
+                            <th class="text-end">Quantité</th>
+                            <th>Utilisateur</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr th:each="mouvement : ${mouvements.content}">
+                            <td th:text="${#temporals.format(mouvement.createdAt, 'dd/MM/yyyy HH:mm')}"></td>
+                            <td>
+                                <span class="badge" 
+                                      th:classappend="${mouvement.typeMouvement?.code == 'ENTREE'} ? 'bg-success' : 
+                                                     (${mouvement.typeMouvement?.code == 'SORTIE'} ? 'bg-danger' : 'bg-info')"
+                                      th:text="${mouvement.typeMouvement?.libelle}"></span>
+                            </td>
+                            <td th:text="${mouvement.referenceDoc}"></td>
+                            <td th:text="${mouvement.article?.designation}"></td>
+                            <td th:text="${mouvement.depotSource?.nom}"></td>
+                            <td th:text="${mouvement.depotDest?.nom}"></td>
+                            <td class="text-end" th:text="${#numbers.formatDecimal(mouvement.qty, 0, 'COMMA', 2, 'POINT')}"></td>
+                            <td th:text="${mouvement.utilisateur?.nom + ' ' + mouvement.utilisateur?.prenom}"></td>
+                        </tr>
+                        <tr th:if="${mouvements.content.isEmpty()}">
+                            <td colspan="8" class="text-center text-muted py-4">
+                                <i class="bi bi-arrow-left-right fs-1 d-block mb-2"></i>
+                                Aucun mouvement
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+</html>

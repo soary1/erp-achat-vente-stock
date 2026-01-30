@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" 
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{layout/main}">
+<head>
+    <title>Carte des Sites</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        #mainMap {
+            height: calc(100vh - 200px);
+            min-height: 500px;
+            border-radius: 12px;
+        }
+        .site-panel {
+            max-height: calc(100vh - 200px);
+            overflow-y: auto;
+        }
+        .site-item {
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border-left: 3px solid transparent;
+        }
+        .site-item:hover {
+            background-color: #f1f5f9;
+            border-left-color: #3b82f6;
+        }
+        .site-item.active {
+            background-color: #eff6ff;
+            border-left-color: #3b82f6;
+        }
+    </style>
+</head>
+<body>
+<div layout:fragment="content">
+    <div class="page-header d-flex justify-content-between align-items-center">
+        <div>
+            <h1><i class="bi bi-building me-2"></i>Carte des Sites</h1>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a th:href="@{/}">Accueil</a></li>
+                    <li class="breadcrumb-item"><a th:href="@{/carte}">Cartographie</a></li>
+                    <li class="breadcrumb-item active">Sites</li>
+                </ol>
+            </nav>
+        </div>
+        <div class="btn-group">
+            <a th:href="@{/referentiels/sites}" class="btn btn-outline-primary">
+                <i class="bi bi-list me-1"></i>Vue liste
+            </a>
+            <button class="btn btn-primary" onclick="fitAllMarkers()">
+                <i class="bi bi-arrows-fullscreen me-1"></i>Tout afficher
+            </button>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-8 mb-4">
+            <div class="card h-100">
+                <div class="card-body p-0">
+                    <div id="mainMap"></div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-4 mb-4">
+            <div class="card h-100">
+                <div class="card-header">
+                    <div class="input-group">
+                        <span class="input-group-text bg-white border-0"><i class="bi bi-search"></i></span>
+                        <input type="text" class="form-control border-0" placeholder="Rechercher un site..." id="searchInput">
+                    </div>
+                </div>
+                <div class="card-body p-0 site-panel">
+                    <div class="list-group list-group-flush">
+                        <div th:each="site : ${sites}" 
+                             class="list-group-item site-item"
+                             th:data-lat="${site.latitude}"
+                             th:data-lng="${site.longitude}"
+                             th:data-id="${site.id}"
+                             th:onclick="'focusOnSite(' + ${site.latitude} + ',' + ${site.longitude} + ', this)'">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h6 class="mb-0">
+                                        <i class="bi bi-building me-1 text-primary"></i>
+                                        <span th:text="${site.name}">Nom du site</span>
+                                    </h6>
+                                    <small class="text-muted" th:text="${site.code}">CODE</small>
+                                    <div th:if="${site.address}" class="mt-1">
+                                        <small class="text-muted" th:text="${site.address}"></small>
+                                    </div>
+                                </div>
+                                <div class="text-end">
+                                    <span th:if="${site.latitude != null}" class="badge bg-success">
+                                        <i class="bi bi-geo-alt-fill"></i>
+                                    </span>
+                                    <span th:unless="${site.latitude != null}" class="badge bg-secondary">
+                                        <i class="bi bi-geo-alt"></i>
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<th:block layout:fragment="scripts">
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        const map = L.map('mainMap').setView([-18.8792, 47.5079], 6);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors'
+        }).addTo(map);
+
+        const siteIcon = L.divIcon({
+            className: 'custom-marker',
+            html: '<div style="background-color: #3b82f6; width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; box-shadow: 0 3px 10px rgba(0,0,0,0.3); font-size: 18px; border: 3px solid white;"><i class="bi bi-building"></i></div>',
+            iconSize: [36, 36],
+            iconAnchor: [18, 18],
+            popupAnchor: [0, -20]
+        });
+
+        let markers = [];
+
+        // Charger les sites via l'API
+        fetch('/api/geo/sites')
+            .then(response => response.json())
+            .then(sites => {
+                sites.forEach(site => {
+                    const marker = L.marker([site.latitude, site.longitude], { icon: siteIcon })
+                        .bindPopup(site.popupContent)
+                        .addTo(map);
+                    markers.push(marker);
+                });
+                if (markers.length > 0) {
+                    fitAllMarkers();
+                }
+            });
+
+        function fitAllMarkers() {
+            if (markers.length > 0) {
+                const group = L.featureGroup(markers);
+                map.fitBounds(group.getBounds(), { padding: [50, 50] });
+            }
+        }
+
+        function focusOnSite(lat, lng, element) {
+            if (lat && lng) {
+                map.setView([lat, lng], 15);
+                // Highlight l'élément sélectionné
+                document.querySelectorAll('.site-item').forEach(el => el.classList.remove('active'));
+                element.classList.add('active');
+            }
+        }
+
+        // Recherche
+        document.getElementById('searchInput').addEventListener('input', function() {
+            const search = this.value.toLowerCase();
+            document.querySelectorAll('.site-item').forEach(item => {
+                const text = item.textContent.toLowerCase();
+                item.style.display = text.includes(search) ? '' : 'none';
+            });
+        });
+    </script>
+</th:block>
+</body>
+</html>
