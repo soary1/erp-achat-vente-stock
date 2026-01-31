@@ -319,6 +319,14 @@ CREATE TABLE demande_achat (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+CREATE TABLE ligne_demande_achat (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    demande_achat_id UUID NOT NULL REFERENCES demande_achat(id),
+    article_id UUID NOT NULL REFERENCES article(id),
+    qty_demandee DECIMAL(19, 4) NOT NULL,
+    description TEXT
+);
+
 CREATE TABLE commande_achat (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     numero VARCHAR(50) NOT NULL UNIQUE,
@@ -338,8 +346,13 @@ CREATE TABLE ligne_commande_achat (
     commande_id UUID NOT NULL REFERENCES commande_achat(id),
     article_id UUID NOT NULL REFERENCES article(id),
     qty_ordered DECIMAL(19, 4) NOT NULL,
-    unit_price DECIMAL(19, 4) NOT NULL,
-    taxe_code VARCHAR(20) REFERENCES type_taxe(code)
+    unit_price DECIMAL(19, 4) NOT NULL
+);
+
+CREATE TABLE ligne_commande_achat_taxe (
+    ligne_id UUID NOT NULL REFERENCES ligne_commande_achat(id),
+    taxe_code VARCHAR(20) NOT NULL REFERENCES type_taxe(code),
+    PRIMARY KEY (ligne_id, taxe_code)
 );
 
 -- ==============================================================================

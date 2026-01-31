@@ -6,6 +6,8 @@ import lombok.*;
 import module.avs.model.article.Article;
 import module.avs.model.referentiel.TypeTaxe;
 import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 @Entity
@@ -42,9 +44,14 @@ public class LigneCommandeAchat {
     @DecimalMin(value = "0", inclusive = false)
     private BigDecimal unitPrice;
     
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "taxe_code")
-    private TypeTaxe taxe;
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(
+        name = "ligne_commande_achat_taxe",
+        joinColumns = @JoinColumn(name = "ligne_id"),
+        inverseJoinColumns = @JoinColumn(name = "taxe_code")
+    )
+    @Builder.Default
+    private List<TypeTaxe> taxes = new ArrayList<>();
     
     public BigDecimal getMontantHT() {
         return (unitPrice != null && qtyOrdered != null) ? unitPrice.multiply(qtyOrdered) : BigDecimal.ZERO;
@@ -62,7 +69,7 @@ public class LigneCommandeAchat {
                 ", qtyOrdered=" + qtyOrdered +
                 ", qtyReceived=" + qtyReceived +
                 ", unitPrice=" + unitPrice +
-                ", taxe=" + (taxe != null ? taxe.getCode() : null) +
+                ", taxes=" + (taxes != null ? taxes.size() : "0") +
                 '}';
     }
 }

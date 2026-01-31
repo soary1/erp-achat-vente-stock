@@ -45,7 +45,7 @@
                                 <label class="form-label">Demande d'achat (optionnel)</label>
                                 <select class="form-select" th:field="*{demandeAchat.id}">
                                     <option value="">-- Aucune --</option>
-                                    <option th:each="demande : ${demandesApprouvees}" th:value="${demande.id}" th:text="${demande.numero + ' - ' + demande.justification}"></option>
+                                    <option th:each="demande : ${demandesApprouvees}" th:value="${demande.id}" th:text="${demande.numero}"></option>
                                 </select>
                             </div>
                             <div class="col-md-6">
@@ -90,10 +90,10 @@
                                     <input type="number" class="form-control" th:name="'lignes[' + ${stat.index} + '].unitPrice'" th:value="${ligne.unitPrice}" step="0.01" min="0" required />
                                 </div>
                                 <div class="col-md-2">
-                                    <label class="form-label">Taxe</label>
-                                    <select class="form-select" th:name="'lignes[' + ${stat.index} + '].taxe.code'">
-                                        <option value="">-- Aucune --</option>
-                                        <option th:each="taxe : ${taxes}" th:value="${taxe.code}" th:text="${taxe.label}" th:selected="${taxe.code == ligne.taxe?.code}"></option>
+                                    <label class="form-label">Taxes</label>
+                                    <select class="form-select" th:name="'lignes[' + ${stat.index} + '].taxes'" multiple>
+                                        <option th:each="taxe : ${taxes}" th:value="${taxe.code}" th:text="${taxe.label}" 
+                                                th:selected="${ligne.taxes != null and ligne.taxes.contains(taxe)}"></option>
                                     </select>
                                 </div>
                                 <div class="col-md-2">
@@ -152,9 +152,8 @@
                 <input type="number" class="form-control" name="lignes[INDEX].unitPrice" step="0.01" min="0" required />
             </div>
             <div class="col-md-2">
-                <label class="form-label">Taxe</label>
-                <select class="form-select" name="lignes[INDEX].taxe.code">
-                    <option value="">-- Aucune --</option>
+                <label class="form-label">Taxes</label>
+                <select class="form-select" name="lignes[INDEX].taxes" multiple>
                     <option th:each="taxe : ${taxes}" th:value="${taxe.code}" th:text="${taxe.label}"></option>
                 </select>
             </div>

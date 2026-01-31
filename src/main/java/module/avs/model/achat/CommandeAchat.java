@@ -81,8 +81,20 @@ public class CommandeAchat {
         this.totalHT = lignes.stream()
             .map(l -> (l.getUnitPrice() != null && l.getQtyOrdered() != null) ? l.getUnitPrice().multiply(l.getQtyOrdered()) : BigDecimal.ZERO)
             .reduce(BigDecimal.ZERO, (a, b) -> a.add(b));
-        // Calculer TTC avec taxes si nécessaire
-        this.totalTTC = this.totalHT;
+            
+        this.totalTTC = lignes.stream()
+            .map(l -> {
+                BigDecimal ht = (l.getUnitPrice() != null && l.getQtyOrdered() != null) ? l.getUnitPrice().multiply(l.getQtyOrdered()) : BigDecimal.ZERO;
+                if (l.getTaxes() != null && !l.getTaxes().isEmpty()) {
+                    for (module.avs.model.referentiel.TypeTaxe t : l.getTaxes()) {
+                        if (t.getRate() != null) {
+                             ht = ht.add(ht.multiply(t.getRate()));
+                        }
+                    }
+                }
+                return ht;
+            })
+            .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 
     @Override

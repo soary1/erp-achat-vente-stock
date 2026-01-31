@@ -37,18 +37,7 @@
                         <div class="col-md-6">
                             <p><strong>Demandeur:</strong> <span th:text="${demande.demandeur?.username}"></span></p>
                             <p><strong>Site:</strong> <span th:text="${demande.site?.name}"></span></p>
-                            <p><strong>Devise:</strong> <span th:text="${demande.devise?.code}"></span></p>
-                        </div>
-                        <div class="col-md-6">
                             <p><strong>Date création:</strong> <span th:text="${#temporals.format(demande.createdAt, 'dd/MM/yyyy HH:mm')}"></span></p>
-                            <p><strong>Date limite:</strong> <span th:text="${demande.dateLimite != null ? #temporals.format(demande.dateLimite, 'dd/MM/yyyy') : 'Non spécifiée'}"></span></p>
-                            <p><strong>Fournisseur suggéré:</strong> <span th:text="${demande.fournisseurSuggere?.name ?: 'Aucun'}"></span></p>
-                        </div>
-                    </div>
-                    <div class="row mt-2" th:if="${demande.justification != null and !#strings.isEmpty(demande.justification)}">
-                        <div class="col-12">
-                            <p><strong>Justification:</strong></p>
-                            <p th:text="${demande.justification}"></p>
                         </div>
                     </div>
                 </div>
