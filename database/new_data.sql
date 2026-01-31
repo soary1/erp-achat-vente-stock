@@ -93,6 +93,11 @@ BEGIN
     INSERT INTO utilisateur (username, email, password_hash, departement_id) VALUES ('admin', 'admin@madadis.mg', 'admin', v_dept_it_id);
     INSERT INTO utilisateur_role (utilisateur_id, role_id) VALUES ((SELECT id FROM utilisateur WHERE username='admin'), v_role_admin_id);
 
+    -- AJOUT : Périmètres d'accès pour tous les utilisateurs (expérience réaliste)
+    -- Admin : Accès total
+    INSERT INTO perimetre_acces (utilisateur_id, societe_id, site_id, depot_id, max_amount_approval, active) 
+    VALUES ((SELECT id FROM utilisateur WHERE username='admin'), v_soc_id, NULL, NULL, 999999999, TRUE);  -- Admin : accès total
+
     INSERT INTO utilisateur (username, email, password_hash, departement_id) VALUES ('andry.dg', 'dg@madadis.mg', 'hash1', v_dept_dir_id) RETURNING id INTO v_user_dg_id;
     INSERT INTO utilisateur_role VALUES (v_user_dg_id, v_role_dir_id);
 
@@ -116,6 +121,34 @@ BEGIN
 
     INSERT INTO utilisateur (username, email, password_hash, departement_id) VALUES ('rivo.vte', 'commercial@madadis.mg', 'hash9', v_dept_vte_id) RETURNING id INTO v_user_vte_op_id;
     INSERT INTO utilisateur_role VALUES (v_user_vte_op_id, v_role_op_id);
+
+    -- AJOUT : Périmètres d'accès pour tous les utilisateurs (expérience réaliste)
+    -- Admin : Accès total
+    INSERT INTO perimetre_acces (utilisateur_id, societe_id, site_id, depot_id, max_amount_approval, active) 
+    VALUES (v_user_dg_id, v_soc_id, NULL, NULL, 999999999, TRUE);  -- DG : accès total
+
+    INSERT INTO perimetre_acces (utilisateur_id, societe_id, site_id, depot_id, max_amount_approval, active) 
+    VALUES (v_user_daf_id, v_soc_id, NULL, NULL, 50000000, TRUE);  -- DAF : accès total, approbation limitée
+
+    INSERT INTO perimetre_acces (utilisateur_id, societe_id, site_id, depot_id, max_amount_approval, active) 
+    VALUES (v_user_ach_mgr_id, v_soc_id, v_site_tana_id, NULL, 50000000, TRUE);  -- Manager achats : site Tana
+
+    INSERT INTO perimetre_acces (utilisateur_id, societe_id, site_id, depot_id, max_amount_approval, active) 
+    VALUES (v_user_ach_op_id, v_soc_id, v_site_tana_id, NULL, 0, TRUE);  -- Op achats : site Tana, pas d'approbation
+
+    INSERT INTO perimetre_acces (utilisateur_id, societe_id, site_id, depot_id, max_amount_approval, active) 
+    VALUES (v_user_mag_chef_id, v_soc_id, v_site_tana_id, v_depot_tanjo_id, 0, TRUE);  -- Chef stock : dépôt Tanjo
+
+    INSERT INTO perimetre_acces (utilisateur_id, societe_id, site_id, depot_id, max_amount_approval, active) 
+    VALUES (v_user_mag_op_id, v_soc_id, v_site_tana_id, v_depot_tanjo_id, 0, TRUE);  -- Magasinier : dépôt Tanjo
+
+    INSERT INTO perimetre_acces (utilisateur_id, societe_id, site_id, depot_id, max_amount_approval, active) 
+    VALUES (v_user_vte_mgr_id, v_soc_id, v_site_tana_id, NULL, 0, TRUE);  -- Manager ventes : site Tana
+
+    INSERT INTO perimetre_acces (utilisateur_id, societe_id, site_id, depot_id, max_amount_approval, active) 
+    VALUES (v_user_vte_op_id, v_soc_id, v_site_tana_id, NULL, 0, TRUE);  -- Commercial : site Tana
+
+    -- Note : Admin a déjà un périmètre ajouté plus tôt, mais on le complète si nécessaire
 
     INSERT INTO regle_approbation (societe_id, document_type, min_amount, max_amount, role_id, level_index) VALUES (v_soc_id, 'DEMANDE_ACHAT', 0, 50000000, v_role_mgr_id, 1);
     INSERT INTO regle_approbation (societe_id, document_type, min_amount, max_amount, role_id, level_index) VALUES (v_soc_id, 'DEMANDE_ACHAT', 50000000, 9999999999, v_role_dir_id, 2);

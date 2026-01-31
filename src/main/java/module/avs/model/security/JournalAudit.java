@@ -4,6 +4,8 @@ import jakarta.persistence.*;
 import lombok.*;
 import java.time.OffsetDateTime;
 import java.util.UUID;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.vladmihalcea.hibernate.type.json.JsonBinaryType;
 
 @Entity
 @Table(name = "journal_audit")
@@ -29,8 +31,9 @@ public class JournalAudit {
     @JoinColumn(name = "utilisateur_id")
     private Utilisateur utilisateur;
     
+    @org.hibernate.annotations.Type(JsonBinaryType.class)
     @Column(columnDefinition = "jsonb")
-    private String changes;
+    private JsonNode changes;
     
     @Column(name = "created_at")
     @Builder.Default

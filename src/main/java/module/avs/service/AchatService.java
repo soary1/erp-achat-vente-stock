@@ -35,11 +35,11 @@ public class AchatService {
     }
     
     public Optional<DemandeAchat> findDemandeAchatById(UUID id) {
-        return demandeAchatRepository.findById(id);
+        return demandeAchatRepository.findByIdWithDetails(id);
     }
     
     public List<DemandeAchat> findDemandesAchatByStatut(String statut) {
-        return demandeAchatRepository.findByStatutCode(statut);
+        return demandeAchatRepository.findByStatutCodeWithDetails(statut);
     }
     
     public String generateDemandeAchatNumero() {
@@ -52,6 +52,14 @@ public class AchatService {
         demande.setNumero(generateDemandeAchatNumero());
         demande.setStatutCode("BROUILLON");
         demande.setDemandeur(createur);
+        
+        // Set the demandeAchat reference on each ligne before saving
+        if (demande.getLignes() != null) {
+            for (LigneDemandeAchat ligne : demande.getLignes()) {
+                ligne.setDemandeAchat(demande);
+            }
+        }
+        
         DemandeAchat saved = demandeAchatRepository.save(demande);
         
         auditService.logAction("DEMANDE_ACHAT", saved.getId(), "CREATION", createur, null);
@@ -110,15 +118,15 @@ public class AchatService {
     }
     
     public Page<CommandeAchat> findAllCommandesAchat(Pageable pageable) {
-        return commandeAchatRepository.findAllByOrderByDateCommandeDesc(pageable);
+        return commandeAchatRepository.findAllWithDetails(pageable);
     }
     
     public Optional<CommandeAchat> findCommandeAchatById(UUID id) {
-        return commandeAchatRepository.findById(id);
+        return commandeAchatRepository.findByIdWithDetails(id);
     }
     
     public List<CommandeAchat> findCommandesAchatByStatut(String statut) {
-        return commandeAchatRepository.findByStatutCode(statut);
+        return commandeAchatRepository.findByStatutCodeWithDetails(statut);
     }
     
     public String generateCommandeAchatNumero() {
@@ -131,6 +139,10 @@ public class AchatService {
         commande.setNumero(generateCommandeAchatNumero());
         commande.setStatutCode("BROUILLON");
         commande.setAcheteur(createur);
+        // Assurer que chaque ligne a la référence à la commande
+        for (LigneCommandeAchat ligne : commande.getLignes()) {
+            ligne.setCommande(commande);
+        }
         commande.recalculerTotaux();
         CommandeAchat saved = commandeAchatRepository.save(commande);
         

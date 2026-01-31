@@ -73,7 +73,7 @@
                         <tr th:each="article : ${articles}">
                             <td><code th:text="${article.sku}"></code></td>
                             <td>
-                                <a th:href="@{/articles/{id}(id=${article.id})}" th:text="${article.designation}"></a>
+                                <a th:href="@{/articles/{id}(id=${article.id})}" th:text="${article.label}"></a>
                                 <small class="d-block text-muted" th:if="${article.gereLot}">
                                     <i class="bi bi-boxes me-1"></i>Géré par lot
                                 </small>

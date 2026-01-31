@@ -1,6 +1,7 @@
 package module.avs.model.achat;
 
 import jakarta.persistence.*;
+import jakarta.validation.Valid;
 import lombok.*;
 import module.avs.model.organisation.Site;
 import module.avs.model.referentiel.Devise;
@@ -63,6 +64,7 @@ public class CommandeAchat {
     
     @OneToMany(mappedBy = "commande", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
+    @Valid
     private List<LigneCommandeAchat> lignes = new ArrayList<>();
     
     public void addLigne(LigneCommandeAchat ligne) {
@@ -77,9 +79,25 @@ public class CommandeAchat {
     
     public void recalculerTotaux() {
         this.totalHT = lignes.stream()
-            .map(l -> l.getUnitPrice().multiply(l.getQtyOrdered()))
+            .map(l -> (l.getUnitPrice() != null && l.getQtyOrdered() != null) ? l.getUnitPrice().multiply(l.getQtyOrdered()) : BigDecimal.ZERO)
             .reduce(BigDecimal.ZERO, (a, b) -> a.add(b));
         // Calculer TTC avec taxes si nécessaire
         this.totalTTC = this.totalHT;
+    }
+
+    @Override
+    public String toString() {
+        return "CommandeAchat{" +
+                "id=" + id +
+                ", numero='" + numero + '\'' +
+                ", fournisseur=" + (fournisseur != null ? fournisseur.getName() : null) +
+                ", site=" + (site != null ? site.getName() : null) +
+                ", acheteur=" + (acheteur != null ? acheteur.getUsername() : null) +
+                ", devise=" + (devise != null ? devise.getCode() : null) +
+                ", totalHT=" + totalHT +
+                ", totalTTC=" + totalTTC +
+                ", statutCode='" + statutCode + '\'' +
+                ", dateCommande=" + dateCommande +
+                '}';
     }
 }

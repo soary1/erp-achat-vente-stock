@@ -109,8 +109,15 @@ public class UtilisateurService {
     
     // Vérification de séparation des tâches
     public boolean canApproveDocument(UUID approverId, UUID creatorId) {
-        // Même personne ne peut pas créer et approuver
-        return !approverId.equals(creatorId);
+        if (approverId.equals(creatorId)) {
+            // Allow if the approver has ADMIN role
+            Utilisateur user = findById(approverId).orElse(null);
+            if (user != null && user.getRoles().stream().anyMatch(r -> "ADMIN".equals(r.getCode()))) {
+                return true;
+            }
+            return false;
+        }
+        return true;
     }
     
     // Gestion des rôles

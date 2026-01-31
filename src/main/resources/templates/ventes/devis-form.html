@@ -100,7 +100,7 @@
                                         <td>
                                             <select class="form-select form-select-sm article-select" th:name="'lignes[' + ${stat.index} + '].article.id'" required onchange="updatePrix(this)">
                                                 <option th:each="article : ${articles}" th:value="${article.id}" 
-                                                        th:text="${article.designation}" 
+                                                        th:text="${article.label}" 
                                                         th:data-prix="${article.prixVente}"
                                                         th:selected="${article.id == ligne.article?.id}"></option>
                                             </select>

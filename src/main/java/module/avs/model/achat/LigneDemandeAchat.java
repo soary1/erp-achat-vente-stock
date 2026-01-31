@@ -19,6 +19,7 @@ public class LigneDemandeAchat {
     
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "demande_achat_id", nullable = false)
+    @ToString.Exclude
     private DemandeAchat demandeAchat;
     
     @ManyToOne(fetch = FetchType.LAZY)

@@ -190,7 +190,7 @@
             tbody.innerHTML = lignes.map((ligne, index) => `
                 <tr>
                     <td>
-                        ${ligne.article.designation}
+                        ${ligne.article.label}
                         <small class="d-block text-muted">${ligne.article.sku}</small>
                         <input type="hidden" name="lignes[${index}].ligneCommandeId" value="${ligne.id}" />
                         <input type="hidden" name="lignes[${index}].article.id" value="${ligne.article.id}" />

@@ -3,22 +3,22 @@
       xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
       layout:decorate="~{layout/main}">
 <head>
-    <title>Nouvelle demande d'achat</title>
+    <title>Nouvelle commande d'achat</title>
 </head>
 <body>
 <div layout:fragment="content">
     <div class="page-header mb-4">
-        <h1 th:text="${demande?.id != null ? 'Modifier demande ' + demande.numero : 'Nouvelle demande d''achat'}"></h1>
+        <h1 th:text="${commande?.id != null ? 'Modifier commande ' + commande.numero : 'Nouvelle commande d''achat'}"></h1>
         <nav aria-label="breadcrumb">
             <ol class="breadcrumb">
                 <li class="breadcrumb-item"><a th:href="@{/dashboard}">Accueil</a></li>
-                <li class="breadcrumb-item"><a th:href="@{/achats/demandes}">Demandes</a></li>
+                <li class="breadcrumb-item"><a th:href="@{/achats/commandes}">Commandes</a></li>
                 <li class="breadcrumb-item active">Nouvelle</li>
             </ol>
         </nav>
     </div>
     
-    <form th:action="@{/achats/demandes/save}" method="post" th:object="${demande}">
+    <form th:action="@{/achats/commandes/save}" method="post" th:object="${commande}">
         <input type="hidden" th:field="*{id}" />
         
         <div class="row g-4">
@@ -28,10 +28,24 @@
                     <div class="card-body">
                         <div class="row g-3">
                             <div class="col-md-6">
+                                <label class="form-label">Fournisseur <span class="text-danger">*</span></label>
+                                <select class="form-select" th:field="*{fournisseur.id}" required>
+                                    <option value="">-- Sélectionner un fournisseur --</option>
+                                    <option th:each="fournisseur : ${fournisseurs}" th:value="${fournisseur.id}" th:text="${fournisseur.name}"></option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
                                 <label class="form-label">Site <span class="text-danger">*</span></label>
                                 <select class="form-select" th:field="*{site.id}" required>
                                     <option value="">-- Sélectionner un site --</option>
                                     <option th:each="site : ${sites}" th:value="${site.id}" th:text="${site.name}"></option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Demande d'achat (optionnel)</label>
+                                <select class="form-select" th:field="*{demandeAchat.id}">
+                                    <option value="">-- Aucune --</option>
+                                    <option th:each="demande : ${demandesApprouvees}" th:value="${demande.id}" th:text="${demande.numero + ' - ' + demande.justification}"></option>
                                 </select>
                             </div>
                             <div class="col-md-6">
@@ -42,58 +56,54 @@
                                 </select>
                             </div>
                             <div class="col-md-6">
-                                <label class="form-label">Fournisseur suggéré</label>
-                                <select class="form-select" th:field="*{fournisseurSuggere.id}">
-                                    <option value="">-- Aucun fournisseur suggéré --</option>
-                                    <option th:each="fournisseur : ${fournisseurs}" th:value="${fournisseur.id}" th:text="${fournisseur.name}"></option>
-                                </select>
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label">Date limite</label>
-                                <input type="date" class="form-control" th:field="*{dateLimite}" />
-                            </div>
-                            <div class="col-12">
-                                <label class="form-label">Justification</label>
-                                <textarea class="form-control" th:field="*{justification}" rows="3" placeholder="Raison de la demande d'achat..."></textarea>
+                                <label class="form-label">Date commande <span class="text-danger">*</span></label>
+                                <input type="date" class="form-control" th:field="*{dateCommande}" required />
                             </div>
                         </div>
                     </div>
                 </div>
                 
-                <!-- Lignes de demande -->
+                <!-- Lignes de commande -->
                 <div class="card mt-4">
                     <div class="card-header d-flex justify-content-between align-items-center">
-                        <span>Articles demandés</span>
+                        <span>Articles commandés</span>
                         <button type="button" class="btn btn-sm btn-outline-primary" onclick="addLigne()">
                             <i class="bi bi-plus-lg me-1"></i>Ajouter article
                         </button>
                     </div>
                     <div class="card-body">
                         <div id="lignes-container">
-                            <div class="ligne-item row g-2 mb-3 align-items-end" th:each="ligne, stat : ${demande?.lignes ?: #lists.emptyList()}">
+                            <div class="ligne-item row g-2 mb-3 align-items-end" th:each="ligne, stat : ${commande?.lignes ?: #lists.emptyList()}">
                                 <input type="hidden" th:name="'lignes[' + ${stat.index} + '].id'" th:value="${ligne.id}" />
-                                <div class="col-md-5">
+                                <div class="col-md-4">
                                     <label class="form-label">Article</label>
                                     <select class="form-select" th:name="'lignes[' + ${stat.index} + '].article.id'" required>
                                         <option th:each="article : ${articles}" th:value="${article.id}" th:text="${article.label}" th:selected="${article.id == ligne.article?.id}"></option>
                                     </select>
                                 </div>
-                                <div class="col-md-3">
+                                <div class="col-md-2">
                                     <label class="form-label">Quantité</label>
-                                    <input type="number" class="form-control" th:name="'lignes[' + ${stat.index} + '].qtyDemandee'" th:value="${ligne.qtyDemandee}" step="0.01" min="0.01" required />
+                                    <input type="number" class="form-control" th:name="'lignes[' + ${stat.index} + '].qtyOrdered'" th:value="${ligne.qtyOrdered}" step="0.01" min="0.01" required />
                                 </div>
-                                <div class="col-md-4">
-                                    <label class="form-label">Description</label>
-                                    <input type="text" class="form-control" th:name="'lignes[' + ${stat.index} + '].description'" th:value="${ligne.description}" placeholder="Description..." />
+                                <div class="col-md-2">
+                                    <label class="form-label">Prix unitaire</label>
+                                    <input type="number" class="form-control" th:name="'lignes[' + ${stat.index} + '].unitPrice'" th:value="${ligne.unitPrice}" step="0.01" min="0" required />
                                 </div>
-                                <div class="col-md-1">
+                                <div class="col-md-2">
+                                    <label class="form-label">Taxe</label>
+                                    <select class="form-select" th:name="'lignes[' + ${stat.index} + '].taxe.code'">
+                                        <option value="">-- Aucune --</option>
+                                        <option th:each="taxe : ${taxes}" th:value="${taxe.code}" th:text="${taxe.label}" th:selected="${taxe.code == ligne.taxe?.code}"></option>
+                                    </select>
+                                </div>
+                                <div class="col-md-2">
                                     <button type="button" class="btn btn-outline-danger" onclick="removeLigne(this)">
                                         <i class="bi bi-trash"></i>
                                     </button>
                                 </div>
                             </div>
                         </div>
-                        <div id="no-lignes" class="text-center text-muted py-4" th:if="${demande?.lignes == null or #lists.isEmpty(demande.lignes)}">
+                        <div id="no-lignes" class="text-center text-muted py-4" th:if="${commande?.lignes == null or #lists.isEmpty(commande.lignes)}">
                             <i class="bi bi-cart-x fs-1 d-block mb-2"></i>
                             Aucun article ajouté. Cliquez sur "Ajouter article" pour commencer.
                         </div>
@@ -113,7 +123,7 @@
                             <button type="submit" name="action" value="submit" class="btn btn-success">
                                 <i class="bi bi-send me-2"></i>Soumettre pour validation
                             </button>
-                            <a th:href="@{/achats/demandes}" class="btn btn-outline-secondary">
+                            <a th:href="@{/achats/commandes}" class="btn btn-outline-secondary">
                                 <i class="bi bi-x-lg me-2"></i>Annuler
                             </a>
                         </div>
@@ -126,22 +136,29 @@
     <!-- Template pour nouvelle ligne -->
     <template id="ligne-template">
         <div class="ligne-item row g-2 mb-3 align-items-end">
-            <div class="col-md-5">
+            <div class="col-md-4">
                 <label class="form-label">Article</label>
                 <select class="form-select" name="lignes[INDEX].article.id" required>
                     <option value="">-- Sélectionner --</option>
                     <option th:each="article : ${articles}" th:value="${article.id}" th:text="${article.label}"></option>
                 </select>
             </div>
-            <div class="col-md-3">
+            <div class="col-md-2">
                 <label class="form-label">Quantité</label>
-                <input type="number" class="form-control" name="lignes[INDEX].qtyDemandee" step="0.01" min="0.01" required />
+                <input type="number" class="form-control" name="lignes[INDEX].qtyOrdered" step="0.01" min="0.01" required />
             </div>
-            <div class="col-md-4">
-                <label class="form-label">Description</label>
-                <input type="text" class="form-control" name="lignes[INDEX].description" placeholder="Description..." />
+            <div class="col-md-2">
+                <label class="form-label">Prix unitaire</label>
+                <input type="number" class="form-control" name="lignes[INDEX].unitPrice" step="0.01" min="0" required />
             </div>
-            <div class="col-md-1">
+            <div class="col-md-2">
+                <label class="form-label">Taxe</label>
+                <select class="form-select" name="lignes[INDEX].taxe.code">
+                    <option value="">-- Aucune --</option>
+                    <option th:each="taxe : ${taxes}" th:value="${taxe.code}" th:text="${taxe.label}"></option>
+                </select>
+            </div>
+            <div class="col-md-2">
                 <button type="button" class="btn btn-outline-danger" onclick="removeLigne(this)">
                     <i class="bi bi-trash"></i>
                 </button>
@@ -150,7 +167,7 @@
     </template>
     
     <script>
-        let ligneIndex = [[${demande?.lignes?.size() ?: 0}]];
+        let ligneIndex = [[${commande?.lignes?.size() ?: 0}]];
         
         function addLigne() {
             const template = document.getElementById('ligne-template');

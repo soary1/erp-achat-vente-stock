@@ -16,14 +16,20 @@ import java.util.UUID;
 public interface CommandeAchatRepository extends JpaRepository<CommandeAchat, UUID> {
     Optional<CommandeAchat> findByNumero(String numero);
     List<CommandeAchat> findByStatutCode(String statutCode);
+    @Query("SELECT c FROM CommandeAchat c LEFT JOIN FETCH c.fournisseur LEFT JOIN FETCH c.site LEFT JOIN FETCH c.devise LEFT JOIN FETCH c.acheteur WHERE c.statutCode = :statutCode")
+    List<CommandeAchat> findByStatutCodeWithDetails(String statutCode);
     List<CommandeAchat> findByFournisseurId(UUID fournisseurId);
-    Page<CommandeAchat> findAllByOrderByDateCommandeDesc(Pageable pageable);
+    @Query("SELECT c FROM CommandeAchat c LEFT JOIN FETCH c.fournisseur LEFT JOIN FETCH c.site LEFT JOIN FETCH c.devise ORDER BY c.dateCommande DESC")
+    Page<CommandeAchat> findAllWithDetails(Pageable pageable);
     
     @Query("SELECT COALESCE(MAX(CAST(SUBSTRING(c.numero, 8) AS int)), 0) FROM CommandeAchat c WHERE c.numero LIKE :prefix")
     Integer findMaxNumero(String prefix);
     
     @Query("SELECT SUM(c.totalTTC) FROM CommandeAchat c WHERE c.dateCommande BETWEEN :startDate AND :endDate")
     BigDecimal sumTotalByPeriod(LocalDate startDate, LocalDate endDate);
+    
+    @Query("SELECT c FROM CommandeAchat c LEFT JOIN FETCH c.fournisseur LEFT JOIN FETCH c.site LEFT JOIN FETCH c.devise LEFT JOIN FETCH c.acheteur LEFT JOIN FETCH c.lignes l LEFT JOIN FETCH l.article LEFT JOIN FETCH l.taxe WHERE c.id = :id")
+    Optional<CommandeAchat> findByIdWithDetails(UUID id);
     
     @Query("SELECT COUNT(c) FROM CommandeAchat c WHERE c.statutCode = :statut")
     Long countByStatut(String statut);

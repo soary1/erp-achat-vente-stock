@@ -3,6 +3,7 @@ package module.avs.controller;
 import lombok.RequiredArgsConstructor;
 import module.avs.model.achat.*;
 import module.avs.model.security.Utilisateur;
+import module.avs.repository.security.HistoriqueWorkflowRepository;
 import module.avs.service.AchatService;
 import module.avs.service.ReferentielService;
 import module.avs.service.UtilisateurService;
@@ -26,6 +27,7 @@ public class AchatController {
     private final AchatService achatService;
     private final ReferentielService referentielService;
     private final UtilisateurService utilisateurService;
+    private final HistoriqueWorkflowRepository historiqueWorkflowRepository;
     
     private Utilisateur getCurrentUser(Authentication auth) {
         return utilisateurService.findByUsername(auth.getName())
@@ -48,13 +50,29 @@ public class AchatController {
     public String addDemandeForm(Model model) {
         model.addAttribute("demande", new DemandeAchat());
         model.addAttribute("sites", referentielService.findAllSites());
+        model.addAttribute("devises", referentielService.findAllDevises());
+        model.addAttribute("fournisseurs", referentielService.findAllFournisseurs());
+        model.addAttribute("articles", referentielService.findAllArticles());
         return "achats/demande-form";
     }
     
     @GetMapping("/demandes/{id}")
     public String viewDemande(@PathVariable UUID id, Model model) {
-        achatService.findDemandeAchatById(id).ifPresent(d -> model.addAttribute("demande", d));
+        achatService.findDemandeAchatById(id).ifPresent(d -> {
+            model.addAttribute("demande", d);
+            model.addAttribute("historique", historiqueWorkflowRepository.findByDocumentTypeAndDocumentIdOrderByCreatedAtDesc("DEMANDE_ACHAT", id));
+        });
         return "achats/demande-detail";
+    }
+    
+    @GetMapping("/demandes/{id}/edit")
+    public String editDemandeForm(@PathVariable UUID id, Model model) {
+        achatService.findDemandeAchatById(id).ifPresent(d -> model.addAttribute("demande", d));
+        model.addAttribute("sites", referentielService.findAllSites());
+        model.addAttribute("devises", referentielService.findAllDevises());
+        model.addAttribute("fournisseurs", referentielService.findAllFournisseurs());
+        model.addAttribute("articles", referentielService.findAllArticles());
+        return "achats/demande-form";
     }
     
     @PostMapping("/demandes/save")
@@ -133,6 +151,9 @@ public class AchatController {
         model.addAttribute("fournisseurs", referentielService.findAllFournisseurs());
         model.addAttribute("sites", referentielService.findAllSites());
         model.addAttribute("devises", referentielService.findAllDevises());
+        model.addAttribute("articles", referentielService.findAllArticles());
+        model.addAttribute("taxes", referentielService.findAllTaxes());
+        model.addAttribute("demandesApprouvees", achatService.findDemandesAchatByStatut("APPROUVEE"));
         return "achats/commande-form";
     }
     
@@ -146,8 +167,14 @@ public class AchatController {
     public String saveCommande(@Valid @ModelAttribute CommandeAchat commande,
                                BindingResult result,
                                Authentication auth,
-                               RedirectAttributes redirectAttributes) {
+                               RedirectAttributes redirectAttributes,
+                               Model model) {
         if (result.hasErrors()) {
+            model.addAttribute("fournisseurs", referentielService.findAllFournisseurs());
+            model.addAttribute("sites", referentielService.findAllSites());
+            model.addAttribute("devises", referentielService.findAllDevises());
+            model.addAttribute("articles", referentielService.findAllArticles());
+            model.addAttribute("taxes", referentielService.findAllTaxes());
             return "achats/commande-form";
         }
         Utilisateur user = getCurrentUser(auth);
@@ -223,8 +250,65 @@ public class AchatController {
     @GetMapping("/a-approuver")
     public String demandesAApprouver(Authentication auth, Model model) {
         Utilisateur user = getCurrentUser(auth);
-        model.addAttribute("demandes", achatService.findDemandesAchatByStatut("SOUMISE"));
-        model.addAttribute("commandes", achatService.findCommandesAchatByStatut("BROUILLON"));
+        var demandes = achatService.findDemandesAchatByStatut("SOUMISE");
+        System.out.println("Demandes SOUMISE: " + demandes);
+        model.addAttribute("demandes", demandes);
+        var commandes = achatService.findCommandesAchatByStatut("BROUILLON");
+        System.out.println("Commandes BROUILLON: " + commandes);
+        model.addAttribute("commandes", commandes);
         return "achats/a-approuver";
+    }
+    
+    @PostMapping("/a-approuver")
+    public String approuverDocument(@RequestParam String id,
+                                    @RequestParam String type,
+                                    @RequestParam(required = false, defaultValue = "") String commentaire,
+                                    Authentication auth,
+                                    RedirectAttributes redirectAttributes) {
+        System.out.println("Received id: '" + id + "', type: '" + type + "'");
+        try {
+            UUID uuid = UUID.fromString(id);
+            Utilisateur user = getCurrentUser(auth);
+            if ("demande".equals(type)) {
+                achatService.approuverDemande(uuid, user, commentaire);
+                redirectAttributes.addFlashAttribute("success", "Demande approuvée");
+            } else if ("commande".equals(type)) {
+                achatService.validerCommande(uuid, user);
+                redirectAttributes.addFlashAttribute("success", "Commande approuvée");
+            }
+        } catch (IllegalArgumentException e) {
+            redirectAttributes.addFlashAttribute("error", "ID ou type invalide");
+        } catch (Exception e) {
+            redirectAttributes.addFlashAttribute("error", e.getMessage());
+        }
+        return "redirect:/achats/a-approuver";
+    }
+    
+    @PostMapping("/a-approuver/reject")
+    public String rejeterDocument(@RequestParam String id,
+                                  @RequestParam String type,
+                                  @RequestParam String motif,
+                                  Authentication auth,
+                                  RedirectAttributes redirectAttributes) {
+        try {
+            UUID uuid = UUID.fromString(id);
+            Utilisateur user = getCurrentUser(auth);
+            if ("demande".equals(type)) {
+                achatService.rejeterDemande(uuid, user, motif);
+                redirectAttributes.addFlashAttribute("success", "Demande rejetée");
+            } else if ("commande".equals(type)) {
+                // Pour rejeter commande, remettre en BROUILLON
+                achatService.findCommandeAchatById(uuid).ifPresent(cmd -> {
+                    cmd.setStatutCode("BROUILLON");
+                    achatService.saveCommandeAchat(cmd);
+                });
+                redirectAttributes.addFlashAttribute("success", "Commande rejetée");
+            }
+        } catch (IllegalArgumentException e) {
+            redirectAttributes.addFlashAttribute("error", "ID ou type invalide");
+        } catch (Exception e) {
+            redirectAttributes.addFlashAttribute("error", e.getMessage());
+        }
+        return "redirect:/achats/a-approuver";
     }
 }

@@ -146,7 +146,7 @@
             const depotStocks = stocks.filter(s => s.depot?.id === depotId && s.quantite > 0);
             
             const articleOptions = depotStocks.map(s => 
-                `<option value="${s.article.id}" data-stock="${s.quantite}">${s.article.designation} (${s.article.sku})</option>`
+                `<option value="${s.article.id}" data-stock="${s.quantite}">${s.article.label} (${s.article.sku})</option>`
             ).join('');
             
             const html = `

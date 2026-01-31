@@ -44,6 +44,7 @@ public class Fournisseur {
     
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "devise_code")
+    @ToString.Exclude
     private Devise devise;
     
     @Column(name = "is_active")

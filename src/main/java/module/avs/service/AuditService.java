@@ -8,6 +8,8 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.UUID;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.JsonNode;
 
 @Service
 @RequiredArgsConstructor
@@ -16,14 +18,16 @@ public class AuditService {
     
     private final JournalAuditRepository journalAuditRepository;
     private final HistoriqueWorkflowRepository historiqueWorkflowRepository;
+    private final ObjectMapper objectMapper;
     
-    public void logAction(String entityName, UUID entityId, String action, Utilisateur user, String changes) {
+    public void logAction(String entityName, UUID entityId, String action, Utilisateur user, Object changes) {
+        JsonNode changesJson = changes != null ? objectMapper.convertValue(changes, JsonNode.class) : objectMapper.createObjectNode();
         JournalAudit audit = JournalAudit.builder()
             .entityName(entityName)
             .entityId(entityId)
             .action(action)
             .utilisateur(user)
-            .changes(changes)
+            .changes(changesJson)
             .createdAt(OffsetDateTime.now())
             .build();
         journalAuditRepository.save(audit);

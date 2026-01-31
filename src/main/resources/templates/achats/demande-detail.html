@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{layout/main}">
+<head>
+    <title>Détail demande d'achat</title>
+</head>
+<body>
+<div layout:fragment="content">
+    <div class="page-header d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1>Demande <span th:text="${demande.numero}"></span></h1>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a th:href="@{/dashboard}">Accueil</a></li>
+                    <li class="breadcrumb-item"><a th:href="@{/achats/demandes}">Demandes</a></li>
+                    <li class="breadcrumb-item active" th:text="${demande.numero}"></li>
+                </ol>
+            </nav>
+        </div>
+        <div>
+            <span class="badge fs-6"
+                  th:classappend="${demande.statutCode == 'BROUILLON'} ? 'bg-secondary' :
+                                 (${demande.statutCode == 'SOUMISE'} ? 'bg-warning' :
+                                 (${demande.statutCode == 'APPROUVEE'} ? 'bg-success' : 'bg-danger'))"
+                  th:text="${demande.statutCode}"></span>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <!-- Informations principales -->
+        <div class="col-lg-8">
+            <div class="card mb-4">
+                <div class="card-header">Informations générales</div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p><strong>Demandeur:</strong> <span th:text="${demande.demandeur?.username}"></span></p>
+                            <p><strong>Site:</strong> <span th:text="${demande.site?.name}"></span></p>
+                            <p><strong>Devise:</strong> <span th:text="${demande.devise?.code}"></span></p>
+                        </div>
+                        <div class="col-md-6">
+                            <p><strong>Date création:</strong> <span th:text="${#temporals.format(demande.createdAt, 'dd/MM/yyyy HH:mm')}"></span></p>
+                            <p><strong>Date limite:</strong> <span th:text="${demande.dateLimite != null ? #temporals.format(demande.dateLimite, 'dd/MM/yyyy') : 'Non spécifiée'}"></span></p>
+                            <p><strong>Fournisseur suggéré:</strong> <span th:text="${demande.fournisseurSuggere?.name ?: 'Aucun'}"></span></p>
+                        </div>
+                    </div>
+                    <div class="row mt-2" th:if="${demande.justification != null and !#strings.isEmpty(demande.justification)}">
+                        <div class="col-12">
+                            <p><strong>Justification:</strong></p>
+                            <p th:text="${demande.justification}"></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Lignes de demande -->
+            <div class="card">
+                <div class="card-header">Articles demandés</div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Article</th>
+                                    <th>Quantité</th>
+                                    <th>Description</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr th:each="ligne : ${demande.lignes}">
+                                    <td>
+                                        <div>
+                                            <strong th:text="${ligne.article?.label}"></strong><br>
+                                            <small class="text-muted" th:text="${ligne.article?.sku}"></small>
+                                        </div>
+                                    </td>
+                                    <td th:text="${ligne.qtyDemandee}"></td>
+                                    <td th:text="${ligne.description ?: 'Aucune'}"></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Actions -->
+        <div class="col-lg-4">
+            <div class="card">
+                <div class="card-header">Actions</div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <a th:href="@{/achats/demandes/{id}/edit(id=${demande.id})}" class="btn btn-primary">
+                            <i class="bi bi-pencil me-2"></i>Modifier
+                        </a>
+                        <form th:if="${demande.statutCode == 'BROUILLON'}" th:action="@{/achats/demandes/{id}/submit(id=${demande.id})}" method="post" class="d-inline">
+                            <button type="submit" class="btn btn-success w-100">
+                                <i class="bi bi-send me-2"></i>Soumettre
+                            </button>
+                        </form>
+                        <a th:href="@{/achats/demandes}" class="btn btn-outline-secondary">
+                            <i class="bi bi-arrow-left me-2"></i>Retour à la liste
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Historique du workflow -->
+            <div class="card mt-4" th:if="${historique != null and !#lists.isEmpty(historique)}">
+                <div class="card-header">Historique</div>
+                <div class="card-body">
+                    <div class="timeline">
+                        <div th:each="h : ${historique}" class="timeline-item mb-3">
+                            <div class="timeline-marker"></div>
+                            <div class="timeline-content">
+                                <div class="d-flex justify-content-between">
+                                    <strong th:text="${h.action}"></strong>
+                                    <small class="text-muted" th:text="${#temporals.format(h.createdAt, 'dd/MM/yyyy HH:mm')}"></small>
+                                </div>
+                                <p class="mb-1" th:text="${h.etapeNouvelle}"></p>
+                                <small class="text-muted" th:text="'Par: ' + ${h.acteur?.username}"></small>
+                                <p th:if="${h.commentaire != null}" th:text="${h.commentaire}"></p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+</html>

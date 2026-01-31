@@ -3,7 +3,10 @@ package module.avs.model.achat;
 import jakarta.persistence.*;
 import lombok.*;
 import module.avs.model.organisation.Site;
+import module.avs.model.referentiel.Devise;
 import module.avs.model.security.Utilisateur;
+import module.avs.model.tiers.Fournisseur;
+import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -23,19 +26,32 @@ public class DemandeAchat {
     @Column(length = 50, nullable = false, unique = true)
     private String numero;
     
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "demandeur_id", nullable = false)
     private Utilisateur demandeur;
     
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "site_id", nullable = false)
     private Site site;
+    
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "devise_code")
+    @ToString.Exclude
+    private Devise devise;
+    
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "fournisseur_suggere_id")
+    @ToString.Exclude
+    private Fournisseur fournisseurSuggere;
+    
+    @Column(name = "date_limite")
+    private LocalDate dateLimite;
     
     @Column(name = "statut_code", length = 50, nullable = false)
     private String statutCode;
     
     @Column(columnDefinition = "TEXT")
-    private String motif;
+    private String justification;
     
     @Column(name = "created_at")
     @Builder.Default
@@ -43,6 +59,7 @@ public class DemandeAchat {
     
     @OneToMany(mappedBy = "demandeAchat", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
+    @ToString.Exclude
     private List<LigneDemandeAchat> lignes = new ArrayList<>();
     
     public void addLigne(LigneDemandeAchat ligne) {

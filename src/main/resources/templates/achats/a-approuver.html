@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{layout/main}">
+<head>
+    <title>Documents à approuver</title>
+</head>
+<body>
+<div layout:fragment="content">
+    <div class="page-header mb-4">
+        <h1>Documents à approuver</h1>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a th:href="@{/dashboard}">Accueil</a></li>
+                <li class="breadcrumb-item active">À approuver</li>
+            </ol>
+        </nav>
+    </div>
+
+    <!-- Demandes d'achat à approuver -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">Demandes d'achat soumises</h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Numéro</th>
+                            <th>Date</th>
+                            <th>Site</th>
+                            <th>Demandeur</th>
+                            <th>Objet</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr th:each="demande : ${demandes}">
+                            <td>
+                                <a th:href="@{/achats/demandes/{id}(id=${demande.id})}" th:text="${demande.numero}"></a>
+                            </td>
+                            <td th:text="${#temporals.format(demande.createdAt, 'dd/MM/yyyy')}"></td>
+                            <td th:text="${demande.site?.name}"></td>
+                            <td th:text="${demande.demandeur?.username}"></td>
+                            <td th:text="${demande.justification}"></td>
+                            <td>
+                                <div class="btn-group btn-group-sm">
+                                    <a th:href="@{/achats/demandes/{id}(id=${demande.id})}" class="btn btn-outline-primary" title="Voir">
+                                        <i class="bi bi-eye"></i>
+                                    </a>
+                                    <button type="button" class="btn btn-outline-success" title="Approuver"
+                                            th:data-id="${demande.id}" data-type="demande" onclick="openApproveModal(this)">
+                                        <i class="bi bi-check-lg"></i>
+                                    </button>
+                                    <button type="button" class="btn btn-outline-danger" title="Rejeter"
+                                            th:data-id="${demande.id}" data-type="demande" onclick="openRejectModal(this)">
+                                        <i class="bi bi-x-lg"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        <tr th:if="${demandes.isEmpty()}">
+                            <td colspan="6" class="text-center text-muted py-4">
+                                <i class="bi bi-inbox fs-1 d-block mb-2"></i>
+                                Aucune demande à approuver
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Commandes d'achat à approuver -->
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0">Commandes d'achat en brouillon</h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Numéro</th>
+                            <th>Date</th>
+                            <th>Fournisseur</th>
+                            <th>Site</th>
+                            <th>Total HT</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr th:each="commande : ${commandes}">
+                            <td>
+                                <a th:href="@{/achats/commandes/{id}(id=${commande.id})}" th:text="${commande.numero}"></a>
+                            </td>
+                            <td th:text="${#temporals.format(commande.dateCommande, 'dd/MM/yyyy')}"></td>
+                            <td th:text="${commande.fournisseur?.name}"></td>
+                            <td th:text="${commande.site?.name}"></td>
+                            <td th:text="${#numbers.formatDecimal(commande.totalHT, 0, 'COMMA', 2, 'POINT')} + ' ' + ${commande.deviseCode}"></td>
+                            <td>
+                                <div class="btn-group btn-group-sm">
+                                    <a th:href="@{/achats/commandes/{id}(id=${commande.id})}" class="btn btn-outline-primary" title="Voir">
+                                        <i class="bi bi-eye"></i>
+                                    </a>
+                                    <button type="button" class="btn btn-outline-success" title="Valider"
+                                            th:data-id="${commande.id}" data-type="commande" onclick="openApproveModal(this)">
+                                        <i class="bi bi-check-lg"></i>
+                                    </button>
+                                    <button type="button" class="btn btn-outline-danger" title="Rejeter"
+                                            th:data-id="${commande.id}" data-type="commande" onclick="openRejectModal(this)">
+                                        <i class="bi bi-x-lg"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        <tr th:if="${commandes.isEmpty()}">
+                            <td colspan="6" class="text-center text-muted py-4">
+                                <i class="bi bi-inbox fs-1 d-block mb-2"></i>
+                                Aucune commande à approuver
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal d'approbation -->
+    <div class="modal fade" id="approveModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="approveModalTitle">Confirmer l'approbation</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <form id="approveForm" method="post" th:action="@{/achats/a-approuver}">
+                    <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+                    <input type="hidden" name="id" id="approveId"/>
+                    <input type="hidden" name="type" id="approveType"/>
+                    <div class="modal-body">
+                        <p>Êtes-vous sûr de vouloir approuver ce document ?</p>
+                        <div class="mb-3">
+                            <label class="form-label">Commentaire (optionnel)</label>
+                            <textarea class="form-control" name="commentaire" rows="3" onkeydown="if(event.keyCode === 13) event.preventDefault();"></textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                        <button type="submit" class="btn btn-success">Approuver</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de rejet -->
+    <div class="modal fade" id="rejectModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Confirmer le rejet</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <form id="rejectForm" method="post" th:action="@{/achats/a-approuver/reject}">
+                    <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+                    <input type="hidden" name="id" id="rejectId"/>
+                    <input type="hidden" name="type" id="rejectType"/>
+                    <div class="modal-body">
+                        <p>Êtes-vous sûr de vouloir rejeter ce document ?</p>
+                        <div class="mb-3">
+                            <label class="form-label">Motif du rejet <span class="text-danger">*</span></label>
+                            <textarea class="form-control" name="motif" rows="3" required onkeydown="if(event.keyCode === 13) event.preventDefault();"></textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                        <button type="submit" class="btn btn-danger">Rejeter</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<th:block layout:fragment="scripts">
+<script>
+function openApproveModal(button) {
+    const id = button.getAttribute('data-id');
+    const type = button.getAttribute('data-type');
+    document.getElementById('approveId').value = id;
+    document.getElementById('approveType').value = type;
+    const title = type === 'commande' ? 'Confirmer la validation' : 'Confirmer l\'approbation';
+    document.getElementById('approveModalTitle').textContent = title;
+    const modal = new bootstrap.Modal(document.getElementById('approveModal'));
+    modal.show();
+}
+
+function openRejectModal(button) {
+    const id = button.getAttribute('data-id');
+    const type = button.getAttribute('data-type');
+    document.getElementById('rejectId').value = id;
+    document.getElementById('rejectType').value = type;
+    const modal = new bootstrap.Modal(document.getElementById('rejectModal'));
+    modal.show();
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Any additional initialization code can go here
+});
+</script>
+</th:block>
+</body>
+</html>

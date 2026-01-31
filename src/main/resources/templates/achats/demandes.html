@@ -44,10 +44,10 @@
                                 <a th:href="@{/achats/demandes/{id}(id=${demande.id})}" th:text="${demande.numero}"></a>
                             </td>
                             <td th:text="${#temporals.format(demande.createdAt, 'dd/MM/yyyy')}"></td>
-                            <td th:text="${demande.site?.nom}"></td>
-                            <td th:text="${demande.demandeur?.nom + ' ' + demande.demandeur?.prenom}"></td>
-                            <td th:text="${demande.objet}"></td>
-                            <td th:text="${#numbers.formatDecimal(demande.totalHT, 0, 'COMMA', 0, 'POINT')}"></td>
+                            <td th:text="${demande.site?.name}"></td>
+                            <td th:text="${demande.demandeur?.username}"></td>
+                            <td th:text="${demande.justification}"></td>
+                            <td th:text="${#numbers.formatDecimal(0, 0, 'COMMA', 0, 'POINT')}"></td>
                             <td>
                                 <span class="badge badge-status" 
                                       th:classappend="'badge-' + ${demande.statutCode?.toLowerCase()}"
