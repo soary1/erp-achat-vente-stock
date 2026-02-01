@@ -116,20 +116,48 @@ public class StockController {
     }
     
     @GetMapping("/receptions/add")
-    public String addReceptionForm(Model model) {
+    public String addReceptionForm(@RequestParam(required = false) UUID commandeId,
+                                   Model model) {
         model.addAttribute("reception", new BonReception());
         model.addAttribute("commandesEnvoyees", referentielService.findCommandesAchatEnAttente());
         model.addAttribute("depots", referentielService.findAllDepots());
-        model.addAttribute("emplacements", referentielService.findAllEmplacements());
+        model.addAttribute("emplacements", referentielService.findAllEmplacementsForForm());
+        
+        // Si une commande est spécifiée, la pré-sélectionner
+        if (commandeId != null) {
+            model.addAttribute("selectedCommandeId", commandeId);
+        }
+        
         return "stock/reception-form";
     }
     
     @PostMapping("/receptions/save")
     public String saveReception(@ModelAttribute("reception") module.avs.dto.BonReceptionDTO receptionDTO,
+                               BindingResult result,
                                @RequestParam(required = false) String action,
                                Model model,
                                Authentication auth,
                                RedirectAttributes redirectAttributes) {
+        
+        // Vérifications manuelles car @Valid n'est pas utilisé
+        if (receptionDTO.getDepotId() == null) {
+            model.addAttribute("error", "Le dépôt de destination est obligatoire");
+            model.addAttribute("commandesEnvoyees", referentielService.findCommandesAchatEnAttente());
+            model.addAttribute("depots", referentielService.findAllDepots());
+            model.addAttribute("emplacements", referentielService.findAllEmplacements());
+            model.addAttribute("reception", receptionDTO);
+            return "stock/reception-form";
+        }
+        
+        if (receptionDTO.getLignes() == null || receptionDTO.getLignes().isEmpty()) {
+            model.addAttribute("error", "Aucune ligne de réception. Veuillez sélectionner une commande.");
+            model.addAttribute("commandesEnvoyees", referentielService.findCommandesAchatEnAttente());
+            model.addAttribute("depots", referentielService.findAllDepots());
+            model.addAttribute("emplacements", referentielService.findAllEmplacements());
+            model.addAttribute("reception", receptionDTO);
+            return "stock/reception-form";
+        }
+        
         try {
             Utilisateur user = getCurrentUser(auth);
             stockService.createReception(receptionDTO, user);
@@ -140,6 +168,7 @@ public class StockController {
             model.addAttribute("commandesEnvoyees", referentielService.findCommandesAchatEnAttente());
             model.addAttribute("depots", referentielService.findAllDepots());
             model.addAttribute("emplacements", referentielService.findAllEmplacements());
+            model.addAttribute("reception", receptionDTO);
             return "stock/reception-form";
         }
     }

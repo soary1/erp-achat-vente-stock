@@ -19,6 +19,7 @@ public class BonReceptionDTO {
         private UUID ligneCommandeId;
         private UUID articleId;
         private Double qtyReceived;
+        private Double unitCost;
         private String numeroLot;
         private String datePeremption;
         private UUID emplacementId;

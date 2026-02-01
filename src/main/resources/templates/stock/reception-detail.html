@@ -121,7 +121,7 @@
                                 <td th:text="${ligne.article?.label ?: 'N/A'}"></td>
                                 <td th:text="${ligne.article?.sku ?: 'N/A'}"></td>
                                 <td class="text-end" th:text="${#numbers.formatDecimal(ligne.qtyReceived, 1, 2)}"></td>
-                                <td class="text-end" th:text="${ligne.unitCost != null ? #numbers.formatDecimal(ligne.unitCost, 1, 2) + ' €' : '-'}"></td>
+                                <td class="text-end" th:text="${ligne.unitCost != null ? #numbers.formatDecimal(ligne.unitCost, 1, 2) + 'Ar' : '-'}"></td>
                                 <td>
                                     <a th:if="${ligne.lot != null}" 
                                        th:href="@{/stock/tracabilite/lot/{id}(id=${ligne.lot.id})}"

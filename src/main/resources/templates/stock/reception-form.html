@@ -32,7 +32,8 @@
                                 <select class="form-select" name="commandeAchatId" required id="commande-select">
                                     <option value="">-- Sélectionner une commande --</option>
                                     <option th:each="cmd : ${commandesEnvoyees}" th:value="${cmd.id}" 
-                                            th:text="${cmd.numero + ' - ' + cmd.fournisseur?.name}"></option>
+                                            th:text="${cmd.numero + ' - ' + cmd.fournisseur?.name}"
+                                            th:selected="${selectedCommandeId != null && selectedCommandeId == cmd.id}"></option>
                                 </select>
                             </div>
                             <div class="col-md-6">
@@ -66,6 +67,7 @@
                                         <th class="text-end">Commandé</th>
                                         <th class="text-end">Déjà reçu</th>
                                         <th class="text-end">À recevoir</th>
+                                        <th class="text-end">Coût unitaire</th>
                                         <th>N° Lot</th>
                                         <th>Date péremption</th>
                                         <th>Emplacement</th>
@@ -146,16 +148,20 @@
     </form>
     
     <script th:inline="javascript">
-        // Transformer les emplacements en objets simples pour éviter les problèmes de sérialisation Hibernate
-        const emplacements = [
-            /*[# th:each="e : ${emplacements}"]*/
-            { id: '[[${e.id}]]', code: '[[${e.code}]]' },
-            /*[/]*/
-        ].filter(e => e.id);
+        // Les emplacements sont déjà formatés côté serveur comme des maps simples
+        const emplacements = /*[[${emplacements}]]*/ [];
+        
+        let currentDepotId = null;
         
         // Toggle contrôle qualité details
         document.getElementById('controle-requis')?.addEventListener('change', function() {
             document.getElementById('controle-details').style.display = this.checked ? 'block' : 'none';
+        });
+        
+        // Charger les emplacements quand le dépôt change
+        document.querySelector('select[name="depotId"]')?.addEventListener('change', function() {
+            currentDepotId = this.value;
+            updateEmplacementsInLignes();
         });
         
         // Load lignes when commande is selected
@@ -185,9 +191,30 @@
                 });
         });
         
+        function updateEmplacementsInLignes() {
+            // Mettre à jour tous les selects d'emplacement
+            const emplacementSelects = document.querySelectorAll('select[name^="lignes"][name$=".emplacementId"]');
+            const filteredEmplacements = currentDepotId 
+                ? emplacements.filter(e => e.depotId === currentDepotId)
+                : emplacements;
+            
+            const options = `<option value="">-- --</option>` + 
+                filteredEmplacements.map(e => `<option value="${e.id}">${e.code}</option>`).join('');
+            
+            emplacementSelects.forEach(select => {
+                const currentValue = select.value;
+                select.innerHTML = options;
+                select.value = currentValue; // Restaurer la sélection si possible
+            });
+        }
+        
         function populateLignes(lignes) {
             const tbody = document.getElementById('lignes-body');
-            const emplacementOptions = emplacements.map(e => 
+            const filteredEmplacements = currentDepotId 
+                ? emplacements.filter(e => e.depotId === currentDepotId)
+                : emplacements;
+            
+            const emplacementOptions = filteredEmplacements.map(e => 
                 `<option value="${e.id}">${e.code}</option>`
             ).join('');
             
@@ -206,6 +233,12 @@
                                name="lignes[${index}].qtyReceived" 
                                value="${ligne.qtyOrdered - (ligne.qtyReceived || 0)}" 
                                min="0" max="${ligne.qtyOrdered - (ligne.qtyReceived || 0)}" step="0.01" />
+                    </td>
+                    <td>
+                        <input type="number" class="form-control form-control-sm text-end" 
+                               name="lignes[${index}].unitCost" 
+                               value="${ligne.unitPrice || 0}" 
+                               min="0" step="0.01" placeholder="Coût..." />
                     </td>
                     <td>
                         <input type="text" class="form-control form-control-sm" 
@@ -242,10 +275,12 @@
         }
         
         // Trigger change on page load if a commande is already selected
-        const commandeSelect = document.getElementById('commande-select');
-        if (commandeSelect && commandeSelect.value) {
-            commandeSelect.dispatchEvent(new Event('change'));
-        }
+        document.addEventListener('DOMContentLoaded', function() {
+            const commandeSelect = document.getElementById('commande-select');
+            if (commandeSelect && commandeSelect.value) {
+                commandeSelect.dispatchEvent(new Event('change'));
+            }
+        });
     </script>
 </div>
 </body>

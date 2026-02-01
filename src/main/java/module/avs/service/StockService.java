@@ -299,7 +299,7 @@ public class StockService {
                             Lot newLot = Lot.builder()
                                 .numeroLot(ligneDTO.getNumeroLot())
                                 .article(article)
-                                .statutQualiteCode("EN_ATTENTE")
+                                .statutQualiteCode("QUARANTAINE")
                                 .build();
                             
                             if (ligneDTO.getDatePeremption() != null && !ligneDTO.getDatePeremption().trim().isEmpty()) {
@@ -319,6 +319,7 @@ public class StockService {
                     .lot(lot)
                     .emplacement(emplacement)
                     .qtyReceived(BigDecimal.valueOf(ligneDTO.getQtyReceived()))
+                    .unitCost(ligneDTO.getUnitCost() != null ? BigDecimal.valueOf(ligneDTO.getUnitCost()) : null)
                     .build();
                 
                 savedReception.addLigne(ligne);

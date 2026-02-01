@@ -190,7 +190,18 @@ public class ReferentielService {
     }
     
     public List<Emplacement> findAllEmplacements() {
-        return emplacementRepository.findAll();
+        return emplacementRepository.findAllWithDepot();
+    }
+    
+    // Pour la sérialisation JSON (formulaires)
+    public List<java.util.Map<String, String>> findAllEmplacementsForForm() {
+        return emplacementRepository.findAllWithDepot().stream()
+            .map(e -> java.util.Map.of(
+                "id", e.getId().toString(),
+                "code", e.getCode(),
+                "depotId", e.getDepot().getId().toString()
+            ))
+            .collect(java.util.stream.Collectors.toList());
     }
     
     public Optional<Emplacement> findEmplacementById(UUID id) {
