@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{layout/main}">
+<head>
+    <title>Préparation de commande (Picking)</title>
+    <style>
+        .picking-card {
+            border-left: 4px solid #0d6efd;
+        }
+        .lot-badge {
+            font-size: 0.85rem;
+            padding: 0.35rem 0.65rem;
+        }
+        .qty-picked {
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: #198754;
+        }
+        .picking-row {
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .picking-row:hover:not(.table-success) {
+            background-color: #f8f9fa;
+        }
+        .picking-row.table-success {
+            cursor: default;
+        }
+        .alert-method {
+            background: #e7f3ff;
+            border-left: 4px solid #0d6efd;
+        }
+    </style>
+</head>
+<body>
+<div layout:fragment="content">
+    <div class="page-header mb-4">
+        <h1><i class="bi bi-box-seam me-2"></i>Préparation de commande - <span th:text="${commande?.numero}">N°</span></h1>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a th:href="@{/dashboard}">Accueil</a></li>
+                <li class="breadcrumb-item"><a th:href="@{/ventes/commandes}">Commandes</a></li>
+                <li class="breadcrumb-item"><a th:href="@{/ventes/commandes/{id}(id=${commande?.id})}" th:text="${commande?.numero}">Détail</a></li>
+                <li class="breadcrumb-item active">Picking</li>
+            </ol>
+        </nav>
+    </div>
+
+    <div th:if="${commande != null}">
+        <!-- Instructions -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="alert alert-method">
+                    <i class="bi bi-info-circle me-2"></i>
+                    <strong>Instructions de préparation</strong>
+                    <p class="mb-0 mt-2">Cliquez sur chaque ligne pour marquer l'article comme prélevé. Suivez l'ordre indiqué selon la méthode de valorisation.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Liste des réservations (Articles à préparer selon la méthode de valorisation) -->
+        <div class="row">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <span>
+                            <i class="bi bi-list-check me-2"></i>Articles à préparer
+                            <th:block th:if="${reservations != null and !reservations.isEmpty()}">
+                                <span class="badge bg-secondary ms-2" th:text="${reservations[0].article?.famille?.methodeValorisation?.label ?: 'Méthode non définie'}">FIFO</span>
+                            </th:block>
+                        </span>
+                        <span class="badge bg-info">
+                            <span id="items-picked">0</span> / <span th:text="${reservations?.size() ?: 0}">0</span> articles préparés
+                        </span>
+                    </div>
+                    <div class="card-body">
+                        <div class="alert alert-info" th:if="${reservations != null and !reservations.isEmpty()}">
+                            <i class="bi bi-info-circle me-2"></i>
+                            <strong>Méthode de picking : 
+                                <span th:text="${reservations[0].article?.famille?.methodeValorisation?.code}">FIFO</span>
+                            </strong>
+                            <span th:if="${reservations[0].article?.famille?.methodeValorisation?.code == 'FIFO'}">
+                                - Premier Entré, Premier Sorti : Prélevez les lots du plus ancien au plus récent.
+                            </span>
+                            <span th:if="${reservations[0].article?.famille?.methodeValorisation?.code == 'LIFO'}">
+                                - Dernier Entré, Premier Sorti : Prélevez les lots du plus récent au plus ancien.
+                            </span>
+                            <span th:if="${reservations[0].article?.famille?.methodeValorisation?.code == 'CUMP'}">
+                                - Coût Unitaire Moyen Pondéré : Prélevez les lots dans l'ordre indiqué par dépôt.
+                            </span>
+                        </div>
+
+                        <div class="table-responsive">
+                            <table class="table table-hover" id="picking-table">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 5%">Ordre</th>
+                                        <th style="width: 25%">Article</th>
+                                        <th style="width: 15%">Lot</th>
+                                        <th style="width: 10%">Dépôt</th>
+                                        <th style="width: 10%">Emplacement</th>
+                                        <th style="width: 10%">Date Fab.</th>
+                                        <th style="width: 10%">Qté à prélever</th>
+                                        <th style="width: 10%">Qté prélevée</th>
+                                        <th style="width: 15%">Statut</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr th:each="reservation, stat : ${reservations}" 
+                                        class="picking-row"
+                                        th:data-article-sku="${reservation.article.sku}"
+                                        th:data-lot-numero="${reservation.lot?.numeroLot}"
+                                        th:data-qty="${reservation.qtyReservee}"
+                                        th:data-reservation-id="${reservation.id}"
+                                        th:data-depot-code="${reservation.depot?.code}">
+                                        <td>
+                                            <span class="badge bg-secondary" th:text="${stat.index + 1}">1</span>
+                                        </td>
+                                        <td>
+                                            <div><strong th:text="${reservation.article.label}">Article</strong></div>
+                                            <div><code th:text="${reservation.article.sku}">SKU</code></div>
+                                        </td>
+                                        <td>
+                                            <span class="badge lot-badge bg-primary" th:text="${reservation.lot?.numeroLot ?: 'Sans lot'}">LOT-001</span>
+                                            <div th:if="${reservation.lot?.datePeremption != null}">
+                                                <small class="text-muted">
+                                                    Exp: <span th:text="${#temporals.format(reservation.lot.datePeremption, 'dd/MM/yyyy')}">-</span>
+                                                </small>
+                                            </div>
+                                        </td>
+                                        <td><small th:text="${reservation.depot?.name}">Dépôt</small></td>
+                                        <td>
+                                            <small class="text-muted">
+                                                <i class="bi bi-geo-alt"></i> 
+                                                <span th:text="${reservation.depot?.code ?: '-'}">A1-B2</span>
+                                            </small>
+                                        </td>
+                                        <td>
+                                            <small th:if="${reservation.lot?.dateFabrication != null}" 
+                                                   th:text="${#temporals.format(reservation.lot.dateFabrication, 'dd/MM/yyyy')}">-</small>
+                                            <small th:if="${reservation.lot?.dateFabrication == null}" class="text-muted">-</small>
+                                        </td>
+                                        <td class="text-end">
+                                            <strong th:text="${#numbers.formatDecimal(reservation.qtyReservee, 0, 'COMMA', 2, 'POINT')}">10.00</strong>
+                                        </td>
+                                        <td class="text-end">
+                                            <span class="qty-picked picked-qty-display">0.00</span>
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-warning status-badge">En attente</span>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Actions -->
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="d-flex justify-content-between">
+                    <a th:href="@{/ventes/commandes/{id}(id=${commande.id})}" class="btn btn-outline-secondary">
+                        <i class="bi bi-arrow-left me-2"></i>Retour à la commande
+                    </a>
+                    <div>
+                        <button type="button" class="btn btn-warning me-2" onclick="resetPicking()">
+                            <i class="bi bi-arrow-counterclockwise me-2"></i>Réinitialiser
+                        </button>
+                        <form th:action="@{/ventes/commandes/{id}/validate-picking(id=${commande.id})}" 
+                              method="post" style="display: inline;" id="validate-form">
+                            <button type="submit" class="btn btn-success" id="btn-validate" disabled>
+                                <i class="bi bi-check-circle me-2"></i>Valider la préparation complète
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div th:if="${commande == null}" class="alert alert-warning">
+        <i class="bi bi-exclamation-triangle me-2"></i>
+        Commande non trouvée.
+    </div>
+</div>
+
+<script layout:fragment="scripts" th:inline="javascript">
+    let pickedCount = 0;
+    const totalCount = /*[[${reservations?.size() ?: 0}]]*/ 0;
+    
+    const validateBtn = document.getElementById('btn-validate');
+    
+    // Attacher l'événement de clic sur toutes les lignes de picking
+    document.addEventListener('DOMContentLoaded', function() {
+        const pickingRows = document.querySelectorAll('.picking-row');
+        
+        pickingRows.forEach((row, index) => {
+            row.addEventListener('click', function() {
+                if (!this.classList.contains('picked')) {
+                    pickItem(this, index);
+                }
+            });
+        });
+    });
+    
+    function pickItem(row, index) {
+        const qty = parseFloat(row.dataset.qty);
+        const articleLabel = row.querySelector('strong').textContent;
+        const lotNumero = row.dataset.lotNumero || 'Sans lot';
+        const depotName = row.querySelector('td:nth-child(4) small').textContent;
+        
+        // Marquer comme prélevé
+        row.classList.add('table-success', 'picked');
+        row.querySelector('.status-badge').textContent = 'Prélevé';
+        row.querySelector('.status-badge').classList.remove('bg-warning');
+        row.querySelector('.status-badge').classList.add('bg-success');
+        row.querySelector('.picked-qty-display').textContent = qty.toFixed(2);
+        
+        // Incrémenter le compteur
+        pickedCount++;
+        updateProgress();
+        
+        // Afficher une notification Bootstrap toast
+        showToast(`✅ ${articleLabel} prélevé`, 
+                 `Lot: ${lotNumero}, Dépôt: ${depotName}, Quantité: ${qty.toFixed(2)}`,
+                 'success');
+    }
+    
+    function updateProgress() {
+        document.getElementById('items-picked').textContent = pickedCount;
+        
+        if (pickedCount === totalCount && totalCount > 0) {
+            validateBtn.disabled = false;
+            showToast('🎉 Préparation terminée !', 
+                     `${pickedCount}/${totalCount} articles prélevés. Vous pouvez valider la préparation.`,
+                     'success');
+        }
+    }
+    
+    function showToast(title, message, type) {
+        // Créer un toast Bootstrap
+        const toastContainer = document.getElementById('toast-container') || createToastContainer();
+        
+        const bgClass = type === 'success' ? 'bg-success' : 
+                       type === 'error' ? 'bg-danger' : 'bg-info';
+        
+        const toastHtml = `
+            <div class="toast align-items-center text-white ${bgClass} border-0" role="alert" aria-live="assertive" aria-atomic="true">
+                <div class="d-flex">
+                    <div class="toast-body">
+                        <strong>${title}</strong><br>
+                        ${message}
+                    </div>
+                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+                </div>
+            </div>
+        `;
+        
+        toastContainer.insertAdjacentHTML('beforeend', toastHtml);
+        const toastElement = toastContainer.lastElementChild;
+        const toast = new bootstrap.Toast(toastElement, { delay: 4000 });
+        toast.show();
+        
+        // Supprimer le toast après fermeture
+        toastElement.addEventListener('hidden.bs.toast', function() {
+            this.remove();
+        });
+    }
+    
+    function createToastContainer() {
+        const container = document.createElement('div');
+        container.id = 'toast-container';
+        container.className = 'toast-container position-fixed top-0 end-0 p-3';
+        container.style.zIndex = '9999';
+        document.body.appendChild(container);
+        return container;
+    }
+    
+    function resetPicking() {
+        if (confirm('Êtes-vous sûr de vouloir réinitialiser toute la préparation ?')) {
+            location.reload();
+        }
+    }
+</script>
+</body>
+</html>

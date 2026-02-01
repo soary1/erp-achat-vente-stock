@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{layout/main}">
+<head>
+    <title>Créer un bon de livraison</title>
+    <style>
+        .recap-card {
+            border-left: 4px solid #0d6efd;
+        }
+        .article-badge {
+            font-size: 0.9rem;
+            padding: 0.4rem 0.7rem;
+        }
+    </style>
+</head>
+<body>
+<div layout:fragment="content">
+    <div class="page-header mb-4">
+        <h1><i class="bi bi-truck me-2"></i>Créer un bon de livraison</h1>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a th:href="@{/dashboard}">Accueil</a></li>
+                <li class="breadcrumb-item"><a th:href="@{/ventes/commandes}">Commandes</a></li>
+                <li class="breadcrumb-item"><a th:href="@{/ventes/commandes/{id}(id=${commande?.id})}" th:text="${commande?.numero}">Détail</a></li>
+                <li class="breadcrumb-item active">Créer livraison</li>
+            </ol>
+        </nav>
+    </div>
+
+    <div th:if="${commande != null}">
+        <!-- Récapitulatif commande -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card recap-card">
+                    <div class="card-header">
+                        <i class="bi bi-info-circle me-2"></i>Récapitulatif de la commande
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-4">
+                                <p><strong>N° Commande:</strong> <span th:text="${commande.numero}">-</span></p>
+                                <p><strong>Statut:</strong> 
+                                    <span class="badge" 
+                                          th:classappend="${commande.statutCode == 'PRETE'} ? 'bg-info' : 
+                                                         (${commande.statutCode == 'PREPARATION'} ? 'bg-warning' : 'bg-secondary')"
+                                          th:text="${commande.statutCode}">-</span>
+                                </p>
+                            </div>
+                            <div class="col-md-4">
+                                <p><strong>Client:</strong> <span th:text="${commande.client?.name}">-</span></p>
+                                <p><strong>Site:</strong> <span th:text="${commande.site?.name}">-</span></p>
+                            </div>
+                            <div class="col-md-4">
+                                <p><strong>Total HT:</strong> <span th:text="${#numbers.formatDecimal(commande.totalHT ?: 0, 0, 'COMMA', 2, 'POINT')}">0</span> 
+                                    <span th:text="${commande.client?.devise?.code ?: 'MGA'}">MGA</span></p>
+                                <p><strong>Total TTC:</strong> <span th:text="${#numbers.formatDecimal(commande.totalTTC ?: 0, 0, 'COMMA', 2, 'POINT')}">0</span> 
+                                    <span th:text="${commande.client?.devise?.code ?: 'MGA'}">MGA</span></p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Articles de la commande -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <span><i class="bi bi-box-seam me-2"></i>Articles à livrer</span>
+                        <span class="badge bg-primary" th:text="${commande.lignes?.size() ?: 0} + ' article(s)'">0 article(s)</span>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Article</th>
+                                        <th>SKU</th>
+                                        <th class="text-end">Quantité commandée</th>
+                                        <th class="text-end">Quantité préparée</th>
+                                        <th>Unité</th>
+                                        <th>Statut</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr th:each="ligne : ${commande.lignes}">
+                                        <td th:text="${ligne.article?.label}">-</td>
+                                        <td><code th:text="${ligne.article?.sku}">-</code></td>
+                                        <td class="text-end" th:text="${#numbers.formatDecimal(ligne.qtyOrdered ?: 0, 0, 'COMMA', 2, 'POINT')}">-</td>
+                                        <td class="text-end">
+                                            <span class="badge bg-success" th:if="${ligne.qtyDelivered != null and ligne.qtyDelivered > 0}" 
+                                                  th:text="${#numbers.formatDecimal(ligne.qtyDelivered, 0, 'COMMA', 2, 'POINT')}">-</span>
+                                            <span class="badge bg-secondary" th:unless="${ligne.qtyDelivered != null and ligne.qtyDelivered > 0}">0</span>
+                                        </td>
+                                        <td th:text="${ligne.article?.unite?.code}">-</td>
+                                        <td>
+                                            <span class="badge" 
+                                                  th:classappend="${ligne.qtyDelivered != null and ligne.qtyDelivered >= ligne.qtyOrdered} ? 'bg-success' : 
+                                                                 (${ligne.qtyDelivered != null and ligne.qtyDelivered > 0} ? 'bg-warning' : 'bg-secondary')">
+                                                <span th:if="${ligne.qtyDelivered != null and ligne.qtyDelivered >= ligne.qtyOrdered}">
+                                                    <i class="bi bi-check-circle me-1"></i>Complet
+                                                </span>
+                                                <span th:if="${ligne.qtyDelivered != null and ligne.qtyDelivered > 0 and ligne.qtyDelivered < ligne.qtyOrdered}">
+                                                    <i class="bi bi-exclamation-triangle me-1"></i>Partiel
+                                                </span>
+                                                <span th:unless="${ligne.qtyDelivered != null and ligne.qtyDelivered > 0}">
+                                                    <i class="bi bi-dash-circle me-1"></i>Non préparé
+                                                </span>
+                                            </span>
+                                        </td>
+                                    </tr>
+                                    <tr th:if="${commande.lignes == null || commande.lignes.isEmpty()}">
+                                        <td colspan="6" class="text-center text-muted">Aucun article dans cette commande</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Avertissements et validation -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="alert alert-warning" th:if="${commande.statutCode != 'PRETE'}">
+                    <i class="bi bi-exclamation-triangle me-2"></i>
+                    <strong>Attention :</strong> La commande doit être dans le statut "PRETE" pour créer un bon de livraison.
+                    Le statut actuel est : <strong th:text="${commande.statutCode}">-</strong>
+                </div>
+                
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle me-2"></i>
+                    <strong>Information :</strong> Le bon de livraison sera créé avec toutes les lignes préparées lors du picking.
+                    Les mouvements de stock seront enregistrés automatiquement lors de la validation du bon de livraison.
+                </div>
+            </div>
+        </div>
+
+        <!-- Formulaire de création -->
+        <form th:action="@{/ventes/commandes/{id}/livraison(id=${commande.id})}" method="post">
+            <div class="row">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <i class="bi bi-pencil-square me-2"></i>Confirmation de création
+                        </div>
+                        <div class="card-body">
+                            <p class="mb-3">
+                                Vous êtes sur le point de créer un bon de livraison pour la commande 
+                                <strong th:text="${commande.numero}">-</strong> du client 
+                                <strong th:text="${commande.client?.name}">-</strong>.
+                            </p>
+                            <p class="text-muted mb-0">
+                                <small>Le bon de livraison sera créé au statut "BROUILLON" et pourra être validé ultérieurement.</small>
+                            </p>
+                        </div>
+                        <div class="card-footer text-end">
+                            <a th:href="@{/ventes/commandes/{id}(id=${commande.id})}" class="btn btn-secondary">
+                                <i class="bi bi-x-circle me-1"></i>Annuler
+                            </a>
+                            <button type="submit" class="btn btn-primary" th:disabled="${commande.statutCode != 'PRETE'}">
+                                <i class="bi bi-truck me-1"></i>Créer le bon de livraison
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <div th:unless="${commande != null}" class="alert alert-danger">
+        <i class="bi bi-exclamation-triangle me-2"></i>Commande introuvable
+    </div>
+</div>
+</body>
+</html>

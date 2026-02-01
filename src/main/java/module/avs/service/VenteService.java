@@ -37,6 +37,9 @@ public class VenteService {
     private final LotRepository lotRepository;
     private final AuditService auditService;
     private final UtilisateurService utilisateurService;
+    private final module.avs.repository.article.ArticleRepository articleRepository;
+    private final module.avs.repository.tiers.ClientRepository clientRepository;
+    private final module.avs.repository.organisation.SiteRepository siteRepository;
     
     // ============ DEVIS ============
     
@@ -59,6 +62,29 @@ public class VenteService {
     }
     
     public DevisClient createDevis(DevisClient devis, Utilisateur createur) {
+        // Charger les entités référencées si nécessaire
+        if (devis.getClient() != null && devis.getClient().getId() != null) {
+            devis.setClient(clientRepository.findById(devis.getClient().getId())
+                .orElseThrow(() -> new RuntimeException("Client non trouvé")));
+        }
+        
+        if (devis.getSite() != null && devis.getSite().getId() != null) {
+            devis.setSite(siteRepository.findById(devis.getSite().getId())
+                .orElseThrow(() -> new RuntimeException("Site non trouvé")));
+        }
+        
+        // Charger les articles dans les lignes
+        if (devis.getLignes() != null) {
+            for (LigneDevisClient ligne : devis.getLignes()) {
+                if (ligne.getArticle() != null && ligne.getArticle().getId() != null) {
+                    ligne.setArticle(articleRepository.findById(ligne.getArticle().getId())
+                        .orElseThrow(() -> new RuntimeException("Article non trouvé: " + ligne.getArticle().getId())));
+                }
+                ligne.setDevis(devis);
+            }
+        }
+        
+        devis.setCommercial(createur);
         devis.setNumero(generateDevisNumero());
         devis.setStatutCode("BROUILLON");
         devis.recalculerTotaux();
@@ -177,7 +203,11 @@ public class VenteService {
     }
     
     private void reserverStockPourLigne(LigneCommandeClient ligne) {
-        List<Stock> stocksDispo = stockRepository.findAvailableStockFEFO(ligne.getArticle().getId());
+        // Récupérer la méthode de valorisation de l'article
+        String methodeValorisation = ligne.getArticle().getFamille().getMethodeValorisation().getCode();
+        
+        // Obtenir les stocks disponibles selon la méthode de valorisation
+        List<Stock> stocksDispo = getStocksDisponiblesParMethode(ligne.getArticle().getId(), methodeValorisation);
         BigDecimal qtyAReserver = ligne.getQtyOrdered();
         
         for (Stock stock : stocksDispo) {
@@ -210,6 +240,36 @@ public class VenteService {
         }
     }
     
+    private List<Stock> getStocksDisponiblesParMethode(UUID articleId, String methodeValorisation) {
+        List<Stock> stocks;
+        
+        switch (methodeValorisation) {
+            case "FIFO":
+                // FIFO : Premier Entré, Premier Sorti (par date de fabrication ascendante)
+                stocks = stockRepository.findByArticleIdAndQtyReelGreaterThanOrderByLotDateFabricationAsc(
+                    articleId, BigDecimal.ZERO);
+                break;
+                
+            case "LIFO":
+                // LIFO : Dernier Entré, Premier Sorti (par date de fabrication descendante)
+                stocks = stockRepository.findByArticleIdAndQtyReelGreaterThanOrderByLotDateFabricationDesc(
+                    articleId, BigDecimal.ZERO);
+                break;
+                
+            case "CUMP":
+            default:
+                // CUMP : Coût Unitaire Moyen Pondéré (pas d'ordre spécifique, ou par ID)
+                stocks = stockRepository.findByArticleIdAndQtyReelGreaterThan(
+                    articleId, BigDecimal.ZERO);
+                break;
+        }
+        
+        // Filtrer uniquement les stocks avec quantité disponible
+        return stocks.stream()
+            .filter(s -> s.getQtyDisponible().compareTo(BigDecimal.ZERO) > 0)
+            .toList();
+    }
+    
     public CommandeClient preparerCommande(UUID commandeId, Utilisateur acteur) {
         CommandeClient commande = commandeClientRepository.findById(commandeId)
             .orElseThrow(() -> new RuntimeException("Commande non trouvée"));
@@ -218,6 +278,115 @@ public class VenteService {
         CommandeClient saved = commandeClientRepository.save(commande);
         
         auditService.logWorkflow("COMMANDE_CLIENT", commandeId, "CONFIRMEE", "PREPARATION", acteur, "PREPARATION", null);
+        return saved;
+    }
+    
+    public List<ReservationStock> getReservationsParMethode(UUID commandeId) {
+        CommandeClient commande = commandeClientRepository.findById(commandeId)
+            .orElseThrow(() -> new RuntimeException("Commande non trouvée"));
+        
+        // Grouper les réservations par article pour appliquer la méthode de valorisation
+        Map<UUID, List<ReservationStock>> reservationsParArticle = new HashMap<>();
+        
+        for (LigneCommandeClient ligne : commande.getLignes()) {
+            List<ReservationStock> ligneReservations = reservationStockRepository.findByLigneCommandeId(ligne.getId());
+            
+            // Récupérer la méthode de valorisation de l'article
+            String methodeValorisation = ligne.getArticle().getFamille().getMethodeValorisation().getCode();
+            
+            // Trier les réservations selon la méthode de valorisation
+            ligneReservations = trierReservationsParMethode(ligneReservations, methodeValorisation);
+            
+            reservationsParArticle.put(ligne.getArticle().getId(), ligneReservations);
+        }
+        
+        // Aplatir la map en liste tout en conservant l'ordre
+        List<ReservationStock> allReservations = new ArrayList<>();
+        for (LigneCommandeClient ligne : commande.getLignes()) {
+            List<ReservationStock> reservations = reservationsParArticle.get(ligne.getArticle().getId());
+            if (reservations != null) {
+                allReservations.addAll(reservations);
+            }
+        }
+        
+        return allReservations;
+    }
+    
+    private List<ReservationStock> trierReservationsParMethode(List<ReservationStock> reservations, String methodeValorisation) {
+        return switch (methodeValorisation) {
+            case "FIFO" -> {
+                // FIFO : Trier par date de fabrication ascendante (plus ancien d'abord)
+                reservations.sort((r1, r2) -> {
+                    // Trier d'abord par dépôt pour regrouper
+                    int depotCompare = compareDepot(r1, r2);
+                    if (depotCompare != 0) return depotCompare;
+                    
+                    // Puis par date de fabrication
+                    return compareDateFabrication(r1, r2, true);
+                });
+                yield reservations;
+            }
+            case "LIFO" -> {
+                // LIFO : Trier par date de fabrication descendante (plus récent d'abord)
+                reservations.sort((r1, r2) -> {
+                    // Trier d'abord par dépôt pour regrouper
+                    int depotCompare = compareDepot(r1, r2);
+                    if (depotCompare != 0) return depotCompare;
+                    
+                    // Puis par date de fabrication inversée
+                    return compareDateFabrication(r1, r2, false);
+                });
+                yield reservations;
+            }
+            case "CUMP" -> {
+                // CUMP : Trier par dépôt et lot, pas de préférence de date
+                reservations.sort((r1, r2) -> {
+                    int depotCompare = compareDepot(r1, r2);
+                    if (depotCompare != 0) return depotCompare;
+                    
+                    // Trier par numéro de lot pour cohérence
+                    return compareLot(r1, r2);
+                });
+                yield reservations;
+            }
+            default -> reservations;
+        };
+    }
+    
+    private int compareDepot(ReservationStock r1, ReservationStock r2) {
+        if (r1.getDepot() == null && r2.getDepot() == null) return 0;
+        if (r1.getDepot() == null) return 1;
+        if (r2.getDepot() == null) return -1;
+        return r1.getDepot().getCode().compareTo(r2.getDepot().getCode());
+    }
+    
+    private int compareDateFabrication(ReservationStock r1, ReservationStock r2, boolean ascending) {
+        if (r1.getLot() == null && r2.getLot() == null) return 0;
+        if (r1.getLot() == null) return 1;
+        if (r2.getLot() == null) return -1;
+        if (r1.getLot().getDateFabrication() == null && r2.getLot().getDateFabrication() == null) return 0;
+        if (r1.getLot().getDateFabrication() == null) return 1;
+        if (r2.getLot().getDateFabrication() == null) return -1;
+        
+        int result = r1.getLot().getDateFabrication().compareTo(r2.getLot().getDateFabrication());
+        return ascending ? result : -result;
+    }
+    
+    private int compareLot(ReservationStock r1, ReservationStock r2) {
+        if (r1.getLot() == null && r2.getLot() == null) return 0;
+        if (r1.getLot() == null) return 1;
+        if (r2.getLot() == null) return -1;
+        return r1.getLot().getNumeroLot().compareTo(r2.getLot().getNumeroLot());
+    }
+    
+    public CommandeClient validerPicking(UUID commandeId, Utilisateur acteur) {
+        CommandeClient commande = commandeClientRepository.findById(commandeId)
+            .orElseThrow(() -> new RuntimeException("Commande non trouvée"));
+        
+        commande.setStatutCode("PRETE");
+        CommandeClient saved = commandeClientRepository.save(commande);
+        
+        auditService.logWorkflow("COMMANDE_CLIENT", commandeId, "PREPARATION", "PRETE", acteur, "PICKING_VALIDE", null);
         return saved;
     }
     
@@ -250,9 +419,30 @@ public class VenteService {
             .commande(commande)
             .statutCode("BROUILLON")
             .dateExpedition(OffsetDateTime.now())
+            .preparateur(createur)
+            .datePreparation(OffsetDateTime.now())
             .build();
         
         BonLivraison saved = bonLivraisonRepository.save(bl);
+        
+        // Créer les lignes de livraison basées sur les réservations de stock
+        for (LigneCommandeClient ligneCmd : commande.getLignes()) {
+            List<ReservationStock> reservations = reservationStockRepository.findByLigneCommandeId(ligneCmd.getId());
+            
+            for (ReservationStock reservation : reservations) {
+                LigneBonLivraison ligneLivraison = LigneBonLivraison.builder()
+                    .bonLivraison(saved)
+                    .article(reservation.getArticle())
+                    .lot(reservation.getLot())
+                    .depot(reservation.getDepot())
+                    .qtyCommandee(ligneCmd.getQtyOrdered())
+                    .qtyLivree(reservation.getQtyReservee())
+                    .qtyPreparee(reservation.getQtyReservee())
+                    .build();
+                ligneBonLivraisonRepository.save(ligneLivraison);
+                saved.addLigne(ligneLivraison);
+            }
+        }
         
         auditService.logAction("BON_LIVRAISON", saved.getId(), "CREATION", createur, null);
         return saved;
@@ -295,8 +485,14 @@ public class VenteService {
                         stock.setQtyReserve(stock.getQtyReserve().subtract(aDeduire));
                         stockRepository.save(stock);
                         
+                        // Générer le numéro de mouvement
+                        String numeroMvt = "MVT-" + LocalDate.now().format(DateTimeFormatter.ofPattern("yyMM")) + "-";
+                        Integer maxNum = mouvementStockRepository.findMaxNumero(numeroMvt);
+                        numeroMvt += String.format("%05d", (maxNum != null ? maxNum : 0) + 1);
+                        
                         // Créer le mouvement de sortie
                         MouvementStock mouvement = MouvementStock.builder()
+                            .numero(numeroMvt)
                             .typeMouvement(typeMouvement)
                             .referenceDoc(livraison.getNumero())
                             .article(ligne.getArticle())

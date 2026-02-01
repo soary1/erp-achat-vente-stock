@@ -3,22 +3,22 @@
       xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
       layout:decorate="~{layout/main}">
 <head>
-    <title>Nouveau devis client</title>
+    <title>Nouvelle commande client</title>
 </head>
 <body>
 <div layout:fragment="content">
     <div class="page-header mb-4">
-        <h1 th:text="${devis?.id != null ? 'Modifier devis ' + devis.numero : 'Nouveau devis client'}"></h1>
+        <h1 th:text="${commande?.id != null ? 'Modifier commande ' + commande.numero : 'Nouvelle commande client'}"></h1>
         <nav aria-label="breadcrumb">
             <ol class="breadcrumb">
                 <li class="breadcrumb-item"><a th:href="@{/dashboard}">Accueil</a></li>
-                <li class="breadcrumb-item"><a th:href="@{/ventes/devis}">Devis</a></li>
+                <li class="breadcrumb-item"><a th:href="@{/ventes/commandes}">Commandes</a></li>
                 <li class="breadcrumb-item active">Nouveau</li>
             </ol>
         </nav>
     </div>
     
-    <form th:action="@{/ventes/devis/save}" method="post" th:object="${devis}">
+    <form th:action="@{/ventes/commandes/save}" method="post" th:object="${commande}">
         <input type="hidden" th:field="*{id}" />
         
         <div class="row g-4">
@@ -41,29 +41,20 @@
                                     <option value="">-- Sélectionner un site --</option>
                                     <option th:each="site : ${sites}" th:value="${site.id}" th:text="${site.name}"></option>
                                 </select>
-                                <small class="form-text text-muted">Requis pour le calcul automatique des prix</small>
                             </div>
-                            <div class="col-md-6">
-                                <label class="form-label">Dépôt</label>
-                                <select class="form-select" id="depot-select">
-                                    <option value="">-- Sélectionner un dépôt --</option>
-                                    <option th:each="depot : ${depots}" th:value="${depot.id}" th:text="${depot.name}"></option>
-                                </select>
-                                <small class="form-text text-muted">Optionnel - affine le calcul des prix par dépôt</small>
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label">Date validité</label>
-                                <input type="date" class="form-control" th:field="*{dateValidite}" />
+                            <div class="col-md-12">
+                                <label class="form-label">Notes</label>
+                                <textarea class="form-control" th:field="*{notes}" rows="3"></textarea>
                             </div>
                         </div>
                     </div>
                 </div>
                 
-                <!-- Lignes du devis -->
+                <!-- Lignes de la commande -->
                 <div class="card mt-4">
                     <div class="card-header d-flex justify-content-between align-items-center">
-                        <span>Lignes du devis</span>
-                        <button type="button" class="btn btn-sm btn-outline-primary" onclick="addLigneDevis()">
+                        <span>Lignes de la commande</span>
+                        <button type="button" class="btn btn-sm btn-outline-primary" onclick="addLigneCommande()">
                             <i class="bi bi-plus-lg me-1"></i>Ajouter article
                         </button>
                     </div>
@@ -81,7 +72,7 @@
                                     </tr>
                                 </thead>
                                 <tbody id="lignes-body">
-                                    <tr class="ligne-row" th:each="ligne, stat : ${devis?.lignes ?: #lists.emptyList()}">
+                                    <tr class="ligne-row" th:each="ligne, stat : ${commande?.lignes ?: #lists.emptyList()}">
                                         <input type="hidden" th:name="'lignes[' + ${stat.index} + '].id'" th:value="${ligne.id}" />
                                         <td>
                                             <select class="form-select form-select-sm article-select" th:name="'lignes[' + ${stat.index} + '].article.id'" required>
@@ -104,7 +95,7 @@
                                             <input type="text" class="form-control form-control-sm total-input" readonly th:value="${ligne.montantHT}" />
                                         </td>
                                         <td class="text-center">
-                                            <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeLigneDevis(this)">
+                                            <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeLigneCommande(this)">
                                                 <i class="bi bi-trash"></i>
                                             </button>
                                         </td>
@@ -117,7 +108,7 @@
                                         <th></th>
                                     </tr>
                                     <tr class="table-light">
-                                        <th colspan="4" class="text-end">TVA (20%)</th>
+                                        <th colspan="4" class="text-end">TVA</th>
                                         <th id="total-tva">0.00</th>
                                         <th></th>
                                     </tr>
@@ -131,7 +122,7 @@
                         </div>
                     </div>
                 </div>
-                
+            </div>
             
             <!-- Panneau latéral -->
             <div class="col-lg-4">
@@ -141,12 +132,9 @@
                     <div class="card-body">
                         <div class="d-grid gap-2">
                             <button type="submit" class="btn btn-primary">
-                                <i class="bi bi-save me-2"></i>Enregistrer brouillon
+                                <i class="bi bi-save me-2"></i>Enregistrer
                             </button>
-                            <button type="submit" name="action" value="submit" class="btn btn-success">
-                                <i class="bi bi-send me-2"></i>Soumettre pour validation
-                            </button>
-                            <a th:href="@{/ventes/devis}" class="btn btn-outline-secondary">
+                            <a th:href="@{/ventes/commandes}" class="btn btn-outline-secondary">
                                 <i class="bi bi-x-lg me-2"></i>Annuler
                             </a>
                         </div>
@@ -178,7 +166,7 @@
                 <input type="text" class="form-control form-control-sm total-input" readonly value="0.00" />
             </td>
             <td class="text-center">
-                <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeLigneDevis(this)">
+                <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeLigneCommande(this)">
                     <i class="bi bi-trash"></i>
                 </button>
             </td>
@@ -186,146 +174,61 @@
     </template>
     
     <script th:inline="javascript">
-        let ligneIndex = [[${devis?.lignes?.size() ?: 0}]];
+        let ligneIndex = [[${commande?.lignes?.size() ?: 0}]];
         
-        function addLigneDevis() {
+        function addLigneCommande() {
             const template = document.getElementById('ligne-template');
             const tbody = document.getElementById('lignes-body');
             
-            // Cloner le contenu du template et remplacer INDEX par ligneIndex
             let html = template.innerHTML.replace(/INDEX/g, ligneIndex);
             tbody.insertAdjacentHTML('beforeend', html);
             ligneIndex++;
+            recalculerTotaux();
         }
         
-        function removeLigneDevis(btn) {
-            btn.closest('.ligne-row').remove();
-            updateTotals();
+        function removeLigneCommande(button) {
+            button.closest('tr').remove();
+            recalculerTotaux();
         }
         
-        function updatePrix(select) {
-            // Utiliser selectedOptions pour obtenir la valeur de manière plus fiable
-            const articleId = select.selectedOptions && select.selectedOptions.length > 0 
-                ? select.selectedOptions[0].value 
-                : select.value;
-            
-            const row = select.closest('tr');
-            const prixInput = row.querySelector('.prix-input');
-            
-            if (!articleId || articleId === '') {
-                prixInput.value = '';
-                return;
-            }
-            
-            // Récupérer le site et dépôt sélectionnés
-            const siteSelect = document.getElementById('site-select');
-            const depotSelect = document.getElementById('depot-select');
-            const siteId = siteSelect?.value || '';
-            const depotId = depotSelect?.value || '';
-            
-            // Vérifier qu'au moins le site est sélectionné
-            if (!siteId && !depotId) {
-                prixInput.value = '0.00';
-                // Mettre en surbrillance le champ site pour attirer l'attention
-                if (siteSelect) {
-                    siteSelect.classList.add('border-warning');
-                    setTimeout(() => siteSelect.classList.remove('border-warning'), 3000);
-                }
-                calculateTotal(prixInput);
-                return;
-            }
-            
-            // Construire l'URL avec les paramètres
-            let url = `/ventes/api/articles/${articleId}/prix?marge=20`;
-            if (depotId) {
-                url += `&depotId=${depotId}`;
-            }
-            if (siteId) {
-                url += `&siteId=${siteId}`;
-            }
-            
-            // Afficher un indicateur de chargement
-            prixInput.value = '...';
-            prixInput.disabled = true;
-            
-            // Récupérer le prix depuis l'API selon la méthode de valorisation
-            fetch(url)
-                .then(response => response.json())
-                .then(data => {
-                    prixInput.disabled = false;
-                    if (data.success && data.prix > 0) {
-                        prixInput.value = parseFloat(data.prix).toFixed(2);
-                        calculateTotal(prixInput);
-                    } else {
-                        prixInput.value = '0.00';
-                        calculateTotal(prixInput);
-                    }
-                })
-                .catch(error => {
-                    prixInput.disabled = false;
-                    prixInput.value = '0.00';
-                    calculateTotal(prixInput);
-                });
-        }
-        
-        function calculateTotal(input) {
-            const row = input.closest('tr');
-            const qty = parseFloat(row.querySelector('.qty-input').value) || 0;
-            const prix = parseFloat(row.querySelector('.prix-input').value) || 0;
-            const remise = parseFloat(row.querySelector('.remise-input').value) || 0;
-            const total = qty * prix * (1 - remise / 100);
-            row.querySelector('.total-input').value = total.toFixed(2);
-            updateTotals();
-        }
-        
-        function updateTotals() {
+        function recalculerTotaux() {
             let totalHT = 0;
-            document.querySelectorAll('.total-input').forEach(input => {
-                totalHT += parseFloat(input.value) || 0;
+            
+            document.querySelectorAll('.ligne-row').forEach(row => {
+                const qty = parseFloat(row.querySelector('.qty-input')?.value || 0);
+                const prix = parseFloat(row.querySelector('.prix-input')?.value || 0);
+                const remise = parseFloat(row.querySelector('.remise-input')?.value || 0);
+                
+                let montantLigne = qty * prix;
+                if (remise > 0) {
+                    montantLigne = montantLigne * (1 - remise / 100);
+                }
+                
+                const totalInput = row.querySelector('.total-input');
+                if (totalInput) {
+                    totalInput.value = montantLigne.toFixed(2);
+                }
+                
+                totalHT += montantLigne;
             });
-            const tva = totalHT * 0.20;
-            const ttc = totalHT + tva;
+            
+            const tva = totalHT * 0.20; // 20% TVA
+            const totalTTC = totalHT + tva;
             
             document.getElementById('total-ht').textContent = totalHT.toFixed(2);
             document.getElementById('total-tva').textContent = tva.toFixed(2);
-            document.getElementById('total-ttc').textContent = ttc.toFixed(2);
+            document.getElementById('total-ttc').textContent = totalTTC.toFixed(2);
         }
         
-        // Fonction pour recalculer tous les prix quand on change le site ou dépôt
-        function recalculerTousPrix() {
-            document.querySelectorAll('.article-select').forEach(select => {
-                if (select.value) {
-                    updatePrix(select);
-                }
-            });
-        }
-        
-        // Attacher les événements aux selects de site et dépôt
+        // Attacher les événements aux champs existants
         document.addEventListener('DOMContentLoaded', function() {
-            const siteSelect = document.getElementById('site-select');
-            const depotSelect = document.getElementById('depot-select');
-            const tbody = document.getElementById('lignes-body');
-            
-            // Délégation d'événements pour les selects d'articles
-            tbody.addEventListener('change', function(event) {
-                if (event.target.classList.contains('article-select')) {
-                    updatePrix(event.target);
-                } else if (event.target.classList.contains('qty-input') || 
-                           event.target.classList.contains('prix-input') || 
-                           event.target.classList.contains('remise-input')) {
-                    calculateTotal(event.target);
+            document.getElementById('lignes-body').addEventListener('input', function(e) {
+                if (e.target.matches('.qty-input, .prix-input, .remise-input')) {
+                    recalculerTotaux();
                 }
             });
             
-            if (siteSelect) {
-                siteSelect.addEventListener('change', recalculerTousPrix);
-            }
-            if (depotSelect) {
-                depotSelect.addEventListener('change', recalculerTousPrix);
-            }
-            
-            // Init totals on page load
-            updateTotals();
+            recalculerTotaux();
         });
     </script>
 </div>

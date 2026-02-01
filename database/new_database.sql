@@ -70,8 +70,25 @@ INSERT INTO statut_commande_achat VALUES ('BROUILLON', 'Brouillon'), ('VALIDEE',
 CREATE TABLE statut_reception ( code VARCHAR(50) PRIMARY KEY, label VARCHAR(100) );
 INSERT INTO statut_reception VALUES ('BROUILLON', 'Brouillon'), ('CONTROLE', 'Contrôle Qualité'), ('VALIDE', 'Validé / En Stock');
 
+-- Statuts devis client
+CREATE TABLE statut_devis_client ( code VARCHAR(50) PRIMARY KEY, label VARCHAR(100) );
+INSERT INTO statut_devis_client VALUES 
+('BROUILLON', 'Brouillon'), 
+('EN_ATTENTE_VALIDATION', 'En attente validation remise'), 
+('VALIDE', 'Validé'),
+('REFUSE', 'Refusé'),
+('TRANSFORME', 'Transformé en commande');
+
 CREATE TABLE statut_commande_vente ( code VARCHAR(50) PRIMARY KEY, label VARCHAR(100) );
-INSERT INTO statut_commande_vente VALUES ('BROUILLON', 'Brouillon'), ('CONFIRMEE', 'Confirmée'), ('PREPARATION', 'En préparation'), ('EXPEDIEE', 'Expédiée');
+INSERT INTO statut_commande_vente VALUES 
+('BROUILLON', 'Brouillon'), 
+('EN_ATTENTE_VALIDATION', 'En attente validation remise'),
+('CONFIRMEE', 'Confirmée'), 
+('EN_ATTENTE_STOCK', 'En attente de stock'),
+('PREPARATION', 'En préparation'), 
+('PRETE', 'Prête pour expédition'),
+('EXPEDIEE', 'Expédiée'),
+('CLOTUREE', 'Clôturée');
 
 CREATE TABLE statut_facture ( code VARCHAR(50) PRIMARY KEY, label VARCHAR(100) );
 INSERT INTO statut_facture VALUES ('BROUILLON', 'Brouillon'), ('A_PAYER', 'Validée / À Payer'), ('PAYEE_PARTIEL', 'Payée Partiellement'), ('PAYEE', 'Soldée'), ('ANNULEE', 'Annulée');
@@ -173,8 +190,25 @@ CREATE TABLE perimetre_acces (
     site_id UUID REFERENCES site(id),
     depot_id UUID REFERENCES depot(id),
     max_amount_approval DECIMAL(19, 2),
+    max_remise_pct DECIMAL(5, 2) DEFAULT 5.00, -- Plafond de remise autorisée (%)
     active BOOLEAN DEFAULT TRUE
 );
+
+-- Table pour les plafonds de remise par rôle
+CREATE TABLE plafond_remise_role (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    role_id UUID NOT NULL REFERENCES role(id),
+    max_remise_pct DECIMAL(5, 2) NOT NULL DEFAULT 10.00,
+    description TEXT
+);
+
+-- Insertion des plafonds par défaut
+INSERT INTO plafond_remise_role (role_id, max_remise_pct, description)
+SELECT id, 5.00, 'Commercial - Remise max 5%' FROM role WHERE code = 'COMMERCIAL'
+UNION ALL
+SELECT id, 15.00, 'Responsable Ventes - Remise max 15%' FROM role WHERE code = 'MANAGER'
+UNION ALL
+SELECT id, 30.00, 'Directeur Commercial - Remise max 30%' FROM role WHERE code = 'ADMIN';
 
 -- Délégation
 CREATE TABLE delegation_acces (
@@ -571,8 +605,26 @@ CREATE TABLE devis_client (
     numero VARCHAR(50) UNIQUE,
     client_id UUID NOT NULL REFERENCES client(id),
     site_id UUID NOT NULL REFERENCES site(id),
-    statut_code VARCHAR(50) DEFAULT 'BROUILLON',
-    total_ttc DECIMAL(19, 2)
+    commercial_id UUID REFERENCES utilisateur(id),
+    validateur_id UUID REFERENCES utilisateur(id), -- Pour validation remise
+    statut_code VARCHAR(50) DEFAULT 'BROUILLON' REFERENCES statut_devis_client(code),
+    total_ht DECIMAL(19, 2),
+    total_ttc DECIMAL(19, 2),
+    remise_globale_pct DECIMAL(5, 2) DEFAULT 0,
+    date_validite DATE,
+    date_validation TIMESTAMPTZ,
+    motif_refus TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    notes TEXT
+);
+
+CREATE TABLE ligne_devis_client (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    devis_id UUID NOT NULL REFERENCES devis_client(id) ON DELETE CASCADE,
+    article_id UUID NOT NULL REFERENCES article(id),
+    qty DECIMAL(19, 4) NOT NULL,
+    price_unit DECIMAL(19, 2) NOT NULL,
+    remise_pct DECIMAL(5, 2) DEFAULT 0
 );
 
 CREATE TABLE commande_client (
@@ -581,17 +633,26 @@ CREATE TABLE commande_client (
     devis_id UUID REFERENCES devis_client(id),
     client_id UUID NOT NULL REFERENCES client(id),
     site_id UUID NOT NULL REFERENCES site(id),
+    commercial_id UUID REFERENCES utilisateur(id),
+    validateur_id UUID REFERENCES utilisateur(id), -- Pour validation remise
     statut_code VARCHAR(50) NOT NULL REFERENCES statut_commande_vente(code),
-    created_at TIMESTAMPTZ DEFAULT NOW()
+    total_ht DECIMAL(19, 2),
+    total_ttc DECIMAL(19, 2),
+    remise_globale_pct DECIMAL(5, 2) DEFAULT 0,
+    date_validation TIMESTAMPTZ,
+    motif_refus TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    notes TEXT
 );
 
 CREATE TABLE ligne_commande_client (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    commande_id UUID NOT NULL REFERENCES commande_client(id),
+    commande_id UUID NOT NULL REFERENCES commande_client(id) ON DELETE CASCADE,
     article_id UUID NOT NULL REFERENCES article(id),
     qty_ordered DECIMAL(19, 4) NOT NULL,
     qty_delivered DECIMAL(19, 4) DEFAULT 0,
-    price_unit DECIMAL(19, 2) NOT NULL
+    price_unit DECIMAL(19, 2) NOT NULL,
+    remise_pct DECIMAL(5, 2) DEFAULT 0
 );
 
 CREATE TABLE reservation_stock (
@@ -607,15 +668,54 @@ CREATE TABLE bon_livraison (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     numero VARCHAR(50) UNIQUE,
     commande_id UUID NOT NULL REFERENCES commande_client(id),
-    date_expedition TIMESTAMPTZ
+    statut_code VARCHAR(50) DEFAULT 'BROUILLON',
+    date_expedition TIMESTAMPTZ,
+    preparateur_id UUID REFERENCES utilisateur(id),
+    validateur_id UUID REFERENCES utilisateur(id),
+    date_preparation TIMESTAMPTZ,
+    date_validation TIMESTAMPTZ
 );
 
 CREATE TABLE ligne_bon_livraison (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    livraison_id UUID NOT NULL REFERENCES bon_livraison(id),
+    livraison_id UUID NOT NULL REFERENCES bon_livraison(id) ON DELETE CASCADE,
     article_id UUID NOT NULL REFERENCES article(id),
     lot_id UUID REFERENCES lot(id),
-    qty_livree DECIMAL(19, 4) NOT NULL
+    depot_id UUID REFERENCES depot(id),
+    emplacement_id UUID REFERENCES emplacement(id),
+    qty_commandee DECIMAL(19, 4),
+    qty_livree DECIMAL(19, 4) NOT NULL,
+    qty_preparee DECIMAL(19, 4) DEFAULT 0
+);
+
+-- Table pour le picking/préparation de commande
+CREATE TABLE ordre_preparation (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    numero VARCHAR(50) UNIQUE NOT NULL,
+    commande_id UUID NOT NULL REFERENCES commande_client(id),
+    bon_livraison_id UUID REFERENCES bon_livraison(id),
+    statut_code VARCHAR(50) DEFAULT 'EN_ATTENTE', -- EN_ATTENTE, EN_COURS, TERMINE, ANNULE
+    preparateur_id UUID REFERENCES utilisateur(id),
+    date_creation TIMESTAMPTZ DEFAULT NOW(),
+    date_debut_preparation TIMESTAMPTZ,
+    date_fin_preparation TIMESTAMPTZ,
+    priorite INT DEFAULT 0
+);
+
+CREATE TABLE ligne_ordre_preparation (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    ordre_id UUID NOT NULL REFERENCES ordre_preparation(id) ON DELETE CASCADE,
+    ligne_commande_id UUID NOT NULL REFERENCES ligne_commande_client(id),
+    article_id UUID NOT NULL REFERENCES article(id),
+    lot_id UUID REFERENCES lot(id), -- Lot alloué par FIFO
+    emplacement_id UUID REFERENCES emplacement(id),
+    qty_a_preparer DECIMAL(19, 4) NOT NULL,
+    qty_preparee DECIMAL(19, 4) DEFAULT 0,
+    date_scan TIMESTAMPTZ,
+    scanne BOOLEAN DEFAULT FALSE,
+    forcage_fifo BOOLEAN DEFAULT FALSE, -- True si l'utilisateur a forcé un lot différent
+    forcage_validateur_id UUID REFERENCES utilisateur(id),
+    forcage_motif TEXT
 );
 
 CREATE TABLE facture_client (
@@ -623,15 +723,26 @@ CREATE TABLE facture_client (
     numero VARCHAR(50) UNIQUE,
     client_id UUID NOT NULL REFERENCES client(id),
     commande_id UUID REFERENCES commande_client(id),
+    bon_livraison_id UUID REFERENCES bon_livraison(id),
+    montant_ht DECIMAL(19, 2) NOT NULL,
     montant_ttc DECIMAL(19, 2) NOT NULL,
-    statut_code VARCHAR(50) NOT NULL REFERENCES statut_facture(code)
+    statut_code VARCHAR(50) NOT NULL REFERENCES statut_facture(code),
+    date_facture DATE NOT NULL,
+    date_echeance DATE,
+    montant_encaisse DECIMAL(19, 2) DEFAULT 0,
+    createur_id UUID REFERENCES utilisateur(id),
+    date_creation TIMESTAMPTZ DEFAULT NOW()
 );
 
 CREATE TABLE encaissement_client (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     facture_id UUID NOT NULL REFERENCES facture_client(id),
     montant DECIMAL(19, 2) NOT NULL,
-    mode_paiement_code VARCHAR(50) NOT NULL REFERENCES mode_paiement(code)
+    mode_paiement_code VARCHAR(50) NOT NULL REFERENCES mode_paiement(code),
+    date_encaissement DATE NOT NULL,
+    reference VARCHAR(100),
+    encaisseur_id UUID REFERENCES utilisateur(id),
+    date_creation TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- ==============================================================================
@@ -915,3 +1026,46 @@ $$ LANGUAGE plpgsql;
 CREATE TRIGGER tr_ajustement_separation
 BEFORE INSERT OR UPDATE ON ajustement_stock
 FOR EACH ROW EXECUTE FUNCTION check_ajustement_separation_taches();
+
+-- ==============================================================================
+-- RÈGLES DE SÉPARATION DES TÂCHES - MODULE VENTE
+-- ==============================================================================
+
+-- Règle : L'encaisseur ne peut pas être le commercial qui a créé la commande
+CREATE OR REPLACE FUNCTION check_encaissement_separation_taches()
+RETURNS TRIGGER AS $$
+DECLARE
+    v_commercial_id UUID;
+BEGIN
+    -- Récupérer le commercial de la commande associée à la facture
+    SELECT c.commercial_id INTO v_commercial_id
+    FROM facture_client f
+    LEFT JOIN commande_client c ON c.id = f.commande_id
+    WHERE f.id = NEW.facture_id;
+    
+    IF v_commercial_id IS NOT NULL AND v_commercial_id = NEW.encaisseur_id THEN
+        RAISE EXCEPTION 'Le commercial qui a créé la commande ne peut pas encaisser le paiement';
+    END IF;
+    
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER tr_encaissement_separation
+BEFORE INSERT OR UPDATE ON encaissement_client
+FOR EACH ROW EXECUTE FUNCTION check_encaissement_separation_taches();
+
+-- Règle : Le validateur ne peut pas être le créateur du retour
+CREATE OR REPLACE FUNCTION check_retour_separation_taches()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF NEW.approbateur_id = NEW.demandeur_id THEN
+        RAISE EXCEPTION 'Le demandeur ne peut pas approuver son propre retour/avoir';
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER tr_retour_separation
+BEFORE INSERT OR UPDATE ON retour_client
+FOR EACH ROW EXECUTE FUNCTION check_retour_separation_taches();

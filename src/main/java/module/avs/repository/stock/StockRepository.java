@@ -52,4 +52,17 @@ public interface StockRepository extends JpaRepository<Stock, UUID> {
     
     @Query("SELECT s FROM Stock s LEFT JOIN FETCH s.depot LEFT JOIN FETCH s.article WHERE s.qtyReel > 0")
     List<Stock> findAllStocksWithDepotAndArticle();
+    
+    // Méthodes pour calcul de prix selon méthode de valorisation
+    List<Stock> findByDepotIdAndArticleIdAndQtyReelGreaterThanOrderByLotDateFabricationAsc(UUID depotId, UUID articleId, BigDecimal qty);
+    
+    List<Stock> findByArticleIdAndQtyReelGreaterThanOrderByLotDateFabricationAsc(UUID articleId, BigDecimal qty);
+    
+    List<Stock> findByDepotIdAndArticleIdAndQtyReelGreaterThanOrderByLotDateFabricationDesc(UUID depotId, UUID articleId, BigDecimal qty);
+    
+    List<Stock> findByArticleIdAndQtyReelGreaterThanOrderByLotDateFabricationDesc(UUID articleId, BigDecimal qty);
+    
+    List<Stock> findByDepotIdAndArticleIdAndQtyReelGreaterThan(UUID depotId, UUID articleId, BigDecimal qty);
+    
+    List<Stock> findByArticleIdAndQtyReelGreaterThan(UUID articleId, BigDecimal qty);
 }

@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{layout/main}">
+<head>
+    <title>Détail bon de livraison</title>
+</head>
+<body>
+<div layout:fragment="content">
+    <div class="page-header d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1>Bon de livraison <span th:text="${livraison?.numero}">N°</span></h1>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a th:href="@{/dashboard}">Accueil</a></li>
+                    <li class="breadcrumb-item"><a th:href="@{/ventes/livraisons}">Livraisons</a></li>
+                    <li class="breadcrumb-item active" th:text="${livraison?.numero}">Détail</li>
+                </ol>
+            </nav>
+        </div>
+        <div>
+            <span class="badge fs-6" 
+                  th:classappend="${livraison?.statutCode == 'BROUILLON'} ? 'bg-secondary' : 
+                                 (${livraison?.statutCode == 'EN_PREPARATION'} ? 'bg-warning' : 
+                                 (${livraison?.statutCode == 'PRETE'} ? 'bg-info' : 
+                                 (${livraison?.statutCode == 'EXPEDIEE'} ? 'bg-primary' : 
+                                 (${livraison?.statutCode == 'LIVREE'} ? 'bg-success' : 'bg-secondary'))))"
+                  th:text="${livraison?.statutCode}">STATUT</span>
+        </div>
+    </div>
+    
+    <div class="row g-4" th:if="${livraison != null}">
+        <!-- Informations principales -->
+        <div class="col-lg-8">
+            <div class="card mb-4">
+                <div class="card-header">Informations générales</div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p><strong>Commande:</strong> 
+                                <a th:href="@{/ventes/commandes/{id}(id=${livraison.commande?.id})}" 
+                                   th:text="${livraison.commande?.numero}">-</a>
+                            </p>
+                            <p><strong>Client:</strong> <span th:text="${livraison.commande?.client?.name}">-</span></p>
+                            <p><strong>Site:</strong> <span th:text="${livraison.commande?.site?.name}">-</span></p>
+                        </div>
+                        <div class="col-md-6">
+                            <p th:if="${livraison.datePreparation != null}">
+                                <strong>Date préparation:</strong> 
+                                <span th:text="${#temporals.format(livraison.datePreparation, 'dd/MM/yyyy HH:mm')}">-</span>
+                            </p>
+                            <p th:if="${livraison.preparateur != null}">
+                                <strong>Préparateur:</strong> 
+                                <span th:text="${livraison.preparateur.username}">-</span>
+                            </p>
+                            <p th:if="${livraison.dateValidation != null}">
+                                <strong>Date validation:</strong> 
+                                <span th:text="${#temporals.format(livraison.dateValidation, 'dd/MM/yyyy HH:mm')}">-</span>
+                            </p>
+                            <p th:if="${livraison.validateur != null}">
+                                <strong>Validateur:</strong> 
+                                <span th:text="${livraison.validateur.username}">-</span>
+                            </p>
+                            <p th:if="${livraison.dateExpedition != null}">
+                                <strong>Date expédition:</strong> 
+                                <span th:text="${#temporals.format(livraison.dateExpedition, 'dd/MM/yyyy HH:mm')}">-</span>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Lignes de livraison -->
+            <div class="card">
+                <div class="card-header">Articles à livrer</div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Article</th>
+                                    <th>SKU</th>
+                                    <th class="text-end">Qté commandée</th>
+                                    <th class="text-end">Qté livrée</th>
+                                    <th>Lot</th>
+                                    <th>Dépôt</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr th:each="ligne : ${livraison.lignes}">
+                                    <td th:text="${ligne.article?.label}">-</td>
+                                    <td><code th:text="${ligne.article?.sku}">-</code></td>
+                                    <td class="text-end" th:text="${ligne.qtyCommandee != null ? #numbers.formatDecimal(ligne.qtyCommandee, 0, 'COMMA', 2, 'POINT') : '-'}">-</td>
+                                    <td class="text-end" th:text="${ligne.qtyLivree != null ? #numbers.formatDecimal(ligne.qtyLivree, 0, 'COMMA', 2, 'POINT') : '-'}">-</td>
+                                    <td><small th:text="${ligne.lot?.numeroLot ?: '-'}">-</small></td>
+                                    <td><small th:text="${ligne.depot?.name ?: '-'}">-</small></td>
+                                </tr>
+                                <tr th:if="${livraison.lignes == null || livraison.lignes.isEmpty()}">
+                                    <td colspan="6" class="text-center text-muted">Aucune ligne</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Actions et informations complémentaires -->
+        <div class="col-lg-4">
+            <!-- Actions -->
+            <div class="card mb-4">
+                <div class="card-header">Actions</div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <form th:if="${livraison.statutCode == 'BROUILLON' || livraison.statutCode == 'EN_PREPARATION'}" 
+                              th:action="@{/ventes/livraisons/{id}/validate(id=${livraison.id})}" 
+                              method="post">
+                            <button type="submit" class="btn btn-success w-100">
+                                <i class="bi bi-check-lg me-2"></i>Valider la livraison
+                            </button>
+                        </form>
+                        <button class="btn btn-outline-secondary">
+                            <i class="bi bi-printer me-2"></i>Imprimer BL
+                        </button>
+                        <button class="btn btn-outline-secondary">
+                            <i class="bi bi-file-pdf me-2"></i>Télécharger PDF
+                        </button>
+                        <a th:href="@{/ventes/commandes/{id}(id=${livraison.commande?.id})}" 
+                           class="btn btn-outline-primary">
+                            <i class="bi bi-arrow-left me-2"></i>Voir la commande
+                        </a>
+                        <a th:href="@{/ventes/livraisons}" class="btn btn-outline-secondary">
+                            <i class="bi bi-list me-2"></i>Liste des livraisons
+                        </a>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Informations de suivi -->
+            <div class="card">
+                <div class="card-header">Suivi de livraison</div>
+                <div class="card-body">
+                    <div class="timeline">
+                        <div class="timeline-item">
+                            <div class="timeline-marker bg-success"></div>
+                            <div class="timeline-content">
+                                <p class="mb-0"><strong>Création</strong></p>
+                                <small class="text-muted">Bon de livraison créé</small>
+                            </div>
+                        </div>
+                        <div th:if="${livraison.datePreparation != null}" class="timeline-item">
+                            <div class="timeline-marker bg-warning"></div>
+                            <div class="timeline-content">
+                                <p class="mb-0"><strong>Préparation</strong></p>
+                                <small class="text-muted" th:text="${#temporals.format(livraison.datePreparation, 'dd/MM/yyyy HH:mm')}">-</small>
+                            </div>
+                        </div>
+                        <div th:if="${livraison.dateValidation != null}" class="timeline-item">
+                            <div class="timeline-marker bg-info"></div>
+                            <div class="timeline-content">
+                                <p class="mb-0"><strong>Validation</strong></p>
+                                <small class="text-muted" th:text="${#temporals.format(livraison.dateValidation, 'dd/MM/yyyy HH:mm')}">-</small>
+                            </div>
+                        </div>
+                        <div th:if="${livraison.dateExpedition != null}" class="timeline-item">
+                            <div class="timeline-marker bg-primary"></div>
+                            <div class="timeline-content">
+                                <p class="mb-0"><strong>Expédition</strong></p>
+                                <small class="text-muted" th:text="${#temporals.format(livraison.dateExpedition, 'dd/MM/yyyy HH:mm')}">-</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Message si livraison non trouvée -->
+    <div th:if="${livraison == null}" class="alert alert-warning">
+        <i class="bi bi-exclamation-triangle me-2"></i>
+        Bon de livraison non trouvé.
+    </div>
+</div>
+
+<style layout:fragment="styles">
+    .timeline {
+        position: relative;
+        padding-left: 30px;
+    }
+    
+    .timeline-item {
+        position: relative;
+        padding-bottom: 20px;
+    }
+    
+    .timeline-item:not(:last-child):before {
+        content: '';
+        position: absolute;
+        left: -21px;
+        top: 20px;
+        bottom: -10px;
+        width: 2px;
+        background: #dee2e6;
+    }
+    
+    .timeline-marker {
+        position: absolute;
+        left: -26px;
+        top: 5px;
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        border: 2px solid white;
+        box-shadow: 0 0 0 2px currentColor;
+    }
+    
+    .timeline-content {
+        padding-left: 5px;
+    }
+</style>
+</body>
+</html>

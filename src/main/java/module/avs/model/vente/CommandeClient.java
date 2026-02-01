@@ -41,6 +41,10 @@ public class CommandeClient {
     @JoinColumn(name = "commercial_id")
     private Utilisateur commercial;
     
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "validateur_id")
+    private Utilisateur validateur;
+    
     @Column(name = "statut_code", length = 50, nullable = false)
     private String statutCode;
     
@@ -52,9 +56,22 @@ public class CommandeClient {
     @Builder.Default
     private BigDecimal totalTTC = BigDecimal.ZERO;
     
+    @Column(name = "remise_globale_pct", precision = 5, scale = 2)
+    @Builder.Default
+    private BigDecimal remiseGlobalePct = BigDecimal.ZERO;
+    
+    @Column(name = "date_validation")
+    private OffsetDateTime dateValidation;
+    
+    @Column(name = "motif_refus")
+    private String motifRefus;
+    
     @Column(name = "created_at")
     @Builder.Default
     private OffsetDateTime createdAt = OffsetDateTime.now();
+    
+    @Column(name = "notes")
+    private String notes;
     
     @OneToMany(mappedBy = "commande", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
@@ -67,8 +84,15 @@ public class CommandeClient {
     
     public void recalculerTotaux() {
         this.totalHT = lignes.stream()
-            .map(l -> l.getPriceUnit().multiply(l.getQtyOrdered()))
-            .reduce(BigDecimal.ZERO, (a, b) -> a.add(b));
-        this.totalTTC = this.totalHT;
+            .map(LigneCommandeClient::getMontantHT)
+            .reduce(BigDecimal.ZERO, BigDecimal::add);
+        
+        // Appliquer la remise globale si présente
+        if (remiseGlobalePct != null && remiseGlobalePct.compareTo(BigDecimal.ZERO) > 0) {
+            BigDecimal remiseGlobale = this.totalHT.multiply(remiseGlobalePct).divide(new BigDecimal("100"), 2, java.math.RoundingMode.HALF_UP);
+            this.totalHT = this.totalHT.subtract(remiseGlobale);
+        }
+        
+        this.totalTTC = this.totalHT; // TODO: ajouter calcul TVA si nécessaire
     }
 }

@@ -16,6 +16,7 @@ import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import jakarta.validation.Valid;
+import java.math.BigDecimal;
 import java.util.UUID;
 
 @Controller
@@ -26,6 +27,7 @@ public class VenteController {
     private final VenteService venteService;
     private final ReferentielService referentielService;
     private final UtilisateurService utilisateurService;
+    private final module.avs.service.PrixArticleService prixArticleService;
     
     private Utilisateur getCurrentUser(Authentication auth) {
         return utilisateurService.findByUsername(auth.getName())
@@ -50,7 +52,33 @@ public class VenteController {
         model.addAttribute("clients", referentielService.findAllClients());
         model.addAttribute("sites", referentielService.findAllSites());
         model.addAttribute("articles", referentielService.findAllArticles());
+        model.addAttribute("depots", referentielService.findAllDepots());
         return "ventes/devis-form";
+    }
+    
+    @GetMapping("/api/articles/{articleId}/prix")
+    @ResponseBody
+    public java.util.Map<String, Object> getPrixArticle(
+            @PathVariable UUID articleId,
+            @RequestParam(required = false) UUID depotId,
+            @RequestParam(required = false) UUID siteId,
+            @RequestParam(defaultValue = "20") BigDecimal marge) {
+        try {
+            BigDecimal prix = prixArticleService.calculerPrixVente(articleId, depotId, siteId, marge);
+            String scope = depotId != null ? "dépôt spécifique" : 
+                          (siteId != null ? "site spécifique" : "tous les stocks");
+            return java.util.Map.of(
+                "success", true,
+                "prix", prix,
+                "message", "Prix calculé selon la méthode de valorisation (" + scope + ")"
+            );
+        } catch (Exception e) {
+            return java.util.Map.of(
+                "success", false,
+                "prix", 0,
+                "message", e.getMessage()
+            );
+        }
     }
     
     @GetMapping("/devis/{id}")
@@ -165,6 +193,30 @@ public class VenteController {
             Utilisateur user = getCurrentUser(auth);
             venteService.preparerCommande(id, user);
             redirectAttributes.addFlashAttribute("success", "Commande en préparation");
+        } catch (Exception e) {
+            redirectAttributes.addFlashAttribute("error", e.getMessage());
+        }
+        return "redirect:/ventes/commandes/" + id;
+    }
+    
+    @GetMapping("/commandes/{id}/picking")
+    public String pickingCommande(@PathVariable UUID id, Model model) {
+        venteService.findCommandeClientById(id).ifPresent(c -> {
+            model.addAttribute("commande", c);
+            // Charger les réservations selon la méthode de valorisation (FIFO, LIFO, CUMP)
+            model.addAttribute("reservations", venteService.getReservationsParMethode(id));
+        });
+        return "ventes/commande-picking";
+    }
+    
+    @PostMapping("/commandes/{id}/validate-picking")
+    public String validatePicking(@PathVariable UUID id,
+                                   Authentication auth,
+                                   RedirectAttributes redirectAttributes) {
+        try {
+            Utilisateur user = getCurrentUser(auth);
+            venteService.validerPicking(id, user);
+            redirectAttributes.addFlashAttribute("success", "Préparation validée - Commande prête pour expédition");
         } catch (Exception e) {
             redirectAttributes.addFlashAttribute("error", e.getMessage());
         }

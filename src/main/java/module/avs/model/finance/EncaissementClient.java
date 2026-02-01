@@ -3,8 +3,10 @@ package module.avs.model.finance;
 import jakarta.persistence.*;
 import lombok.*;
 import module.avs.model.referentiel.ModePaiement;
+import module.avs.model.security.Utilisateur;
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.OffsetDateTime;
 import java.util.UUID;
 
 @Entity
@@ -34,4 +36,12 @@ public class EncaissementClient {
     
     @Column(length = 100)
     private String reference;
+    
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "encaisseur_id")
+    private Utilisateur encaisseur;
+    
+    @Column(name = "date_creation")
+    @Builder.Default
+    private OffsetDateTime dateCreation = OffsetDateTime.now();
 }

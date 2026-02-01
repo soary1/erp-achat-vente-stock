@@ -2,6 +2,7 @@ package module.avs.model.vente;
 
 import jakarta.persistence.*;
 import lombok.*;
+import module.avs.model.security.Utilisateur;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -25,13 +26,26 @@ public class BonLivraison {
     @JoinColumn(name = "commande_id", nullable = false)
     private CommandeClient commande;
     
-    @Column(name = "date_expedition")
-    @Builder.Default
-    private OffsetDateTime dateExpedition = OffsetDateTime.now();
-    
     @Column(name = "statut_code", length = 50)
     @Builder.Default
     private String statutCode = "BROUILLON";
+    
+    @Column(name = "date_expedition")
+    private OffsetDateTime dateExpedition;
+    
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "preparateur_id")
+    private Utilisateur preparateur;
+    
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "validateur_id")
+    private Utilisateur validateur;
+    
+    @Column(name = "date_preparation")
+    private OffsetDateTime datePreparation;
+    
+    @Column(name = "date_validation")
+    private OffsetDateTime dateValidation;
     
     @OneToMany(mappedBy = "bonLivraison", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default

@@ -161,6 +161,11 @@ public class FinanceService {
                String.format("%05d", factureClientRepository.count() + 1);
     }
     
+    /**
+     * Crée une facture depuis une commande client
+     * @deprecated Utiliser createFactureFromBonLivraison pour respecter le workflow
+     */
+    @Deprecated
     public FactureClient createFactureClient(CommandeClient commande, Utilisateur createur) {
         FactureClient facture = FactureClient.builder()
             .numero(generateFactureClientNumero())
@@ -171,6 +176,7 @@ public class FinanceService {
             .statutCode("A_PAYER")
             .dateFacture(LocalDate.now())
             .dateEcheance(LocalDate.now().plusDays(30))
+            .createur(createur)
             .build();
         
         FactureClient saved = factureClientRepository.save(facture);
@@ -179,11 +185,30 @@ public class FinanceService {
         return saved;
     }
     
+    /**
+     * Crée une facture depuis un bon de livraison validé
+     * C'est la méthode recommandée selon le workflow
+     */
+    public FactureClient createFactureFromBonLivraison(UUID bonLivraisonId, Utilisateur createur) {
+        // Récupérer le BL via le repository qui devra être injecté
+        // Pour l'instant, on simule
+        throw new UnsupportedOperationException("Nécessite l'injection de BonLivraisonRepository - à implémenter");
+    }
+    
     // ============ ENCAISSEMENTS ============
     
-    public EncaissementClient enregistrerEncaissement(EncaissementClient encaissement, Utilisateur acteur) {
+    public EncaissementClient enregistrerEncaissement(EncaissementClient encaissement, Utilisateur encaisseur) {
         FactureClient facture = encaissement.getFacture();
         
+        // RÈGLE CRITIQUE: Vérifier la séparation des tâches
+        // L'encaisseur ne doit PAS être le commercial qui a créé la commande
+        if (facture.getCommande() != null && facture.getCommande().getCommercial() != null) {
+            if (facture.getCommande().getCommercial().getId().equals(encaisseur.getId())) {
+                throw new RuntimeException("SÉPARATION DES TÂCHES: Le commercial qui a créé la commande ne peut pas encaisser le paiement");
+            }
+        }
+        
+        encaissement.setEncaisseur(encaisseur);
         EncaissementClient saved = encaissementClientRepository.save(encaissement);
         
         // Mettre à jour le montant encaissé
@@ -197,7 +222,7 @@ public class FinanceService {
         }
         factureClientRepository.save(facture);
         
-        auditService.logAction("ENCAISSEMENT_CLIENT", saved.getId(), "CREATION", acteur, null);
+        auditService.logAction("ENCAISSEMENT_CLIENT", saved.getId(), "CREATION", encaisseur, null);
         return saved;
     }
     

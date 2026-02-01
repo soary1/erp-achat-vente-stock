@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{layout/main}">
+<head>
+    <title>Détail devis</title>
+</head>
+<body>
+<div layout:fragment="content">
+    <div class="page-header d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1>Devis <span th:text="${devis?.numero}">N°</span></h1>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a th:href="@{/dashboard}">Accueil</a></li>
+                    <li class="breadcrumb-item"><a th:href="@{/ventes/devis}">Devis</a></li>
+                    <li class="breadcrumb-item active" th:text="${devis?.numero}">Détail</li>
+                </ol>
+            </nav>
+        </div>
+        <div>
+            <span class="badge fs-6" 
+                  th:classappend="${devis?.statutCode == 'BROUILLON'} ? 'bg-secondary' : 
+                                 (${devis?.statutCode == 'VALIDE'} ? 'bg-success' : 
+                                 (${devis?.statutCode == 'ENVOYE'} ? 'bg-primary' : 
+                                 (${devis?.statutCode == 'ACCEPTE'} ? 'bg-success' : 
+                                 (${devis?.statutCode == 'REFUSE'} ? 'bg-danger' : 'bg-secondary'))))"
+                  th:text="${devis?.statutCode}">STATUT</span>
+        </div>
+    </div>
+    
+    <div class="row g-4" th:if="${devis != null}">
+        <!-- Informations principales -->
+        <div class="col-lg-8">
+            <div class="card mb-4">
+                <div class="card-header">Informations générales</div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p><strong>Client:</strong> <span th:text="${devis.client?.name}">-</span></p>
+                            <p><strong>Site:</strong> <span th:text="${devis.site?.name}">-</span></p>
+                            <p><strong>Commercial:</strong> <span th:text="${devis.commercial?.username ?: '-'}">-</span></p>
+                        </div>
+                        <div class="col-md-6">
+                            <p><strong>Date création:</strong> <span th:text="${devis.createdAt != null ? #temporals.format(devis.createdAt, 'dd/MM/yyyy HH:mm') : '-'}">-</span></p>
+                            <p><strong>Date validité:</strong> <span th:text="${devis.dateValidite != null ? #temporals.format(devis.dateValidite, 'dd/MM/yyyy') : '-'}">-</span></p>
+                            <p th:if="${devis.dateValidation != null}"><strong>Date validation:</strong> <span th:text="${#temporals.format(devis.dateValidation, 'dd/MM/yyyy HH:mm')}">-</span></p>
+                            <p th:if="${devis.validateur != null}"><strong>Validateur:</strong> <span th:text="${devis.validateur.username}">-</span></p>
+                        </div>
+                    </div>
+                    <div th:if="${devis.notes != null && !#strings.isEmpty(devis.notes)}" class="mt-3">
+                        <p><strong>Notes:</strong></p>
+                        <p class="text-muted" th:text="${devis.notes}"></p>
+                    </div>
+                    <div th:if="${devis.motifRefus != null && !#strings.isEmpty(devis.motifRefus)}" class="mt-3">
+                        <div class="alert alert-danger">
+                            <strong>Motif de refus:</strong>
+                            <p class="mb-0" th:text="${devis.motifRefus}"></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Lignes du devis -->
+            <div class="card">
+                <div class="card-header">Lignes du devis</div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Article</th>
+                                    <th>SKU</th>
+                                    <th class="text-end">Quantité</th>
+                                    <th class="text-end">Prix unitaire</th>
+                                    <th class="text-end">Remise %</th>
+                                    <th class="text-end">Total HT</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr th:each="ligne : ${devis.lignes}">
+                                    <td th:text="${ligne.article?.label}">-</td>
+                                    <td><code th:text="${ligne.article?.sku}">-</code></td>
+                                    <td class="text-end" th:text="${ligne.qty != null ? #numbers.formatDecimal(ligne.qty, 0, 'COMMA', 2, 'POINT') : '-'}">-</td>
+                                    <td class="text-end" th:text="${ligne.priceUnit != null ? #numbers.formatDecimal(ligne.priceUnit, 0, 'COMMA', 2, 'POINT') : '-'}">-</td>
+                                    <td class="text-end" th:text="${ligne.remisePct != null ? #numbers.formatDecimal(ligne.remisePct, 0, 'COMMA', 2, 'POINT') + ' %' : '-'}">-</td>
+                                    <td class="text-end" th:text="${ligne.montantHT != null ? #numbers.formatDecimal(ligne.montantHT, 0, 'COMMA', 2, 'POINT') : '-'}">-</td>
+                                </tr>
+                                <tr th:if="${devis.lignes == null || devis.lignes.isEmpty()}">
+                                    <td colspan="6" class="text-center text-muted">Aucune ligne</td>
+                                </tr>
+                            </tbody>
+                            <tfoot>
+                                <tr th:if="${devis.remiseGlobalePct != null && devis.remiseGlobalePct > 0}" class="table-light">
+                                    <th colspan="5">Remise globale (<span th:text="${#numbers.formatDecimal(devis.remiseGlobalePct, 0, 'COMMA', 2, 'POINT')}">0</span> %)</th>
+                                    <th class="text-end">-</th>
+                                </tr>
+                                <tr class="table-light">
+                                    <th colspan="5">Total HT</th>
+                                    <th class="text-end" th:text="${devis.totalHT != null ? #numbers.formatDecimal(devis.totalHT, 0, 'COMMA', 2, 'POINT') : '0'}">0</th>
+                                </tr>
+                                <tr class="table-light fw-bold">
+                                    <th colspan="5">Total TTC</th>
+                                    <th class="text-end" th:text="${devis.totalTTC != null ? #numbers.formatDecimal(devis.totalTTC, 0, 'COMMA', 2, 'POINT') : '0'}">0</th>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Actions et récapitulatif -->
+        <div class="col-lg-4">
+            <!-- Actions -->
+            <div class="card mb-4">
+                <div class="card-header">Actions</div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <a th:if="${devis.statutCode == 'BROUILLON'}" 
+                           th:href="@{/ventes/devis/edit/{id}(id=${devis.id})}" 
+                           class="btn btn-primary">
+                            <i class="bi bi-pencil me-2"></i>Modifier
+                        </a>
+                        <form th:if="${devis.statutCode == 'BROUILLON'}" 
+                              th:action="@{/ventes/devis/{id}/validate(id=${devis.id})}" 
+                              method="post">
+                            <button type="submit" class="btn btn-success w-100">
+                                <i class="bi bi-check-lg me-2"></i>Valider le devis
+                            </button>
+                        </form>
+                        <form th:if="${devis.statutCode == 'VALIDE'}" 
+                              th:action="@{/ventes/devis/{id}/transform(id=${devis.id})}" 
+                              method="post">
+                            <button type="submit" class="btn btn-success w-100">
+                                <i class="bi bi-cart-check me-2"></i>Convertir en commande
+                            </button>
+                        </form>
+                        <button class="btn btn-outline-secondary">
+                            <i class="bi bi-printer me-2"></i>Imprimer
+                        </button>
+                        <button class="btn btn-outline-secondary">
+                            <i class="bi bi-file-pdf me-2"></i>Télécharger PDF
+                        </button>
+                        <a th:href="@{/ventes/devis}" class="btn btn-outline-secondary">
+                            <i class="bi bi-arrow-left me-2"></i>Retour à la liste
+                        </a>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Récapitulatif -->
+            <div class="card">
+                <div class="card-header">Récapitulatif</div>
+                <div class="card-body">
+                    <div class="d-flex justify-content-between mb-2">
+                        <span>Total HT</span>
+                        <strong th:text="${devis.totalHT != null ? #numbers.formatDecimal(devis.totalHT, 0, 'COMMA', 0, 'POINT') : '0'}">0</strong>
+                    </div>
+                    <div class="d-flex justify-content-between mb-2">
+                        <span>TVA</span>
+                        <strong th:text="${(devis.totalTTC != null && devis.totalHT != null) ? #numbers.formatDecimal(devis.totalTTC.subtract(devis.totalHT), 0, 'COMMA', 0, 'POINT') : '0'}">0</strong>
+                    </div>
+                    <hr>
+                    <div class="d-flex justify-content-between fs-5">
+                        <span>Total TTC</span>
+                        <strong class="text-primary" th:text="${devis.totalTTC != null ? #numbers.formatDecimal(devis.totalTTC, 0, 'COMMA', 0, 'POINT') : '0'}">0</strong>
+                    </div>
+                    <div th:if="${devis.remiseGlobalePct != null && devis.remiseGlobalePct > 0}" class="mt-3">
+                        <small class="text-muted">
+                            Remise globale: <span th:text="${#numbers.formatDecimal(devis.remiseGlobalePct, 0, 'COMMA', 2, 'POINT')}">0</span>%
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Message si devis non trouvé -->
+    <div th:if="${devis == null}" class="alert alert-warning">
+        <i class="bi bi-exclamation-triangle me-2"></i>
+        Devis non trouvé.
+    </div>
+</div>
+</body>
+</html>

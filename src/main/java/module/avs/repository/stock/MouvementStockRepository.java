@@ -75,4 +75,9 @@ public interface MouvementStockRepository extends JpaRepository<MouvementStock, 
     default void deleteAll(Iterable<? extends MouvementStock> entities) {
         throw new UnsupportedOperationException("Les mouvements de stock ne peuvent pas être supprimés");
     }
+    
+    // Méthodes pour récupération du coût unitaire
+    List<MouvementStock> findByArticleIdAndDepotDestIdAndUnitCostIsNotNullOrderByCreatedAtDesc(UUID articleId, UUID depotId);
+    
+    List<MouvementStock> findByArticleIdAndLotIdAndUnitCostIsNotNullOrderByCreatedAtDesc(UUID articleId, UUID lotId);
 }
