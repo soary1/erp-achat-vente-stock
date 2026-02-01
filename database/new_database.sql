@@ -723,6 +723,7 @@ INSERT INTO statut_transfert VALUES
 ('EXPEDIE', 'Expédié'),
 ('EN_TRANSIT', 'En transit'),
 ('RECEPTIONNE', 'Réceptionné'),
+('COMPLETE', 'Complété'),
 ('CLOTURE', 'Clôturé'),
 ('ANNULE', 'Annulé');
 

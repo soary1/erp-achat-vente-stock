@@ -49,4 +49,7 @@ public interface StockRepository extends JpaRepository<Stock, UUID> {
     @Modifying
     @Query("UPDATE Stock s SET s.qtyReserve = s.qtyReserve + :qty WHERE s.id = :stockId")
     void updateQtyReserve(UUID stockId, BigDecimal qty);
+    
+    @Query("SELECT s FROM Stock s LEFT JOIN FETCH s.depot LEFT JOIN FETCH s.article WHERE s.qtyReel > 0")
+    List<Stock> findAllStocksWithDepotAndArticle();
 }

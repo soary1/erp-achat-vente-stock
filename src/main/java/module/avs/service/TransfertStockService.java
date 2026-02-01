@@ -35,6 +35,7 @@ public class TransfertStockService {
     private final DepotRepository depotRepository;
     private final EmplacementRepository emplacementRepository;
     private final ArticleRepository articleRepository;
+    private final LotRepository lotRepository;
     private final AuditService auditService;
     
     // ============ CONSULTATION ============
@@ -68,6 +69,179 @@ public class TransfertStockService {
     }
     
     // ============ WORKFLOW ============
+    
+    public TransfertStock createTransfert(UUID depotSourceId, UUID depotDestinationId, String motif, Utilisateur demandeur) {
+        Depot depotSource = depotRepository.findById(depotSourceId)
+            .orElseThrow(() -> new RuntimeException("Dépôt source non trouvé"));
+        Depot depotDest = depotRepository.findById(depotDestinationId)
+            .orElseThrow(() -> new RuntimeException("Dépôt destination non trouvé"));
+        
+        if (depotSourceId.equals(depotDestinationId)) {
+            throw new RuntimeException("Le dépôt source et destination doivent être différents");
+        }
+        
+        TransfertStock transfert = TransfertStock.builder()
+            .numero(generateTransfertNumero())
+            .depotSource(depotSource)
+            .depotDest(depotDest)
+            .motif(motif)
+            .statutCode("DEMANDE")
+            .demandeur(demandeur)
+            .dateDemande(OffsetDateTime.now())
+            .build();
+        
+        TransfertStock saved = transfertRepository.save(transfert);
+        auditService.logAction("TRANSFERT_STOCK", saved.getId(), "CREATION", demandeur, null);
+        return saved;
+    }
+    
+    public TransfertStock createAndExecuteTransfert(UUID depotSourceId, UUID depotDestinationId, 
+                                                     String motif, List<UUID> articleIds, 
+                                                     List<BigDecimal> quantites, List<UUID> lotIds,
+                                                     List<UUID> emplacementIds, Utilisateur utilisateur) {
+        // Validation
+        if (articleIds == null || articleIds.isEmpty()) {
+            throw new RuntimeException("Veuillez ajouter au moins un article à transférer");
+        }
+        
+        Depot depotSource = depotRepository.findById(depotSourceId)
+            .orElseThrow(() -> new RuntimeException("Dépôt source non trouvé"));
+        Depot depotDest = depotRepository.findById(depotDestinationId)
+            .orElseThrow(() -> new RuntimeException("Dépôt destination non trouvé"));
+        
+        if (depotSourceId.equals(depotDestinationId)) {
+            throw new RuntimeException("Le dépôt source et destination doivent être différents");
+        }
+        
+        // Créer le transfert
+        TransfertStock transfert = TransfertStock.builder()
+            .numero(generateTransfertNumero())
+            .depotSource(depotSource)
+            .depotDest(depotDest)
+            .motif(motif)
+            .statutCode("COMPLETE")
+            .demandeur(utilisateur)
+            .expediteur(utilisateur)
+            .recepteur(utilisateur)
+            .dateDemande(OffsetDateTime.now())
+            .dateExpedition(OffsetDateTime.now())
+            .dateReception(OffsetDateTime.now())
+            .build();
+        
+        TransfertStock saved = transfertRepository.save(transfert);
+        
+        // Ajouter les lignes et effectuer les mouvements de stock
+        TypeMouvement typeMouvementSortie = typeMouvementRepository.findById("TRANSFERT_SORTIE")
+            .orElse(typeMouvementRepository.findById("SORTIE").orElse(null));
+        TypeMouvement typeMouvementEntree = typeMouvementRepository.findById("TRANSFERT_ENTREE")
+            .orElse(typeMouvementRepository.findById("ENTREE").orElse(null));
+        
+        for (int i = 0; i < articleIds.size(); i++) {
+            UUID articleId = articleIds.get(i);
+            BigDecimal quantite = quantites.get(i);
+            UUID lotId = (lotIds != null && i < lotIds.size() && lotIds.get(i) != null) ? lotIds.get(i) : null;
+            UUID emplacementId = (emplacementIds != null && i < emplacementIds.size() && emplacementIds.get(i) != null) ? emplacementIds.get(i) : null;
+            
+            Article article = articleRepository.findById(articleId)
+                .orElseThrow(() -> new RuntimeException("Article non trouvé"));
+            
+            Lot lot = null;
+            if (lotId != null) {
+                lot = lotRepository.findById(lotId).orElse(null);
+            }
+            
+            Emplacement emplacementDest = null;
+            if (emplacementId != null) {
+                emplacementDest = emplacementRepository.findById(emplacementId).orElse(null);
+            }
+            
+            // Créer la ligne de transfert
+            LigneTransfertStock ligne = LigneTransfertStock.builder()
+                .transfert(saved)
+                .article(article)
+                .lot(lot)
+                .emplacementDest(emplacementDest)
+                .qtyDemandee(quantite)
+                .qtyExpedie(quantite)
+                .qtyRecue(quantite)
+                .build();
+            
+            ligneTransfertRepository.save(ligne);
+            
+            // Décrémenter le stock source
+            Stock stockSource = stockRepository.findByDepotIdAndArticleId(
+                depotSourceId, articleId
+            ).stream().findFirst()
+                .orElseThrow(() -> new RuntimeException("Stock source non trouvé pour " + article.getLabel()));
+            
+            if (stockSource.getQtyDisponible().compareTo(quantite) < 0) {
+                throw new RuntimeException("Stock insuffisant pour " + article.getLabel() + 
+                    ". Disponible: " + stockSource.getQtyDisponible() + ", Demandé: " + quantite);
+            }
+            
+            stockSource.setQtyReel(stockSource.getQtyReel().subtract(quantite));
+            stockRepository.save(stockSource);
+            
+            // Créer mouvement de sortie
+            if (typeMouvementSortie != null) {
+                MouvementStock mouvementSortie = MouvementStock.builder()
+                    .numero("MVT-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase())
+                    .typeMouvement(typeMouvementSortie)
+                    .depotSource(depotSource)
+                    .article(article)
+                    .lot(lot)
+                    .qty(quantite.negate())
+                    .referenceDoc("Transfert " + saved.getNumero())
+                    .createdAt(OffsetDateTime.now())
+                    .build();
+                mouvementRepository.save(mouvementSortie);
+            }
+            
+            // Incrémenter ou créer le stock destination
+            Stock stockDest = stockRepository.findByDepotIdAndArticleId(
+                depotDestinationId, articleId
+            ).stream().findFirst().orElse(null);
+            
+            if (stockDest == null) {
+                stockDest = Stock.builder()
+                    .depot(depotDest)
+                    .emplacement(emplacementDest)
+                    .article(article)
+                    .lot(lot)
+                    .qtyReel(quantite)
+                    .qtyReserve(BigDecimal.ZERO)
+                    .build();
+            } else {
+                // Si un emplacement est spécifié et différent, on met à jour
+                if (emplacementDest != null) {
+                    stockDest.setEmplacement(emplacementDest);
+                }
+                stockDest.setQtyReel(stockDest.getQtyReel().add(quantite));
+            }
+            stockRepository.save(stockDest);
+            
+            // Créer mouvement d'entrée
+            if (typeMouvementEntree != null) {
+                MouvementStock mouvementEntree = MouvementStock.builder()
+                    .numero("MVT-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase())
+                    .typeMouvement(typeMouvementEntree)
+                    .depotDest(depotDest)
+                    .article(article)
+                    .lot(lot)
+                    .qty(quantite)
+                    .referenceDoc("Transfert " + saved.getNumero())
+                    .createdAt(OffsetDateTime.now())
+                    .build();
+                mouvementRepository.save(mouvementEntree);
+            }
+        }
+        
+        auditService.logAction("TRANSFERT_STOCK", saved.getId(), "TRANSFERT_IMMEDIAT", utilisateur, 
+            "Transfert de " + depotSource.getName() + " vers " + depotDest.getName());
+        
+        return transfertRepository.findById(saved.getId())
+            .orElseThrow(() -> new RuntimeException("Transfert non trouvé"));
+    }
     
     public TransfertStock createTransfert(TransfertStock transfert, Utilisateur demandeur) {
         transfert.setNumero(generateTransfertNumero());

@@ -2,6 +2,7 @@ package module.avs.service;
 
 import lombok.RequiredArgsConstructor;
 import module.avs.dto.BonReceptionDTO;
+import module.avs.dto.StockTransfertDTO;
 import module.avs.model.article.Article;
 import module.avs.model.organisation.*;
 import module.avs.model.security.Utilisateur;
@@ -21,6 +22,7 @@ import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -190,6 +192,30 @@ public class StockService {
     
     public List<Stock> findAllStocks() {
         return stockRepository.findAll();
+    }
+    
+    public List<Stock> findAllStocksForTransfer() {
+        return stockRepository.findAllStocksWithDepotAndArticle();
+    }
+    
+    public List<StockTransfertDTO> findStocksByDepot(UUID depotId) {
+        List<Stock> stocks = stockRepository.findByDepotId(depotId);
+        return stocks.stream()
+            .filter(s -> s.getQtyReel().compareTo(BigDecimal.ZERO) > 0)
+            .map(s -> StockTransfertDTO.builder()
+                .stockId(s.getId())
+                .depotId(s.getDepot().getId())
+                .depotName(s.getDepot().getName())
+                .articleId(s.getArticle().getId())
+                .articleLabel(s.getArticle().getLabel())
+                .articleSku(s.getArticle().getSku())
+                .qtyReel(s.getQtyReel())
+                .qtyReserve(s.getQtyReserve())
+                .qtyDisponible(s.getQtyDisponible())
+                .lotId(s.getLot() != null ? s.getLot().getId() : null)
+                .lotReference(s.getLot() != null ? s.getLot().getNumeroLot() : null)
+                .build())
+            .collect(Collectors.toList());
     }
     
     // ============ LOTS ============

@@ -1,6 +1,7 @@
 package module.avs.controller;
 
 import lombok.RequiredArgsConstructor;
+import module.avs.dto.StockTransfertDTO;
 import module.avs.model.security.Utilisateur;
 import module.avs.model.stock.*;
 import module.avs.service.*;
@@ -8,6 +9,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -19,7 +21,9 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @Controller
@@ -333,20 +337,51 @@ public class StockController {
         model.addAttribute("transfert", new TransfertStock());
         model.addAttribute("depots", referentielService.findAllDepots());
         model.addAttribute("articles", referentielService.findAllArticles());
-        model.addAttribute("stocks", stockService.findAllStocks());
+        // Removed: model.addAttribute("stocks", stockService.findAllStocksForTransfer());
         return "stock/transfert-form";
     }
     
+    @GetMapping("/api/stocks-by-depot/{depotId}")
+    @ResponseBody
+    public ResponseEntity<List<StockTransfertDTO>> getStocksByDepot(@PathVariable UUID depotId) {
+        List<StockTransfertDTO> stocks = stockService.findStocksByDepot(depotId);
+        return ResponseEntity.ok(stocks);
+    }
+    
+    @GetMapping("/api/emplacements-by-depot/{depotId}")
+    @ResponseBody
+    public ResponseEntity<List<Map<String, Object>>> getEmplacementsByDepot(@PathVariable UUID depotId) {
+        List<Map<String, Object>> emplacements = referentielService.findEmplacementsByDepot(depotId)
+            .stream()
+            .map(e -> {
+                Map<String, Object> map = new HashMap<>();
+                map.put("id", e.getId());
+                map.put("code", e.getCode());
+                return map;
+            })
+            .collect(java.util.stream.Collectors.toList());
+        return ResponseEntity.ok(emplacements);
+    }
+    
     @PostMapping("/transferts/save")
-    public String saveTransfert(@ModelAttribute("transfert") TransfertStock transfert,
+    public String saveTransfert(@RequestParam UUID depotSourceId,
+                               @RequestParam UUID depotDestinationId,
+                               @RequestParam(required = false) String motif,
+                               @RequestParam(required = false) List<UUID> articleIds,
+                               @RequestParam(required = false) List<BigDecimal> quantites,
+                               @RequestParam(required = false) List<UUID> lotIds,
+                               @RequestParam(required = false) List<UUID> emplacementIds,
                                Authentication auth,
                                RedirectAttributes redirectAttributes) {
         try {
             Utilisateur user = getCurrentUser(auth);
-            TransfertStock saved = transfertStockService.createTransfert(transfert, user);
-            redirectAttributes.addFlashAttribute("success", "Transfert créé");
+            TransfertStock saved = transfertStockService.createAndExecuteTransfert(
+                depotSourceId, depotDestinationId, motif, 
+                articleIds, quantites, lotIds, emplacementIds, user);
+            redirectAttributes.addFlashAttribute("success", "Transfert effectué avec succès");
             return "redirect:/stock/transferts/" + saved.getId();
         } catch (Exception e) {
+            e.printStackTrace();
             redirectAttributes.addFlashAttribute("error", e.getMessage());
             return "redirect:/stock/transferts/add";
         }

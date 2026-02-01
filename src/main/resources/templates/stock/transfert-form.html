@@ -69,11 +69,11 @@
                             <table class="table">
                                 <thead>
                                     <tr>
-                                        <th style="width: 40%">Article</th>
-                                        <th style="width: 15%">Stock dispo</th>
-                                        <th style="width: 20%">Quantité à transférer</th>
-                                        <th style="width: 15%">Lot</th>
-                                        <th style="width: 10%"></th>
+                                        <th style="width: 35%">Article</th>
+                                        <th style="width: 12%">Stock dispo</th>
+                                        <th style="width: 15%">Quantité</th>
+                                        <th style="width: 20%">Emplacement destination</th>
+                                        <th style="width: 8%"></th>
                                     </tr>
                                 </thead>
                                 <tbody id="lignes-body">
@@ -116,7 +116,8 @@
     </form>
     
     <script th:inline="javascript">
-        const stocks = /*[[${stocks}]]*/ [];
+        let stocks = [];
+        let emplacements = [];
         let ligneIndex = 0;
         
         document.getElementById('depot-source').addEventListener('change', function() {
@@ -129,41 +130,84 @@
                 msg.style.display = 'block';
                 container.style.display = 'none';
                 btnAdd.disabled = true;
+                stocks = [];
                 return;
             }
             
-            msg.style.display = 'none';
-            container.style.display = 'block';
-            btnAdd.disabled = false;
+            // Charger les stocks du dépôt sélectionné via AJAX
+            fetch(`/stock/api/stocks-by-depot/${depotId}`)
+                .then(response => response.json())
+                .then(data => {
+                    console.log('Stocks chargés:', data);
+                    stocks = data;
+                    
+                    msg.style.display = 'none';
+                    container.style.display = 'block';
+                    btnAdd.disabled = false;
+                    
+                    // Clear existing lines
+                    document.getElementById('lignes-body').innerHTML = '';
+                    ligneIndex = 0;
+                })
+                .catch(error => {
+                    console.error('Erreur lors du chargement des stocks:', error);
+                    alert('Erreur lors du chargement des stocks');
+                });
+        });
+        
+        document.getElementById('depot-dest').addEventListener('change', function() {
+            const depotId = this.value;
             
-            // Clear existing lines
-            document.getElementById('lignes-body').innerHTML = '';
-            ligneIndex = 0;
+            if (!depotId) {
+                emplacements = [];
+                return;
+            }
+            
+            // Charger les emplacements du dépôt destination
+            fetch(`/stock/api/emplacements-by-depot/${depotId}`)
+                .then(response => response.json())
+                .then(data => {
+                    console.log('Emplacements chargés:', data);
+                    emplacements = data;
+                })
+                .catch(error => {
+                    console.error('Erreur lors du chargement des emplacements:', error);
+                });
         });
         
         function addLigneTransfert() {
-            const depotId = document.getElementById('depot-source').value;
-            const depotStocks = stocks.filter(s => s.depot?.id === depotId && s.quantite > 0);
+            console.log('Stocks disponibles:', stocks);
             
-            const articleOptions = depotStocks.map(s => 
-                `<option value="${s.article.id}" data-stock="${s.quantite}">${s.article.label} (${s.article.sku})</option>`
+            if (stocks.length === 0) {
+                alert('Aucun article disponible dans ce dépôt');
+                return;
+            }
+            
+            const articleOptions = stocks.map(s => 
+                `<option value="${s.articleId}" data-stock="${s.qtyDisponible}" data-lot="${s.lotId || ''}">${s.articleLabel} (${s.articleSku}) - Disponible: ${s.qtyDisponible}</option>`
+            ).join('');
+            
+            const emplacementOptions = emplacements.map(e => 
+                `<option value="${e.id}">${e.code}</option>`
             ).join('');
             
             const html = `
                 <tr class="ligne-row">
                     <td>
-                        <select class="form-select form-select-sm article-select" name="lignes[${ligneIndex}].articleId" required onchange="updateStockInfo(this)">
+                        <select class="form-select form-select-sm article-select" name="articleIds" required onchange="updateStockInfo(this)">
                             <option value="">-- Sélectionner --</option>
                             ${articleOptions}
                         </select>
                     </td>
                     <td class="stock-dispo text-end">-</td>
                     <td>
-                        <input type="number" class="form-control form-control-sm" name="lignes[${ligneIndex}].quantite" min="0.01" step="0.01" required />
+                        <input type="number" class="form-control form-control-sm" name="quantites" min="0.01" step="0.01" required />
                     </td>
                     <td>
-                        <select class="form-select form-select-sm" name="lignes[${ligneIndex}].lotId">
-                            <option value="">Tous lots</option>
+                        <input type="hidden" name="lotIds" value="" class="lot-id-input" />
+                        <select class="form-select form-select-sm" name="emplacementIds">
+                            <option value="">-- Optionnel --</option>
+                            ${emplacementOptions}
                         </select>
                     </td>
                     <td class="text-center">
@@ -182,9 +226,11 @@
             const row = select.closest('tr');
             const selected = select.options[select.selectedIndex];
             const stockDispo = selected.dataset.stock || 0;
+            const lotId = selected.dataset.lot || '';
             
             row.querySelector('.stock-dispo').textContent = stockDispo;
             row.querySelector('input[type="number"]').max = stockDispo;
+            row.querySelector('.lot-id-input').value = lotId;
         }
     </script>
 </div>
