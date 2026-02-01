@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{layout/main}">
+<head>
+    <title>Détail mouvement</title>
+</head>
+<body>
+<div layout:fragment="content">
+    <div class="page-header mb-4">
+        <h1>
+            <span class="badge me-2" 
+                  th:classappend="${mouvement.typeMouvement?.code == 'RECEPTION'} ? 'bg-success' : 
+                                 (${mouvement.typeMouvement?.code == 'EXPEDITION'} ? 'bg-danger' : 'bg-info')"
+                  th:text="${mouvement.typeMouvement?.label}"></span>
+            <span th:text="${mouvement.numero}"></span>
+        </h1>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a th:href="@{/dashboard}">Accueil</a></li>
+                <li class="breadcrumb-item"><a th:href="@{/stock/mouvements}">Mouvements</a></li>
+                <li class="breadcrumb-item active" th:text="${mouvement.numero}"></li>
+            </ol>
+        </nav>
+    </div>
+    
+    <div class="row g-4">
+        <!-- Informations principales -->
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header">
+                    <i class="bi bi-info-circle me-2"></i>Informations du mouvement
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label text-muted">Numéro</label>
+                            <p class="fw-bold" th:text="${mouvement.numero}">-</p>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label text-muted">Date/Heure</label>
+                            <p th:text="${#temporals.format(mouvement.createdAt, 'dd/MM/yyyy à HH:mm:ss')}">-</p>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label text-muted">Type de mouvement</label>
+                            <p>
+                                <span class="badge" 
+                                      th:classappend="${mouvement.typeMouvement?.code == 'RECEPTION'} ? 'bg-success' : 
+                                                     (${mouvement.typeMouvement?.code == 'EXPEDITION'} ? 'bg-danger' : 'bg-info')"
+                                      th:text="${mouvement.typeMouvement?.label}"></span>
+                            </p>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label text-muted">Référence document</label>
+                            <p th:text="${mouvement.referenceDoc ?: '-'}">-</p>
+                        </div>
+                    </div>
+                    
+                    <hr>
+                    
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label text-muted">Article</label>
+                            <p>
+                                <strong th:text="${mouvement.article?.sku}"></strong>
+                                <span class="text-muted" th:text="${' - ' + mouvement.article?.label}"></span>
+                            </p>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label text-muted">Lot</label>
+                            <p>
+                                <a th:if="${mouvement.lot != null}"
+                                   th:href="@{/stock/tracabilite/lot/{id}(id=${mouvement.lot.id})}"
+                                   class="text-decoration-none"
+                                   th:text="${mouvement.lot?.numeroLot}"></a>
+                                <span th:if="${mouvement.lot == null}" class="text-muted">Aucun lot</span>
+                            </p>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label text-muted">Quantité</label>
+                            <p class="fs-4 fw-bold" th:text="${#numbers.formatDecimal(mouvement.qty, 0, 'COMMA', 2, 'POINT')}">0</p>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label text-muted">Coût unitaire</label>
+                            <p th:text="${mouvement.unitCost != null ? #numbers.formatDecimal(mouvement.unitCost, 0, 'COMMA', 2, 'POINT') + ' MGA' : '-'}">-</p>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label text-muted">Valeur totale</label>
+                            <p th:text="${mouvement.unitCost != null ? #numbers.formatDecimal(mouvement.qty * mouvement.unitCost, 0, 'COMMA', 2, 'POINT') + ' MGA' : '-'}">-</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Localisation -->
+            <div class="card mt-4">
+                <div class="card-header">
+                    <i class="bi bi-geo-alt me-2"></i>Localisation
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="border rounded p-3" th:classappend="${mouvement.depotSource == null} ? 'bg-light'">
+                                <h6 class="text-muted mb-2">
+                                    <i class="bi bi-box-arrow-right me-1"></i>Source
+                                </h6>
+                                <div th:if="${mouvement.depotSource != null}">
+                                    <p class="mb-1 fw-bold" th:text="${mouvement.depotSource?.name}">-</p>
+                                    <small class="text-muted" th:if="${mouvement.emplacementSource != null}">
+                                        Emplacement : <span th:text="${mouvement.emplacementSource?.code}"></span>
+                                    </small>
+                                </div>
+                                <p th:if="${mouvement.depotSource == null}" class="mb-0 text-muted fst-italic">
+                                    Non applicable
+                                </p>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="border rounded p-3" th:classappend="${mouvement.depotDest == null} ? 'bg-light'">
+                                <h6 class="text-muted mb-2">
+                                    <i class="bi bi-box-arrow-in-right me-1"></i>Destination
+                                </h6>
+                                <div th:if="${mouvement.depotDest != null}">
+                                    <p class="mb-1 fw-bold" th:text="${mouvement.depotDest?.name}">-</p>
+                                    <small class="text-muted" th:if="${mouvement.emplacementDest != null}">
+                                        Emplacement : <span th:text="${mouvement.emplacementDest?.code}"></span>
+                                    </small>
+                                </div>
+                                <p th:if="${mouvement.depotDest == null}" class="mb-0 text-muted fst-italic">
+                                    Non applicable
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Sidebar -->
+        <div class="col-lg-4">
+            <!-- Utilisateur -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <i class="bi bi-person me-2"></i>Utilisateur
+                </div>
+                <div class="card-body">
+                    <p class="mb-1 fw-bold" th:text="${mouvement.utilisateur?.username ?: 'Système'}">-</p>
+                    <small class="text-muted" th:text="${mouvement.utilisateur?.email}"></small>
+                </div>
+            </div>
+            
+            <!-- Actions -->
+            <div class="card mb-4">
+                <div class="card-header">Actions</div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <a th:href="@{/stock/mouvements}" class="btn btn-outline-secondary">
+                            <i class="bi bi-arrow-left me-2"></i>Retour à la liste
+                        </a>
+                        <a th:if="${mouvement.lot != null}" 
+                           th:href="@{/stock/tracabilite/lot/{id}(id=${mouvement.lot.id})}" 
+                           class="btn btn-outline-info">
+                            <i class="bi bi-diagram-3 me-2"></i>Traçabilité du lot
+                        </a>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Avertissement immutabilité -->
+            <div class="alert alert-warning">
+                <i class="bi bi-lock me-2"></i>
+                <strong>Mouvement immutable</strong><br>
+                <small>Les mouvements de stock ne peuvent pas être modifiés ni supprimés pour garantir l'intégrité de l'historique.</small>
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+</html>

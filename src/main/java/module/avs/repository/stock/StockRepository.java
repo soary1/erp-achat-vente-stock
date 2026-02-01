@@ -35,6 +35,10 @@ public interface StockRepository extends JpaRepository<Stock, UUID> {
     @Query("SELECT s FROM Stock s WHERE s.qtyReel - s.qtyReserve > 0 AND s.article.id = :articleId ORDER BY s.lot.datePeremption ASC NULLS LAST")
     List<Stock> findAvailableStockFEFO(UUID articleId);
     
+    // Allocation FIFO : par date d'entrée la plus ancienne (via ID stock créé en premier)
+    @Query("SELECT s FROM Stock s WHERE s.qtyReel - s.qtyReserve > 0 AND s.article.id = :articleId ORDER BY s.id ASC")
+    List<Stock> findAvailableStockFIFO(UUID articleId);
+    
     @Query("SELECT SUM(s.qtyReel * COALESCE(:unitCost, 0)) FROM Stock s WHERE s.depot.id = :depotId")
     BigDecimal getStockValueByDepot(UUID depotId, BigDecimal unitCost);
     

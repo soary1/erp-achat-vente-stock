@@ -75,8 +75,11 @@ public class AchatController {
     public String saveDemande(@Valid @ModelAttribute DemandeAchat demande, 
                               BindingResult result,
                               Authentication auth,
-                              RedirectAttributes redirectAttributes) {
+                              RedirectAttributes redirectAttributes,
+                              Model model) {
         if (result.hasErrors()) {
+            model.addAttribute("sites", referentielService.findAllSites());
+            model.addAttribute("articles", referentielService.findAllArticles());
             return "achats/demande-form";
         }
         Utilisateur user = getCurrentUser(auth);
@@ -171,8 +174,15 @@ public class AchatController {
             model.addAttribute("devises", referentielService.findAllDevises());
             model.addAttribute("articles", referentielService.findAllArticles());
             model.addAttribute("taxes", referentielService.findAllTaxes());
+            model.addAttribute("demandesApprouvees", achatService.findDemandesAchatByStatut("APPROUVEE"));
             return "achats/commande-form";
         }
+        
+        // Fix for TransientPropertyValueException: Handle empty DemandeAchat
+        if (commande.getDemandeAchat() != null && commande.getDemandeAchat().getId() == null) {
+            commande.setDemandeAchat(null);
+        }
+        
         Utilisateur user = getCurrentUser(auth);
         achatService.createCommandeAchat(commande, user);
         redirectAttributes.addFlashAttribute("success", "Commande créée avec succès");
@@ -247,10 +257,8 @@ public class AchatController {
     public String demandesAApprouver(Authentication auth, Model model) {
         Utilisateur user = getCurrentUser(auth);
         var demandes = achatService.findDemandesAchatByStatut("SOUMISE");
-        System.out.println("Demandes SOUMISE: " + demandes);
         model.addAttribute("demandes", demandes);
-        var commandes = achatService.findCommandesAchatByStatut("BROUILLON");
-        System.out.println("Commandes BROUILLON: " + commandes);
+        var commandes = achatService.findCommandesAchatByStatut("VALIDEE");
         model.addAttribute("commandes", commandes);
         return "achats/a-approuver";
     }

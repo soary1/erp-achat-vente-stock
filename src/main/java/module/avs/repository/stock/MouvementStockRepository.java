@@ -12,6 +12,9 @@ import java.util.UUID;
 
 @Repository
 public interface MouvementStockRepository extends JpaRepository<MouvementStock, UUID> {
+    
+    // ============ REQUÊTES DE BASE ============
+    
     List<MouvementStock> findByArticleIdOrderByCreatedAtDesc(UUID articleId);
     List<MouvementStock> findByReferenceDoc(String referenceDoc);
     Page<MouvementStock> findAllByOrderByCreatedAtDesc(Pageable pageable);
@@ -21,4 +24,55 @@ public interface MouvementStockRepository extends JpaRepository<MouvementStock, 
     
     @Query("SELECT m FROM MouvementStock m WHERE m.depotSource.id = :depotId OR m.depotDest.id = :depotId ORDER BY m.createdAt DESC")
     List<MouvementStock> findByDepot(UUID depotId);
+    
+    // ============ NUMÉROTATION ============
+    
+    @Query("SELECT MAX(CAST(SUBSTRING(m.numero, LENGTH(:prefix) + 1) AS int)) FROM MouvementStock m WHERE m.numero LIKE CONCAT(:prefix, '%')")
+    Integer findMaxNumero(String prefix);
+    
+    // ============ TRAÇABILITÉ LOT ============
+    
+    List<MouvementStock> findByLotIdOrderByCreatedAtAsc(UUID lotId);
+    
+    // ============ FILTRES AVANCÉS ============
+    
+    // Filtre par type
+    Page<MouvementStock> findByTypeMouvementCodeOrderByCreatedAtDesc(String code, Pageable pageable);
+    
+    // Filtre par article
+    Page<MouvementStock> findByArticleIdOrderByCreatedAtDesc(UUID articleId, Pageable pageable);
+    
+    // Filtre par dépôt (source ou dest)
+    @Query("SELECT m FROM MouvementStock m WHERE m.depotSource.id = :depotId OR m.depotDest.id = :depotId ORDER BY m.createdAt DESC")
+    Page<MouvementStock> findByDepotIdPaged(UUID depotId, Pageable pageable);
+    
+    // Filtre par période
+    @Query("SELECT m FROM MouvementStock m WHERE m.createdAt >= :dateDebut AND m.createdAt <= :dateFin ORDER BY m.createdAt DESC")
+    Page<MouvementStock> findByPeriodPaged(OffsetDateTime dateDebut, OffsetDateTime dateFin, Pageable pageable);
+    
+    // Filtre combiné type + article
+    Page<MouvementStock> findByTypeMouvementCodeAndArticleIdOrderByCreatedAtDesc(String code, UUID articleId, Pageable pageable);
+    
+    // ============ BLOCAGE DELETE (Sécurité) ============
+    // Les mouvements sont IMMUTABLES - ces méthodes lèvent une exception
+    
+    @Override
+    default void delete(MouvementStock entity) {
+        throw new UnsupportedOperationException("Les mouvements de stock ne peuvent pas être supprimés");
+    }
+    
+    @Override
+    default void deleteById(UUID id) {
+        throw new UnsupportedOperationException("Les mouvements de stock ne peuvent pas être supprimés");
+    }
+    
+    @Override
+    default void deleteAll() {
+        throw new UnsupportedOperationException("Les mouvements de stock ne peuvent pas être supprimés");
+    }
+    
+    @Override
+    default void deleteAll(Iterable<? extends MouvementStock> entities) {
+        throw new UnsupportedOperationException("Les mouvements de stock ne peuvent pas être supprimés");
+    }
 }

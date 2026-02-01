@@ -11,6 +11,7 @@ import java.util.UUID;
 
 @Repository
 public interface LotRepository extends JpaRepository<Lot, UUID> {
+    Optional<Lot> findByNumeroLot(String numeroLot);
     Optional<Lot> findByArticleIdAndNumeroLot(UUID articleId, String numeroLot);
     List<Lot> findByArticleId(UUID articleId);
     

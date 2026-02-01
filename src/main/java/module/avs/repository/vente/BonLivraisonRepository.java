@@ -18,4 +18,8 @@ public interface BonLivraisonRepository extends JpaRepository<BonLivraison, UUID
     
     @Query("SELECT COALESCE(MAX(CAST(SUBSTRING(b.numero, 8) AS int)), 0) FROM BonLivraison b WHERE b.numero LIKE :prefix")
     Integer findMaxNumero(String prefix);
+    
+    // Traçabilité : trouver les livraisons contenant un lot spécifique
+    @Query("SELECT DISTINCT bl FROM BonLivraison bl JOIN bl.lignes l WHERE l.lot.id = :lotId ORDER BY bl.dateExpedition ASC")
+    List<BonLivraison> findByLotId(UUID lotId);
 }

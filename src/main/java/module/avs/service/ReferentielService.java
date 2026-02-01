@@ -5,12 +5,14 @@ import module.avs.model.achat.CommandeAchat;
 import module.avs.model.article.*;
 import module.avs.model.organisation.*;
 import module.avs.model.stock.BonReception;
+import module.avs.model.stock.TypeMouvement;
 import module.avs.model.tiers.*;
 import module.avs.model.referentiel.*;
 import module.avs.repository.achat.CommandeAchatRepository;
 import module.avs.repository.article.*;
 import module.avs.repository.organisation.*;
 import module.avs.repository.stock.BonReceptionRepository;
+import module.avs.repository.stock.TypeMouvementRepository;
 import module.avs.repository.tiers.*;
 import module.avs.repository.referentiel.*;
 import org.springframework.data.domain.Page;
@@ -42,6 +44,7 @@ public class ReferentielService {
     private final FournisseurRepository fournisseurRepository;
     private final CommandeAchatRepository commandeAchatRepository;
     private final BonReceptionRepository bonReceptionRepository;
+    private final TypeMouvementRepository typeMouvementRepository;
     
     // ============ DEVISES ============
     public List<Devise> findAllDevises() {
@@ -186,6 +189,10 @@ public class ReferentielService {
         return emplacementRepository.findByDepotId(depotId);
     }
     
+    public List<Emplacement> findAllEmplacements() {
+        return emplacementRepository.findAll();
+    }
+    
     public Optional<Emplacement> findEmplacementById(UUID id) {
         return emplacementRepository.findById(id);
     }
@@ -296,5 +303,10 @@ public class ReferentielService {
     // ============ MODES PAIEMENT ============
     public ModePaiement saveModePaiement(ModePaiement mode) {
         return modePaiementRepository.save(mode);
+    }
+    
+    // ============ TYPES MOUVEMENT STOCK ============
+    public List<TypeMouvement> findAllTypesMouvement() {
+        return typeMouvementRepository.findAll();
     }
 }

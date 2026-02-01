@@ -6,12 +6,14 @@ import module.avs.model.article.Article;
 import module.avs.model.organisation.Depot;
 import module.avs.model.organisation.Emplacement;
 import module.avs.model.security.Utilisateur;
+import org.hibernate.annotations.Immutable;
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.util.UUID;
 
 @Entity
 @Table(name = "mouvement_stock")
+@Immutable // CRITIQUE : Les mouvements ne peuvent pas être modifiés
 @Data
 @NoArgsConstructor @AllArgsConstructor
 @Builder
@@ -20,6 +22,9 @@ public class MouvementStock {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
+    
+    @Column(length = 50, unique = true, nullable = false)
+    private String numero;
     
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "type_mouvement_code", nullable = false)

@@ -46,7 +46,7 @@
                             <td th:text="${#temporals.format(demande.createdAt, 'dd/MM/yyyy')}"></td>
                             <td th:text="${demande.site?.name}"></td>
                             <td th:text="${demande.demandeur?.username}"></td>
-                            <td th:text="${demande.justification}"></td>
+                            <td th:text="${#numbers.formatDecimal(0, 0, 'COMMA', 0, 'POINT')}"></td>
                             <td th:text="${#numbers.formatDecimal(0, 0, 'COMMA', 0, 'POINT')}"></td>
                             <td>
                                 <span class="badge badge-status" 

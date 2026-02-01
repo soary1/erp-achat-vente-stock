@@ -1,6 +1,7 @@
 package module.avs.service;
 
 import lombok.RequiredArgsConstructor;
+import module.avs.dto.BonReceptionDTO;
 import module.avs.model.article.Article;
 import module.avs.model.organisation.*;
 import module.avs.model.security.Utilisateur;
@@ -8,6 +9,9 @@ import module.avs.model.stock.*;
 import module.avs.model.achat.*;
 import module.avs.repository.stock.*;
 import module.avs.repository.achat.*;
+import module.avs.repository.article.ArticleRepository;
+import module.avs.repository.organisation.DepotRepository;
+import module.avs.repository.organisation.EmplacementRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -33,6 +37,10 @@ public class StockService {
     private final ControleQualiteRepository controleQualiteRepository;
     private final AuditService auditService;
     private final AchatService achatService;
+    private final ArticleRepository articleRepository;
+    private final DepotRepository depotRepository;
+    private final EmplacementRepository emplacementRepository;
+    private final CommandeAchatRepository commandeAchatRepository;
     
     // ============ GESTION DU STOCK ============
     
@@ -54,6 +62,40 @@ public class StockService {
         return stocks.stream()
             .map(Stock::getQtyDisponible)
             .reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
+    
+    // ============ NUMÉROTATION MOUVEMENTS ============
+    
+    public String generateMouvementNumero() {
+        String prefix = "MVT-" + LocalDate.now().format(DateTimeFormatter.ofPattern("yyMM")) + "-";
+        Integer maxNum = mouvementStockRepository.findMaxNumero(prefix);
+        return prefix + String.format("%05d", (maxNum != null ? maxNum : 0) + 1);
+    }
+    
+    // ============ CRÉATION DE MOUVEMENT ============
+    
+    private MouvementStock creerMouvement(TypeMouvement typeMouvement, String referenceDoc,
+                                          Article article, Lot lot, BigDecimal qty, BigDecimal unitCost,
+                                          Depot depotSource, Emplacement empSource,
+                                          Depot depotDest, Emplacement empDest,
+                                          Utilisateur user) {
+        MouvementStock mouvement = MouvementStock.builder()
+            .numero(generateMouvementNumero())
+            .typeMouvement(typeMouvement)
+            .referenceDoc(referenceDoc)
+            .article(article)
+            .lot(lot)
+            .qty(qty)
+            .unitCost(unitCost)
+            .depotSource(depotSource)
+            .emplacementSource(empSource)
+            .depotDest(depotDest)
+            .emplacementDest(empDest)
+            .utilisateur(user)
+            .createdAt(OffsetDateTime.now())
+            .build();
+        
+        return mouvementStockRepository.save(mouvement);
     }
     
     // Mise à jour du stock (entrée ou sortie)
@@ -85,27 +127,14 @@ public class StockService {
         
         stock = stockRepository.save(stock);
         
-        // Création du mouvement
-        MouvementStock mouvement = MouvementStock.builder()
-            .typeMouvement(typeMouvement)
-            .referenceDoc(referenceDoc)
-            .article(article)
-            .lot(lot)
-            .qty(qty)
-            .unitCost(unitCost)
-            .utilisateur(user)
-            .createdAt(OffsetDateTime.now())
-            .build();
-        
+        // Création du mouvement avec numéro automatique
         if (typeMouvement.getSens() > 0) {
-            mouvement.setDepotDest(depot);
-            mouvement.setEmplacementDest(emplacement);
+            creerMouvement(typeMouvement, referenceDoc, article, lot, qty, unitCost,
+                          null, null, depot, emplacement, user);
         } else {
-            mouvement.setDepotSource(depot);
-            mouvement.setEmplacementSource(emplacement);
+            creerMouvement(typeMouvement, referenceDoc, article, lot, qty, unitCost,
+                          depot, emplacement, null, null, user);
         }
-        
-        mouvementStockRepository.save(mouvement);
         
         return stock;
     }
@@ -225,6 +254,82 @@ public class StockService {
         return saved;
     }
     
+    public BonReception createReception(BonReceptionDTO dto, Utilisateur user) {
+        // Récupérer les entités référencées
+        CommandeAchat commande = dto.getCommandeAchatId() != null 
+            ? commandeAchatRepository.findById(dto.getCommandeAchatId())
+                .orElseThrow(() -> new RuntimeException("Commande non trouvée"))
+            : null;
+        
+        Depot depot = depotRepository.findById(dto.getDepotId())
+            .orElseThrow(() -> new RuntimeException("Dépôt non trouvé"));
+        
+        // Créer le bon de réception
+        BonReception reception = BonReception.builder()
+            .commandeAchat(commande)
+            .depot(depot)
+            .site(depot.getSite())
+            .dateReception(dto.getDateReception() != null ? dto.getDateReception() : OffsetDateTime.now())
+            .statutCode("BROUILLON")
+            .build();
+        
+        // Générer le numéro et sauvegarder d'abord pour obtenir un ID
+        reception.setNumero(generateReceptionNumero());
+        BonReception savedReception = bonReceptionRepository.save(reception);
+        
+        // Créer les lignes
+        if (dto.getLignes() != null) {
+            for (BonReceptionDTO.LigneReceptionDTO ligneDTO : dto.getLignes()) {
+                if (ligneDTO.getQtyReceived() == null || ligneDTO.getQtyReceived() <= 0) {
+                    continue; // Skip lignes sans quantité
+                }
+                
+                Article article = articleRepository.findById(ligneDTO.getArticleId())
+                    .orElseThrow(() -> new RuntimeException("Article non trouvé: " + ligneDTO.getArticleId()));
+                
+                Emplacement emplacement = ligneDTO.getEmplacementId() != null 
+                    ? emplacementRepository.findById(ligneDTO.getEmplacementId()).orElse(null)
+                    : null;
+                
+                // Créer ou récupérer le lot si numéro fourni
+                Lot lot = null;
+                if (ligneDTO.getNumeroLot() != null && !ligneDTO.getNumeroLot().trim().isEmpty()) {
+                    lot = lotRepository.findByNumeroLot(ligneDTO.getNumeroLot())
+                        .orElseGet(() -> {
+                            Lot newLot = Lot.builder()
+                                .numeroLot(ligneDTO.getNumeroLot())
+                                .article(article)
+                                .statutQualiteCode("EN_ATTENTE")
+                                .build();
+                            
+                            if (ligneDTO.getDatePeremption() != null && !ligneDTO.getDatePeremption().trim().isEmpty()) {
+                                try {
+                                    newLot.setDatePeremption(LocalDate.parse(ligneDTO.getDatePeremption()));
+                                } catch (Exception e) {
+                                    // Ignore invalid date
+                                }
+                            }
+                            return lotRepository.save(newLot);
+                        });
+                }
+                
+                LigneBonReception ligne = LigneBonReception.builder()
+                    .bonReception(savedReception)
+                    .article(article)
+                    .lot(lot)
+                    .emplacement(emplacement)
+                    .qtyReceived(BigDecimal.valueOf(ligneDTO.getQtyReceived()))
+                    .build();
+                
+                savedReception.addLigne(ligne);
+                ligneBonReceptionRepository.save(ligne);
+            }
+        }
+        
+        auditService.logAction("BON_RECEPTION", savedReception.getId(), "CREATION", user, null);
+        return savedReception;
+    }
+    
     public BonReception validerReception(UUID receptionId, Utilisateur user) {
         BonReception reception = bonReceptionRepository.findById(receptionId)
             .orElseThrow(() -> new RuntimeException("Réception non trouvée"));
@@ -245,17 +350,6 @@ public class StockService {
                 reception.getNumero(),
                 user
             );
-            
-            // Mise à jour de la quantité reçue sur la commande
-            if (reception.getCommandeAchat() != null) {
-                reception.getCommandeAchat().getLignes().stream()
-                    .filter(l -> l.getArticle().getId().equals(ligne.getArticle().getId()))
-                    .findFirst()
-                    .ifPresent(ligneCmd -> {
-                        ligneCmd.setQtyReceived(ligneCmd.getQtyReceived().add(ligne.getQtyReceived()));
-                        ligneCommandeAchatRepository.save(ligneCmd);
-                    });
-            }
         }
         
         reception.setStatutCode("VALIDE");
@@ -280,37 +374,105 @@ public class StockService {
         return mouvementStockRepository.findByArticleIdOrderByCreatedAtDesc(articleId);
     }
     
-    // Transfert entre dépôts
+    public Optional<MouvementStock> findMouvementById(UUID id) {
+        return mouvementStockRepository.findById(id);
+    }
+    
+    public List<MouvementStock> findMouvementsByLot(UUID lotId) {
+        return mouvementStockRepository.findByLotIdOrderByCreatedAtAsc(lotId);
+    }
+    
+    // Recherche avec filtres - gestion simplifiée pour éviter les erreurs PostgreSQL
+    public Page<MouvementStock> searchMouvements(String typeMouvement, UUID articleId, UUID depotId,
+                                                  OffsetDateTime dateDebut, OffsetDateTime dateFin,
+                                                  Pageable pageable) {
+        // Cas : filtre par type ET article
+        if (typeMouvement != null && !typeMouvement.isEmpty() && articleId != null) {
+            return mouvementStockRepository.findByTypeMouvementCodeAndArticleIdOrderByCreatedAtDesc(
+                    typeMouvement, articleId, pageable);
+        }
+        // Cas : filtre par type uniquement
+        if (typeMouvement != null && !typeMouvement.isEmpty()) {
+            return mouvementStockRepository.findByTypeMouvementCodeOrderByCreatedAtDesc(typeMouvement, pageable);
+        }
+        // Cas : filtre par article uniquement
+        if (articleId != null) {
+            return mouvementStockRepository.findByArticleIdOrderByCreatedAtDesc(articleId, pageable);
+        }
+        // Cas : filtre par dépôt uniquement
+        if (depotId != null) {
+            return mouvementStockRepository.findByDepotIdPaged(depotId, pageable);
+        }
+        // Cas : filtre par période uniquement
+        if (dateDebut != null && dateFin != null) {
+            return mouvementStockRepository.findByPeriodPaged(dateDebut, dateFin, pageable);
+        }
+        // Cas : sans filtre - retourne tout
+        return mouvementStockRepository.findAllByOrderByCreatedAtDesc(pageable);
+    }
+    
+    // ============ ALLOCATION FIFO ============
+    
+    public List<Stock> getAllocationFIFO(UUID articleId, BigDecimal qtyNeeded) {
+        List<Stock> availableStocks = stockRepository.findAvailableStockFIFO(articleId);
+        List<Stock> allocated = new ArrayList<>();
+        BigDecimal remaining = qtyNeeded;
+        
+        for (Stock stock : availableStocks) {
+            if (remaining.compareTo(BigDecimal.ZERO) <= 0) break;
+            
+            BigDecimal available = stock.getQtyDisponible();
+            if (available.compareTo(BigDecimal.ZERO) > 0) {
+                allocated.add(stock);
+                remaining = remaining.subtract(available);
+            }
+        }
+        
+        return allocated;
+    }
+    
+    // ============ TRANSFERTS (avec double mouvement) ============
+    
+    // Transfert entre dépôts - Crée 2 mouvements pour traçabilité complète
     public void transfererStock(Depot depotSource, Emplacement empSource,
                                Depot depotDest, Emplacement empDest,
                                Article article, Lot lot, BigDecimal qty,
                                Utilisateur user) {
         
-        TypeMouvement typeTransfert = typeMouvementRepository.findById("TRANSFERT")
-            .orElseThrow(() -> new RuntimeException("Type mouvement non trouvé"));
-        
         // Vérifier disponibilité
-        Optional<Stock> stockSource = stockRepository.findByDepotIdAndEmplacementIdAndArticleIdAndLotId(
+        Optional<Stock> stockSourceOpt = stockRepository.findByDepotIdAndEmplacementIdAndArticleIdAndLotId(
             depotSource.getId(), empSource != null ? empSource.getId() : null, 
             article.getId(), lot != null ? lot.getId() : null);
         
-        if (stockSource.isEmpty() || stockSource.get().getQtyDisponible().compareTo(qty) < 0) {
+        if (stockSourceOpt.isEmpty() || stockSourceOpt.get().getQtyDisponible().compareTo(qty) < 0) {
             throw new RuntimeException("Stock insuffisant pour le transfert");
         }
         
-        // Sortie du dépôt source
-        Stock source = stockSource.get();
+        // Générer une référence unique pour lier les 2 mouvements
+        String refTransfert = "TRF-" + LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss"));
+        
+        // Types de mouvement
+        TypeMouvement typeSortie = typeMouvementRepository.findById("EXPEDITION")
+            .orElseThrow(() -> new RuntimeException("Type mouvement EXPEDITION non trouvé"));
+        TypeMouvement typeEntree = typeMouvementRepository.findById("RECEPTION")
+            .orElseThrow(() -> new RuntimeException("Type mouvement RECEPTION non trouvé"));
+        
+        // 1. MOUVEMENT SORTIE (dépôt source)
+        Stock source = stockSourceOpt.get();
         source.setQtyReel(source.getQtyReel().subtract(qty));
         stockRepository.save(source);
         
-        // Entrée dans le dépôt destination
-        Optional<Stock> stockDest = stockRepository.findByDepotIdAndEmplacementIdAndArticleIdAndLotId(
+        creerMouvement(typeSortie, refTransfert + "-OUT", article, lot, qty, null,
+                      depotSource, empSource, null, null, user);
+        
+        // 2. MOUVEMENT ENTRÉE (dépôt destination)
+        Optional<Stock> stockDestOpt = stockRepository.findByDepotIdAndEmplacementIdAndArticleIdAndLotId(
             depotDest.getId(), empDest != null ? empDest.getId() : null,
             article.getId(), lot != null ? lot.getId() : null);
         
         Stock dest;
-        if (stockDest.isPresent()) {
-            dest = stockDest.get();
+        if (stockDestOpt.isPresent()) {
+            dest = stockDestOpt.get();
             dest.setQtyReel(dest.getQtyReel().add(qty));
         } else {
             dest = Stock.builder()
@@ -324,22 +486,8 @@ public class StockService {
         }
         stockRepository.save(dest);
         
-        // Mouvement de transfert
-        MouvementStock mouvement = MouvementStock.builder()
-            .typeMouvement(typeTransfert)
-            .referenceDoc("TRF-" + LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMMdd")))
-            .article(article)
-            .lot(lot)
-            .depotSource(depotSource)
-            .emplacementSource(empSource)
-            .depotDest(depotDest)
-            .emplacementDest(empDest)
-            .qty(qty)
-            .utilisateur(user)
-            .createdAt(OffsetDateTime.now())
-            .build();
-        
-        mouvementStockRepository.save(mouvement);
+        creerMouvement(typeEntree, refTransfert + "-IN", article, lot, qty, null,
+                      null, null, depotDest, empDest, user);
     }
     
     // Méthode simplifiée de transfert (recherche les entités par ID)
@@ -356,14 +504,9 @@ public class StockService {
             throw new RuntimeException("Stock insuffisant pour le transfert");
         }
         
-        Depot depotDest = stockSource.getDepot().getSite().getSociete() != null ? 
-            stockRepository.findByDepotId(depotDestId).stream().findFirst()
-                .map(Stock::getDepot)
-                .orElseThrow(() -> new RuntimeException("Dépôt destination non trouvé")) : null;
-        
-        if (depotDest == null) {
-            throw new RuntimeException("Dépôt destination non trouvé");
-        }
+        Depot depotDest = stockRepository.findByDepotId(depotDestId).stream().findFirst()
+            .map(Stock::getDepot)
+            .orElseThrow(() -> new RuntimeException("Dépôt destination non trouvé"));
         
         transfererStock(stockSource.getDepot(), stockSource.getEmplacement(),
                        depotDest, null,

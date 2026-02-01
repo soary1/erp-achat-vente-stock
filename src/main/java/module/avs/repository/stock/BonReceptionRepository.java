@@ -19,4 +19,8 @@ public interface BonReceptionRepository extends JpaRepository<BonReception, UUID
     
     @Query("SELECT COALESCE(MAX(CAST(SUBSTRING(b.numero, 8) AS int)), 0) FROM BonReception b WHERE b.numero LIKE :prefix")
     Integer findMaxNumero(String prefix);
+    
+    // Traçabilité : trouver les réceptions contenant un lot spécifique
+    @Query("SELECT DISTINCT br FROM BonReception br JOIN br.lignes l WHERE l.lot.id = :lotId ORDER BY br.dateReception ASC")
+    List<BonReception> findByLotId(UUID lotId);
 }

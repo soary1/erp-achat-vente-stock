@@ -1,0 +1,105 @@
+# TO-DO LIST : MODULE DE GESTION DE STOCK
+# Basé sur le Cahier des Charges - Application Web Intégrée
+
+================================================================================
+1. ARCHITECTURE & DONNÉES DE BASE (Back-end / BDD)
+================================================================================
+[ ] Configurer la structure hiérarchique : Site (Géographique) > Dépôt (Logique) > Emplacement (Zone/Rayon).
+[ ] Créer la table des Articles avec les attributs de stock :
+    - Gestion par Lot : Oui/Non
+    - Gestion par Série : Oui/Non
+    - Dates obligatoires : DLC / DLUO
+    - Méthode de valorisation : FIFO ou CUMP (par article)
+[ ] Paramétrer les Unités de Mesure (Achat vs Stockage vs Vente) et les conversions.
+[ ] Configurer les règles d'allocation automatique :
+    - FIFO (First In First Out) par défaut.
+    - FEFO (First Expired First Out) pour les périssables.
+[ ] Activer le blocage automatique des lots (Statut : Expiré / Non conforme).
+
+================================================================================
+2. MOTEUR DE MOUVEMENTS (Cœur du système)
+================================================================================
+[ ] Créer la table "Mouvements de Stock" (Journal) :
+    - Champs : ID unique, Date/Heure, User, Type, Article, Qté, Emplacement, Coût, Réf Document.
+    - Règle critique : Historique NON modifiable et NON supprimable.
+[ ] Implémenter la numérotation séquentielle automatique des mouvements.
+[ ] Développer la logique de "Réservation" :
+    - Statut "Stock Réservé" dès la commande client validée.
+    - Interdiction de sortir un stock réservé pour une autre commande.
+[ ] Assurer la traçabilité complète (Lien : Fournisseur -> Lot -> Client).
+
+================================================================================
+3. FONCTIONNALITÉS OPÉRATIONNELLES (Front-end Magasinier)
+================================================================================
+[ ] Module RÉCEPTION (Entrées) :
+    - Interface de saisie liée au Bon de Commande (BC).
+    - Champs obligatoires : Lot, Date expiration, Emplacement.
+    - Gestion des réceptions partielles.
+    - Génération du Bon de Réception (BR).
+[ ] Module EXPÉDITION (Sorties) :
+    - Interface de Préparation (Picking) liée aux Commandes Clients.
+    - Scan de validation (Article / Lot / Emplacement).
+    - Génération du Bon de Livraison (BL).
+[ ] Module TRANSFERTS INTERNES :
+    - Workflow : Demande transfert -> Validation (Chef) -> Sortie (Dépôt A) -> Entrée (Dépôt B).
+
+================================================================================
+4. INVENTAIRES & CONTRÔLES
+================================================================================
+[ ] Développer les modes d'inventaire : Tournant et Annuel.
+[ ] Mode "Saisie à l'aveugle" (Cacher la quantité théorique à l'opérateur).
+[ ] Calcul automatique des écarts (Théorique vs Réel).
+[ ] Workflow de validation des écarts :
+    - Si écart < Seuil : Validation automatique (optionnel).
+    - Si écart > Seuil : Blocage et demande validation Manager.
+[ ] IMPÉRATIF SÉCURITÉ : Bloquer la validation de l'ajustement par la personne qui a compté.
+
+================================================================================
+5. VALORISATION & FINANCE
+================================================================================
+[ ] Moteur de calcul CUMP (Coût Moyen Unitaire Pondéré) à chaque entrée.
+[ ] Moteur de gestion FIFO (gestion des "piles" de coûts).
+[ ] Processus de Clôture Mensuelle :
+    - Gel des mouvements sur la période passée.
+    - Gel de la valeur du stock.
+    - Rapport d'écart de valorisation.
+
+================================================================================
+6. GESTION DES RÔLES & SÉCURITÉ (RBAC)
+================================================================================
+[ ] Rôle MAGASINIER :
+    - Autorisé : Réception, Picking, Transfert (saisie), Consultation.
+    - Interdit : Validation financière, Ajustement manuel de stock, Modif prix.
+[ ] Rôle CHEF MAGASIN :
+    - Autorisé : Validation Transferts, Création Inventaires, Demande régularisation.
+[ ] Rôle ACHAT / VENTE :
+    - Autorisé : Consultation des niveaux de stock (Lecture seule).
+    - Interdit : Création de mouvements de stock.
+
+================================================================================
+7. TABLEAUX DE BORD & KPIS
+================================================================================
+[ ] Dashboard Opérationnel :
+    - Réceptions du jour / en retard.
+    - Commandes à préparer (Priorité par date).
+[ ] Dashboard de Pilotage (KPIs) :
+    - Taux de précision du stock (%).
+    - Valeur du stock (Dormant / Obsolète / Total).
+    - Rotation du stock.
+
+
+
+
+http://localhost:8080/ventes/commandes/80a46286-f1de-4dff-aed6-3ca3a6420e84
+http://localhost:8080/ventes/livraisons/4619897b-e793-4151-98f9-b2265e7c66cf
+http://localhost:8080/stock/receptions/7641f7a9-8c19-4d9a-bab1-6ef123fdf41c
+http://localhost:8080/referentiels/devises/edit/MGA
+http://localhost:8080/referentiels/pays
+http://localhost:8080/referentiels/unites
+http://localhost:8080/referentiels/taxes
+http://localhost:8080/referentiels/modes-paiement
+http://localhost:8080/referentiels/devises/add
+http://localhost:8080/admin/utilisateurs/48de926e-5415-400d-8833-223a71557ae8
+http://localhost:8080/admin/utilisateurs/48de926e-5415-400d-8833-223a71557ae8/edit
+http://localhost:8080/admin/utilisateurs/add
+http://localhost:8080/admin/roles/add
