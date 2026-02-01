@@ -32,30 +32,28 @@
                                 <select class="form-select" th:field="*{client.id}" required id="client-select">
                                     <option value="">-- Sélectionner un client --</option>
                                     <option th:each="client : ${clients}" th:value="${client.id}" 
-                                            th:text="${client.raisonSociale}"
-                                            th:data-limite-credit="${client.limiteCredit}"
-                                            th:data-solde="${client.solde}"></option>
+                                            th:text="${client.name}"></option>
                                 </select>
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label">Commercial</label>
                                 <select class="form-select" th:field="*{commercial.id}">
                                     <option value="">-- Aucun commercial --</option>
-                                    <option th:each="user : ${commerciaux}" th:value="${user.id}" th:text="${user.nom + ' ' + user.prenom}"></option>
+                                    <option th:each="user : ${commerciaux}" th:value="${user.id}" th:text="${user.username}"></option>
                                 </select>
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label">Site <span class="text-danger">*</span></label>
                                 <select class="form-select" th:field="*{site.id}" required>
                                     <option value="">-- Sélectionner un site --</option>
-                                    <option th:each="site : ${sites}" th:value="${site.id}" th:text="${site.nom}"></option>
+                                    <option th:each="site : ${sites}" th:value="${site.id}" th:text="${site.name}"></option>
                                 </select>
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label">Devise <span class="text-danger">*</span></label>
                                 <select class="form-select" th:field="*{devise.code}" required>
                                     <option value="">-- Sélectionner une devise --</option>
-                                    <option th:each="devise : ${devises}" th:value="${devise.code}" th:text="${devise.libelle + ' (' + devise.code + ')'}"></option>
+                                    <option th:each="devise : ${devises}" th:value="${devise.code}" th:text="${devise.label + ' (' + devise.code + ')'}"></option>
                                 </select>
                             </div>
                             <div class="col-md-6">
@@ -66,7 +64,7 @@
                                 <label class="form-label">Mode de paiement</label>
                                 <select class="form-select" th:field="*{modePaiement.code}">
                                     <option value="">-- Sélectionner --</option>
-                                    <option th:each="mode : ${modesPaiement}" th:value="${mode.code}" th:text="${mode.libelle}"></option>
+                                    <option th:each="mode : ${modesPaiement}" th:value="${mode.code}" th:text="${mode.label}"></option>
                                 </select>
                             </div>
                         </div>
@@ -101,7 +99,6 @@
                                             <select class="form-select form-select-sm article-select" th:name="'lignes[' + ${stat.index} + '].article.id'" required onchange="updatePrix(this)">
                                                 <option th:each="article : ${articles}" th:value="${article.id}" 
                                                         th:text="${article.label}" 
-                                                        th:data-prix="${article.prixVente}"
                                                         th:selected="${article.id == ligne.article?.id}"></option>
                                             </select>
                                         </td>
@@ -166,26 +163,6 @@
             
             <!-- Panneau latéral -->
             <div class="col-lg-4">
-                <!-- Info client -->
-                <div class="card mb-4" id="client-info" style="display: none;">
-                    <div class="card-header">Situation client</div>
-                    <div class="card-body">
-                        <div class="d-flex justify-content-between mb-2">
-                            <span>Limite de crédit</span>
-                            <strong id="client-limite">-</strong>
-                        </div>
-                        <div class="d-flex justify-content-between mb-2">
-                            <span>Solde actuel</span>
-                            <strong id="client-solde">-</strong>
-                        </div>
-                        <hr>
-                        <div class="d-flex justify-content-between">
-                            <span>Crédit disponible</span>
-                            <strong id="client-dispo" class="text-success">-</strong>
-                        </div>
-                    </div>
-                </div>
-                
                 <!-- Actions -->
                 <div class="card">
                     <div class="card-header">Actions</div>
@@ -214,7 +191,7 @@
         function addLigneDevis() {
             const tbody = document.getElementById('lignes-body');
             const articleOptions = articles.map(a => 
-                `<option value="${a.id}" data-prix="${a.prixVente || 0}">${a.designation}</option>`
+                `<option value="${a.id}">${a.label}</option>`
             ).join('');
             
             const html = `
@@ -285,26 +262,6 @@
             document.getElementById('total-tva').textContent = tva.toFixed(2);
             document.getElementById('total-ttc').textContent = ttc.toFixed(2);
         }
-        
-        // Client info
-        document.getElementById('client-select')?.addEventListener('change', function() {
-            const selected = this.options[this.selectedIndex];
-            const infoCard = document.getElementById('client-info');
-            if (selected.value) {
-                const limite = parseFloat(selected.dataset.limiteCredit) || 0;
-                const solde = parseFloat(selected.dataset.solde) || 0;
-                const dispo = limite - solde;
-                
-                document.getElementById('client-limite').textContent = limite.toLocaleString() + ' MGA';
-                document.getElementById('client-solde').textContent = solde.toLocaleString() + ' MGA';
-                document.getElementById('client-dispo').textContent = dispo.toLocaleString() + ' MGA';
-                document.getElementById('client-dispo').className = dispo >= 0 ? 'text-success' : 'text-danger';
-                
-                infoCard.style.display = 'block';
-            } else {
-                infoCard.style.display = 'none';
-            }
-        });
         
         // Init totals on page load
         updateTotals();

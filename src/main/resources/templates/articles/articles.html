@@ -32,7 +32,7 @@
                 <div class="col-md-3">
                     <select class="form-select" name="famille">
                         <option value="">Toutes les familles</option>
-                        <option th:each="famille : ${familles}" th:value="${famille.id}" th:text="${famille.libelle}" th:selected="${famille.id == familleId}"></option>
+                        <option th:each="famille : ${familles}" th:value="${famille.id}" th:text="${famille.name}" th:selected="${famille.id == familleId}"></option>
                     </select>
                 </div>
                 <div class="col-md-2">
@@ -62,9 +62,8 @@
                             <th>SKU</th>
                             <th>Désignation</th>
                             <th>Famille</th>
-                            <th class="text-end">Prix achat</th>
-                            <th class="text-end">Prix vente</th>
-                            <th class="text-center">Stock</th>
+                            <th>Unité</th>
+                            <th>Poids</th>
                             <th class="text-center">État</th>
                             <th>Actions</th>
                         </tr>
@@ -74,22 +73,16 @@
                             <td><code th:text="${article.sku}"></code></td>
                             <td>
                                 <a th:href="@{/articles/{id}(id=${article.id})}" th:text="${article.label}"></a>
-                                <small class="d-block text-muted" th:if="${article.gereLot}">
+                                <small class="d-block text-muted" th:if="${article.famille?.isLotObligatoire}">
                                     <i class="bi bi-boxes me-1"></i>Géré par lot
                                 </small>
                             </td>
-                            <td th:text="${article.famille?.libelle}"></td>
-                            <td class="text-end" th:text="${#numbers.formatDecimal(article.prixAchat, 0, 'COMMA', 0, 'POINT')} + ' Ar'"></td>
-                            <td class="text-end" th:text="${#numbers.formatDecimal(article.prixVente, 0, 'COMMA', 0, 'POINT')} + ' Ar'"></td>
+                            <td th:text="${article.famille?.name}"></td>
+                            <td th:text="${article.unite?.label}"></td>
+                            <td th:text="${article.weight != null ? article.weight + ' kg' : '-'}"></td>
                             <td class="text-center">
-                                <span th:if="${article.stockTotal != null}" 
-                                      th:classappend="${article.stockTotal < article.stockMinimum} ? 'text-danger fw-bold' : ''"
-                                      th:text="${article.stockTotal}"></span>
-                                <span th:if="${article.stockTotal == null}">-</span>
-                            </td>
-                            <td class="text-center">
-                                <span th:if="${article.actif}" class="badge bg-success">Actif</span>
-                                <span th:unless="${article.actif}" class="badge bg-secondary">Inactif</span>
+                                <span th:if="${article.isActive}" class="badge bg-success">Actif</span>
+                                <span th:unless="${article.isActive}" class="badge bg-secondary">Inactif</span>
                             </td>
                             <td>
                                 <div class="btn-group btn-group-sm">
@@ -103,7 +96,7 @@
                             </td>
                         </tr>
                         <tr th:if="${#lists.isEmpty(articles)}">
-                            <td colspan="8" class="text-center text-muted py-4">
+                            <td colspan="7" class="text-center text-muted py-4">
                                 <i class="bi bi-box-seam fs-1 d-block mb-2"></i>
                                 Aucun article trouvé
                             </td>

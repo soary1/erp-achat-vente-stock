@@ -32,14 +32,14 @@
                                 <select class="form-select" th:field="*{commandeAchat.id}" required id="commande-select">
                                     <option value="">-- Sélectionner une commande --</option>
                                     <option th:each="cmd : ${commandesEnvoyees}" th:value="${cmd.id}" 
-                                            th:text="${cmd.numero + ' - ' + cmd.fournisseur?.raisonSociale}"></option>
+                                            th:text="${cmd.numero + ' - ' + cmd.fournisseur?.name}"></option>
                                 </select>
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label">Dépôt de destination <span class="text-danger">*</span></label>
                                 <select class="form-select" th:field="*{depot.id}" required>
                                     <option value="">-- Sélectionner un dépôt --</option>
-                                    <option th:each="depot : ${depots}" th:value="${depot.id}" th:text="${depot.nom}"></option>
+                                    <option th:each="depot : ${depots}" th:value="${depot.id}" th:text="${depot.name}"></option>
                                 </select>
                             </div>
                             <div class="col-md-6">

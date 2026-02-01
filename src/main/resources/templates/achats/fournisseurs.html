@@ -162,9 +162,8 @@
                                         <span th:if="${fournisseur.latitude != null}" class="badge bg-success me-2">
                                             <i class="bi bi-geo-alt-fill"></i>
                                         </span>
-                                        <span class="rating-stars" th:if="${fournisseur.evaluationNote != null}">
-                                            <i class="bi bi-star-fill" th:each="i : ${#numbers.sequence(1, fournisseur.evaluationNote)}"></i>
-                                        </span>
+                                        <span th:if="${fournisseur.isActive}" class="badge bg-success">Actif</span>
+                                        <span th:unless="${fournisseur.isActive}" class="badge bg-secondary">Inactif</span>
                                     </div>
                                 </div>
                             </div>
@@ -195,11 +194,9 @@
                         <tr>
                             <th>Code</th>
                             <th>Nom</th>
-                            <th>Contact</th>
                             <th>Email</th>
                             <th>Téléphone</th>
-                            <th>Ville / Pays</th>
-                            <th>Évaluation</th>
+                            <th>Adresse</th>
                             <th>Localisation</th>
                             <th>Statut</th>
                             <th>Actions</th>
@@ -216,22 +213,11 @@
                                     <span th:text="${fournisseur.name}"></span>
                                 </div>
                             </td>
-                            <td th:text="${fournisseur.contactName}"></td>
                             <td>
                                 <a th:href="'mailto:' + ${fournisseur.email}" th:text="${fournisseur.email}"></a>
                             </td>
-                            <td th:text="${fournisseur.phone}"></td>
-                            <td>
-                                <span th:text="${fournisseur.city}"></span>
-                                <span th:if="${fournisseur.pays != null}" class="text-muted" th:text="' (' + ${fournisseur.pays.name} + ')'"></span>
-                            </td>
-                            <td>
-                                <div class="rating-stars" th:if="${fournisseur.evaluationNote != null}">
-                                    <i class="bi bi-star-fill" th:each="i : ${#numbers.sequence(1, fournisseur.evaluationNote ?: 0)}"></i>
-                                    <i class="bi bi-star" th:each="i : ${#numbers.sequence((fournisseur.evaluationNote ?: 0) + 1, 5)}"></i>
-                                </div>
-                                <span th:unless="${fournisseur.evaluationNote != null}" class="badge bg-secondary">Non évalué</span>
-                            </td>
+                            <td th:text="${fournisseur.telephone}"></td>
+                            <td th:text="${fournisseur.adresse != null ? #strings.abbreviate(fournisseur.adresse, 30) : '-'}"></td>
                             <td>
                                 <span th:if="${fournisseur.latitude != null && fournisseur.longitude != null}" 
                                       class="badge bg-success cursor-pointer"

@@ -35,8 +35,8 @@
                     <div class="row">
                         <div class="col-md-6">
                             <p><strong>Type:</strong> <span th:text="${inventaire.typeCode}"></span></p>
-                            <p><strong>Dépôt:</strong> <span th:text="${inventaire.depot?.nom}"></span></p>
-                            <p><strong>Créé par:</strong> <span th:text="${inventaire.creePar?.nom + ' ' + inventaire.creePar?.prenom}"></span></p>
+                            <p><strong>Dépôt:</strong> <span th:text="${inventaire.depot?.name}"></span></p>
+                            <p><strong>Créé par:</strong> <span th:text="${inventaire.creePar?.username}"></span></p>
                         </div>
                         <div class="col-md-6">
                             <p><strong>Date début:</strong> <span th:text="${inventaire.dateDebut != null ? #temporals.format(inventaire.dateDebut, 'dd/MM/yyyy HH:mm') : 'Non démarré'}"></span></p>
@@ -89,7 +89,7 @@
                             <tbody>
                                 <tr th:each="ligne : ${inventaire.lignes}"
                                     th:classappend="${ligne.ecartFinal != null and ligne.ecartFinal.abs().compareTo(T(java.math.BigDecimal).ZERO) > 0} ? 'table-warning' : ''">
-                                    <td th:text="${ligne.article?.designation}"></td>
+                                    <td th:text="${ligne.article?.label}"></td>
                                     <td th:text="${ligne.emplacement?.code}"></td>
                                     <td th:text="${ligne.lot?.numeroLot}"></td>
                                     <td class="text-end" th:text="${#numbers.formatDecimal(ligne.qtyTheorique, 0, 'COMMA', 2, 'POINT')}"></td>

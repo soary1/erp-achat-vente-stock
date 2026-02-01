@@ -38,16 +38,16 @@
                             <td th:text="${#temporals.format(mouvement.createdAt, 'dd/MM/yyyy HH:mm')}"></td>
                             <td>
                                 <span class="badge" 
-                                      th:classappend="${mouvement.typeMouvement?.code == 'ENTREE'} ? 'bg-success' : 
-                                                     (${mouvement.typeMouvement?.code == 'SORTIE'} ? 'bg-danger' : 'bg-info')"
-                                      th:text="${mouvement.typeMouvement?.libelle}"></span>
+                                      th:classappend="${mouvement.typeMouvement?.code == 'RECEPTION'} ? 'bg-success' : 
+                                                     (${mouvement.typeMouvement?.code == 'EXPEDITION'} ? 'bg-danger' : 'bg-info')"
+                                      th:text="${mouvement.typeMouvement?.label}"></span>
                             </td>
                             <td th:text="${mouvement.referenceDoc}"></td>
-                            <td th:text="${mouvement.article?.designation}"></td>
-                            <td th:text="${mouvement.depotSource?.nom}"></td>
-                            <td th:text="${mouvement.depotDest?.nom}"></td>
+                            <td th:text="${mouvement.article?.label}"></td>
+                            <td th:text="${mouvement.depotSource?.name}"></td>
+                            <td th:text="${mouvement.depotDest?.name}"></td>
                             <td class="text-end" th:text="${#numbers.formatDecimal(mouvement.qty, 0, 'COMMA', 2, 'POINT')}"></td>
-                            <td th:text="${mouvement.utilisateur?.nom + ' ' + mouvement.utilisateur?.prenom}"></td>
+                            <td th:text="${mouvement.utilisateur?.username}"></td>
                         </tr>
                         <tr th:if="${mouvements.content.isEmpty()}">
                             <td colspan="8" class="text-center text-muted py-4">

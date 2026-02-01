@@ -32,8 +32,7 @@
                             <th>Date</th>
                             <th>Site</th>
                             <th>Demandeur</th>
-                            <th>Objet</th>
-                            <th>Montant HT</th>
+                            <th>Justification</th>
                             <th>Statut</th>
                             <th>Actions</th>
                         </tr>
@@ -47,7 +46,6 @@
                             <td th:text="${demande.site?.name}"></td>
                             <td th:text="${demande.demandeur?.username}"></td>
                             <td th:text="${demande.justification}"></td>
-                            <td th:text="${#numbers.formatDecimal(0, 0, 'COMMA', 0, 'POINT')}"></td>
                             <td>
                                 <span class="badge badge-status" 
                                       th:classappend="'badge-' + ${demande.statutCode?.toLowerCase()}"
@@ -62,7 +60,7 @@
                             </td>
                         </tr>
                         <tr th:if="${demandes.content.isEmpty()}">
-                            <td colspan="8" class="text-center text-muted py-4">
+                            <td colspan="7" class="text-center text-muted py-4">
                                 <i class="bi bi-inbox fs-1 d-block mb-2"></i>
                                 Aucune demande d'achat
                             </td>

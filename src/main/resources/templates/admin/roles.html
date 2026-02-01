@@ -38,8 +38,8 @@
                     <tbody>
                         <tr th:each="role : ${roles}">
                             <td><code th:text="${role.code}"></code></td>
-                            <td th:text="${role.libelle}"></td>
-                            <td th:text="${role.description}"></td>
+                            <td th:text="${role.label}"></td>
+                            <td>-</td>
                             <td>
                                 <div class="btn-group btn-group-sm">
                                     <button class="btn btn-outline-secondary" title="Modifier">

@@ -73,9 +73,9 @@
                     <tbody>
                         <tr th:each="stock : ${stocks.content}"
                             th:classappend="${stock.qtyReel.compareTo(T(java.math.BigDecimal).valueOf(10)) < 0} ? 'table-warning' : ''">
-                            <td th:text="${stock.article?.designation}"></td>
+                            <td th:text="${stock.article?.label}"></td>
                             <td><code th:text="${stock.article?.sku}"></code></td>
-                            <td th:text="${stock.depot?.nom}"></td>
+                            <td th:text="${stock.depot?.name}"></td>
                             <td th:text="${stock.emplacement?.code}"></td>
                             <td th:text="${stock.lot?.numeroLot}"></td>
                             <td class="text-end" th:text="${#numbers.formatDecimal(stock.qtyReel, 0, 'COMMA', 2, 'POINT')}"></td>

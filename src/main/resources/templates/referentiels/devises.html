@@ -57,8 +57,8 @@
                     <tbody>
                         <tr th:each="devise : ${devises}">
                             <td><code th:text="${devise.code}"></code></td>
-                            <td th:text="${devise.libelle}"></td>
-                            <td th:text="${devise.symbole}"></td>
+                            <td th:text="${devise.label}"></td>
+                            <td th:text="${devise.symbol}"></td>
                             <td>
                                 <div class="btn-group btn-group-sm">
                                     <a th:href="@{/referentiels/devises/edit/{code}(code=${devise.code})}" class="btn btn-outline-secondary" title="Modifier">

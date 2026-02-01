@@ -29,7 +29,7 @@
                                 <label class="form-label">Dépôt source <span class="text-danger">*</span></label>
                                 <select class="form-select" name="depotSourceId" required id="depot-source">
                                     <option value="">-- Sélectionner --</option>
-                                    <option th:each="depot : ${depots}" th:value="${depot.id}" th:text="${depot.nom}"></option>
+                                    <option th:each="depot : ${depots}" th:value="${depot.id}" th:text="${depot.name}"></option>
                                 </select>
                             </div>
                             <div class="col-md-2 text-center d-flex align-items-end justify-content-center">
@@ -39,7 +39,7 @@
                                 <label class="form-label">Dépôt destination <span class="text-danger">*</span></label>
                                 <select class="form-select" name="depotDestinationId" required id="depot-dest">
                                     <option value="">-- Sélectionner --</option>
-                                    <option th:each="depot : ${depots}" th:value="${depot.id}" th:text="${depot.nom}"></option>
+                                    <option th:each="depot : ${depots}" th:value="${depot.id}" th:text="${depot.name}"></option>
                                 </select>
                             </div>
                         </div>

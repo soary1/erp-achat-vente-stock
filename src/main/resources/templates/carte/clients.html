@@ -87,7 +87,7 @@
                              th:data-lat="${client.latitude}"
                              th:data-lng="${client.longitude}"
                              th:data-id="${client.id}"
-                             th:onclick="'focusOnClient(' + ${client.latitude} + ',' + ${client.longitude} + ', this)'">
+                             th:onclick="${client.latitude != null && client.longitude != null} ? 'focusOnClient(' + ${client.latitude} + ',' + ${client.longitude} + ', this)' : 'alertNoCoords()'">
                             <div class="d-flex align-items-center">
                                 <div class="client-avatar me-3">
                                     <span th:text="${#strings.substring(client.name, 0, 1)}">C</span>
@@ -95,10 +95,10 @@
                                 <div class="flex-grow-1">
                                     <h6 class="mb-0" th:text="${client.name}">Nom du client</h6>
                                     <small class="text-muted" th:text="${client.code}">CODE</small>
-                                    <div th:if="${client.city}" class="mt-1">
+                                    <div th:if="${client.adresse}" class="mt-1">
                                         <small class="text-muted">
                                             <i class="bi bi-geo me-1"></i>
-                                            <span th:text="${client.city}"></span>
+                                            <span th:text="${#strings.abbreviate(client.adresse, 30)}"></span>
                                         </small>
                                     </div>
                                 </div>
@@ -165,6 +165,10 @@
                 document.querySelectorAll('.client-item').forEach(el => el.classList.remove('active'));
                 element.classList.add('active');
             }
+        }
+
+        function alertNoCoords() {
+            alert('Ce client n\'a pas de coordonnées GPS définies.');
         }
 
         document.getElementById('searchInput').addEventListener('input', function() {

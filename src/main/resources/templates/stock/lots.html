@@ -42,24 +42,24 @@
                     </thead>
                     <tbody>
                         <tr th:each="lot : ${lots}"
-                            th:classappend="${lot.dateExpiration != null and lot.dateExpiration.isBefore(T(java.time.LocalDate).now())} ? 'table-danger' : 
-                                           (${lot.dateExpiration != null and lot.dateExpiration.isBefore(T(java.time.LocalDate).now().plusDays(30))} ? 'table-warning' : '')">
+                            th:classappend="${lot.datePeremption != null and lot.datePeremption.isBefore(T(java.time.LocalDate).now())} ? 'table-danger' : 
+                                           (${lot.datePeremption != null and lot.datePeremption.isBefore(T(java.time.LocalDate).now().plusDays(30))} ? 'table-warning' : '')">
                             <td><code th:text="${lot.numeroLot}"></code></td>
-                            <td th:text="${lot.article?.designation}"></td>
+                            <td th:text="${lot.article?.label}"></td>
                             <td th:text="${lot.dateFabrication != null ? #temporals.format(lot.dateFabrication, 'dd/MM/yyyy') : '-'}"></td>
-                            <td th:text="${lot.dateExpiration != null ? #temporals.format(lot.dateExpiration, 'dd/MM/yyyy') : '-'}"></td>
-                            <td th:text="${lot.fournisseur?.raisonSociale}"></td>
+                            <td th:text="${lot.datePeremption != null ? #temporals.format(lot.datePeremption, 'dd/MM/yyyy') : '-'}"></td>
+                            <td>-</td>
                             <td>
-                                <span class="badge" th:classappend="${lot.statutQc == 'CONFORME'} ? 'bg-success' : 
-                                                                   (${lot.statutQc == 'NON_CONFORME'} ? 'bg-danger' : 'bg-secondary')"
-                                      th:text="${lot.statutQc}"></span>
+                                <span class="badge" th:classappend="${lot.statutQualiteCode == 'CONFORME'} ? 'bg-success' : 
+                                                                   (${lot.statutQualiteCode == 'REJETE'} ? 'bg-danger' : 'bg-secondary')"
+                                      th:text="${lot.statutQualiteCode}"></span>
                             </td>
                             <td>
-                                <span th:if="${lot.dateExpiration != null and lot.dateExpiration.isBefore(T(java.time.LocalDate).now())}" 
+                                <span th:if="${lot.datePeremption != null and lot.datePeremption.isBefore(T(java.time.LocalDate).now())}" 
                                       class="badge bg-danger">Périmé</span>
-                                <span th:if="${lot.dateExpiration != null and lot.dateExpiration.isAfter(T(java.time.LocalDate).now()) and lot.dateExpiration.isBefore(T(java.time.LocalDate).now().plusDays(30))}" 
+                                <span th:if="${lot.datePeremption != null and lot.datePeremption.isAfter(T(java.time.LocalDate).now()) and lot.datePeremption.isBefore(T(java.time.LocalDate).now().plusDays(30))}" 
                                       class="badge bg-warning">Expire bientôt</span>
-                                <span th:if="${lot.dateExpiration == null or lot.dateExpiration.isAfter(T(java.time.LocalDate).now().plusDays(30))}" 
+                                <span th:if="${lot.datePeremption == null or lot.datePeremption.isAfter(T(java.time.LocalDate).now().plusDays(30))}" 
                                       class="badge bg-success">Valide</span>
                             </td>
                             <td>

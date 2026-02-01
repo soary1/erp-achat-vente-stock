@@ -54,11 +54,10 @@
                     <thead>
                         <tr>
                             <th>Code</th>
-                            <th>Raison sociale</th>
-                            <th>Contact</th>
+                            <th>Nom</th>
+                            <th>Email</th>
                             <th>Téléphone</th>
-                            <th>Mode paiement</th>
-                            <th>Délai</th>
+                            <th>Adresse</th>
                             <th class="text-center">État</th>
                             <th>Actions</th>
                         </tr>
@@ -67,16 +66,14 @@
                         <tr th:each="fournisseur : ${fournisseurs}">
                             <td><code th:text="${fournisseur.code}"></code></td>
                             <td>
-                                <a th:href="@{/fournisseurs/{id}(id=${fournisseur.id})}" th:text="${fournisseur.raisonSociale}"></a>
-                                <small class="d-block text-muted" th:text="${fournisseur.adresse}"></small>
+                                <a th:href="@{/fournisseurs/{id}(id=${fournisseur.id})}" th:text="${fournisseur.name}"></a>
                             </td>
-                            <td th:text="${fournisseur.contactNom}"></td>
+                            <td th:text="${fournisseur.email}"></td>
                             <td th:text="${fournisseur.telephone}"></td>
-                            <td th:text="${fournisseur.modePaiement?.libelle}"></td>
-                            <td th:text="${fournisseur.delaiPaiementJours} + ' jours'"></td>
+                            <td><small class="text-muted" th:text="${fournisseur.adresse}"></small></td>
                             <td class="text-center">
-                                <span th:if="${fournisseur.actif}" class="badge bg-success">Actif</span>
-                                <span th:unless="${fournisseur.actif}" class="badge bg-secondary">Inactif</span>
+                                <span th:if="${fournisseur.isActive}" class="badge bg-success">Actif</span>
+                                <span th:unless="${fournisseur.isActive}" class="badge bg-secondary">Inactif</span>
                             </td>
                             <td>
                                 <div class="btn-group btn-group-sm">
@@ -93,7 +90,7 @@
                             </td>
                         </tr>
                         <tr th:if="${#lists.isEmpty(fournisseurs)}">
-                            <td colspan="8" class="text-center text-muted py-4">
+                            <td colspan="7" class="text-center text-muted py-4">
                                 <i class="bi bi-truck fs-1 d-block mb-2"></i>
                                 Aucun fournisseur trouvé
                             </td>

@@ -43,7 +43,7 @@
                                 <a th:href="@{/ventes/devis/{id}(id=${d.id})}" th:text="${d.numero}"></a>
                             </td>
                             <td th:text="${#temporals.format(d.createdAt, 'dd/MM/yyyy')}"></td>
-                            <td th:text="${d.client?.raisonSociale}"></td>
+                            <td th:text="${d.client?.name}"></td>
                             <td th:text="${d.dateValidite != null ? #temporals.format(d.dateValidite, 'dd/MM/yyyy') : '-'}"></td>
                             <td th:text="${#numbers.formatDecimal(d.totalTTC, 0, 'COMMA', 0, 'POINT')} + ' MGA'"></td>
                             <td>

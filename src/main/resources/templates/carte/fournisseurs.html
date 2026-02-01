@@ -91,7 +91,7 @@
                              th:data-lat="${fournisseur.latitude}"
                              th:data-lng="${fournisseur.longitude}"
                              th:data-id="${fournisseur.id}"
-                             th:onclick="'focusOnFournisseur(' + ${fournisseur.latitude} + ',' + ${fournisseur.longitude} + ', this)'">
+                             th:onclick="${fournisseur.latitude != null && fournisseur.longitude != null} ? 'focusOnFournisseur(' + ${fournisseur.latitude} + ',' + ${fournisseur.longitude} + ', this)' : 'alertNoCoords()'">
                             <div class="d-flex align-items-center">
                                 <div class="fournisseur-avatar me-3">
                                     <span th:text="${#strings.substring(fournisseur.name, 0, 1)}">F</span>
@@ -99,16 +99,11 @@
                                 <div class="flex-grow-1">
                                     <h6 class="mb-0" th:text="${fournisseur.name}">Nom du fournisseur</h6>
                                     <small class="text-muted" th:text="${fournisseur.code}">CODE</small>
-                                    <div class="mt-1">
-                                        <span th:if="${fournisseur.city}" class="me-2">
-                                            <small class="text-muted">
-                                                <i class="bi bi-geo me-1"></i>
-                                                <span th:text="${fournisseur.city}"></span>
-                                            </small>
-                                        </span>
-                                        <span th:if="${fournisseur.evaluationNote != null}" class="rating-stars">
-                                            <i class="bi bi-star-fill" th:each="i : ${#numbers.sequence(1, fournisseur.evaluationNote ?: 0)}"></i>
-                                        </span>
+                                    <div th:if="${fournisseur.adresse}" class="mt-1">
+                                        <small class="text-muted">
+                                            <i class="bi bi-geo me-1"></i>
+                                            <span th:text="${#strings.abbreviate(fournisseur.adresse, 30)}"></span>
+                                        </small>
                                     </div>
                                 </div>
                                 <div class="text-end">
@@ -174,6 +169,10 @@
                 document.querySelectorAll('.fournisseur-item').forEach(el => el.classList.remove('active'));
                 element.classList.add('active');
             }
+        }
+
+        function alertNoCoords() {
+            alert('Ce fournisseur n\'a pas de coordonnées GPS définies.');
         }
 
         document.getElementById('searchInput').addEventListener('input', function() {

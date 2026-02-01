@@ -35,13 +35,13 @@
                 <div class="card-body">
                     <div class="row">
                         <div class="col-md-6">
-                            <p><strong>Fournisseur:</strong> <span th:text="${commande.fournisseur?.raisonSociale}"></span></p>
-                            <p><strong>Site:</strong> <span th:text="${commande.site?.nom}"></span></p>
+                            <p><strong>Fournisseur:</strong> <span th:text="${commande.fournisseur?.name}"></span></p>
+                            <p><strong>Site:</strong> <span th:text="${commande.site?.name}"></span></p>
                             <p><strong>Devise:</strong> <span th:text="${commande.devise?.code}"></span></p>
                         </div>
                         <div class="col-md-6">
-                            <p><strong>Date création:</strong> <span th:text="${#temporals.format(commande.createdAt, 'dd/MM/yyyy HH:mm')}"></span></p>
-                            <p><strong>Créé par:</strong> <span th:text="${commande.creePar?.nom + ' ' + commande.creePar?.prenom}"></span></p>
+                            <p><strong>Date commande:</strong> <span th:text="${#temporals.format(commande.dateCommande, 'dd/MM/yyyy')}"></span></p>
+                            <p><strong>Acheteur:</strong> <span th:text="${commande.acheteur?.username}"></span></p>
                         </div>
                     </div>
                 </div>
@@ -70,11 +70,11 @@
                             </thead>
                             <tbody>
                                 <tr th:each="ligne : ${commande.lignes}">
-                                    <td th:text="${ligne.article?.designation}"></td>
+                                    <td th:text="${ligne.article?.label}"></td>
                                     <td><code th:text="${ligne.article?.sku}"></code></td>
                                     <td class="text-end" th:text="${#numbers.formatDecimal(ligne.qtyOrdered, 0, 'COMMA', 2, 'POINT')}"></td>
-                                    <td class="text-end" th:text="${#numbers.formatDecimal(ligne.priceUnit, 0, 'COMMA', 2, 'POINT')}"></td>
-                                    <td class="text-end" th:text="${#numbers.formatDecimal(ligne.totalHT, 0, 'COMMA', 2, 'POINT')}"></td>
+                                    <td class="text-end" th:text="${#numbers.formatDecimal(ligne.unitPrice, 0, 'COMMA', 2, 'POINT')}"></td>
+                                    <td class="text-end" th:text="${#numbers.formatDecimal(ligne.montantHT, 0, 'COMMA', 2, 'POINT')}"></td>
                                     <td class="text-end" th:text="${#numbers.formatDecimal(ligne.qtyReceived, 0, 'COMMA', 2, 'POINT')}"></td>
                                 </tr>
                             </tbody>
