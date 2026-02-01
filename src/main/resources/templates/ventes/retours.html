@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{layout/main}">
+<head>
+    <title>Retours clients (SAV)</title>
+</head>
+<body>
+<div layout:fragment="content">
+    <div class="page-header d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1>Retours clients (SAV)</h1>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a th:href="@{/dashboard}">Accueil</a></li>
+                    <li class="breadcrumb-item"><a th:href="@{/ventes/commandes}">Ventes</a></li>
+                    <li class="breadcrumb-item active">Retours</li>
+                </ol>
+            </nav>
+        </div>
+        <a th:href="@{/ventes/retours/add}" class="btn btn-warning">
+            <i class="bi bi-arrow-return-left me-2"></i>Nouvelle demande de retour
+        </a>
+    </div>
+    
+    <!-- Statistiques -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card bg-light">
+                <div class="card-body">
+                    <h6 class="text-muted">Total retours</h6>
+                    <h3 th:text="${totalRetours}">0</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-warning bg-opacity-10">
+                <div class="card-body">
+                    <h6 class="text-muted">En attente</h6>
+                    <h3 th:text="${enAttente}">0</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-info bg-opacity-10">
+                <div class="card-body">
+                    <h6 class="text-muted">Approuvés</h6>
+                    <h3 th:text="${approuves}">0</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-success bg-opacity-10">
+                <div class="card-body">
+                    <h6 class="text-muted">Intégrés</h6>
+                    <h3 th:text="${integres}">0</h3>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="card">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Numéro</th>
+                            <th>Date demande</th>
+                            <th>Client</th>
+                            <th>Motif</th>
+                            <th>Commande</th>
+                            <th>Statut</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr th:each="retour : ${retours.content}">
+                            <td>
+                                <a th:href="@{/ventes/retours/{id}(id=${retour.id})}" 
+                                   th:text="${retour.numero}"
+                                   class="fw-bold"></a>
+                            </td>
+                            <td th:text="${#temporals.format(retour.dateDemande, 'dd/MM/yyyy HH:mm')}"></td>
+                            <td th:text="${retour.client?.name}"></td>
+                            <td>
+                                <span class="badge bg-secondary" th:text="${retour.motifCode}"></span>
+                            </td>
+                            <td>
+                                <a th:if="${retour.commande != null}"
+                                   th:href="@{/ventes/commandes/{id}(id=${retour.commande.id})}"
+                                   th:text="${retour.commande.numero}"></a>
+                                <span th:if="${retour.commande == null}" class="text-muted">-</span>
+                            </td>
+                            <td>
+                                <span class="badge" 
+                                      th:classappend="${retour.statutCode == 'DEMANDE' ? 'bg-warning' : 
+                                                       retour.statutCode == 'APPROUVE' ? 'bg-info' : 
+                                                       retour.statutCode == 'RECEPTIONNE' ? 'bg-primary' :
+                                                       retour.statutCode == 'CONTROLE' ? 'bg-secondary' :
+                                                       retour.statutCode == 'INTEGRE' ? 'bg-success' :
+                                                       retour.statutCode == 'REBUTE' ? 'bg-dark' :
+                                                       retour.statutCode == 'REFUSE' ? 'bg-danger' : 'bg-light'}"
+                                      th:text="${retour.statutCode}"></span>
+                            </td>
+                            <td>
+                                <div class="btn-group btn-group-sm">
+                                    <a th:href="@{/ventes/retours/{id}(id=${retour.id})}" 
+                                       class="btn btn-outline-primary" 
+                                       title="Voir détails">
+                                        <i class="bi bi-eye"></i>
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                        <tr th:if="${retours.content.empty}">
+                            <td colspan="7" class="text-center text-muted py-4">
+                                <i class="bi bi-inbox display-4"></i>
+                                <p class="mt-2">Aucun retour client</p>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- Pagination -->
+            <nav th:if="${retours.totalPages > 1}">
+                <ul class="pagination justify-content-center">
+                    <li class="page-item" th:classappend="${retours.first} ? 'disabled'">
+                        <a class="page-link" th:href="@{/ventes/retours(page=${retours.number - 1})}">Précédent</a>
+                    </li>
+                    <li class="page-item" th:each="i : ${#numbers.sequence(0, retours.totalPages - 1)}"
+                        th:classappend="${i == retours.number} ? 'active'">
+                        <a class="page-link" th:href="@{/ventes/retours(page=${i})}" th:text="${i + 1}">1</a>
+                    </li>
+                    <li class="page-item" th:classappend="${retours.last} ? 'disabled'">
+                        <a class="page-link" th:href="@{/ventes/retours(page=${retours.number + 1})}">Suivant</a>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+    </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{layout/main}">
+<head>
+    <title>Détail sortie</title>
+</head>
+<body>
+<div layout:fragment="content">
+    <div class="page-header mb-4">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a th:href="@{/dashboard}">Accueil</a></li>
+                <li class="breadcrumb-item"><a th:href="@{/stock}">Stock</a></li>
+                <li class="breadcrumb-item"><a th:href="@{/stock/sorties}">Sorties</a></li>
+                <li class="breadcrumb-item active" th:text="${sortie.numero}"></li>
+            </ol>
+        </nav>
+        <h1>Sortie <span th:text="${sortie.numero}"></span></h1>
+    </div>
+    
+    <div class="row">
+        <div class="col-md-8">
+            <!-- Informations générales -->
+            <div class="card mb-3">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Informations de la demande</h5>
+                    <span class="badge" 
+                          th:classappend="${sortie.type == 'CONSOMMATION' ? 'bg-primary' : 'bg-danger'}"
+                          th:text="${sortie.type}"></span>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p><strong>Dépôt :</strong> <span th:text="${sortie.depot?.name}"></span></p>
+                            <p><strong>Motif :</strong> <span th:text="${sortie.motifCode}"></span></p>
+                            <p><strong>Date demande :</strong> <span th:text="${#temporals.format(sortie.dateDemande, 'dd/MM/yyyy HH:mm')}"></span></p>
+                        </div>
+                        <div class="col-md-6">
+                            <p><strong>Demandeur :</strong> <span th:text="${sortie.demandeur?.username}"></span></p>
+                            <p th:if="${sortie.approbateur != null}">
+                                <strong>Approbateur :</strong> <span th:text="${sortie.approbateur?.username}"></span>
+                                <small class="text-muted" th:text="${#temporals.format(sortie.dateApprobation, 'dd/MM/yyyy HH:mm')}"></small>
+                            </p>
+                            <p th:if="${sortie.executeur != null}">
+                                <strong>Exécuteur :</strong> <span th:text="${sortie.executeur?.username}"></span>
+                                <small class="text-muted" th:text="${#temporals.format(sortie.dateExecution, 'dd/MM/yyyy HH:mm')}"></small>
+                            </p>
+                        </div>
+                    </div>
+                    <div th:if="${sortie.description != null}">
+                        <p><strong>Description :</strong></p>
+                        <p class="text-muted" th:text="${sortie.description}"></p>
+                    </div>
+                    <div th:if="${sortie.motifRefus != null}" class="alert alert-danger">
+                        <strong>Motif du refus :</strong>
+                        <p class="mb-0" th:text="${sortie.motifRefus}"></p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Lignes de la sortie -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Articles</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Article</th>
+                                    <th>Lot</th>
+                                    <th>Quantité</th>
+                                    <th>Prix unitaire</th>
+                                    <th>Montant</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr th:each="ligne : ${sortie.lignes}">
+                                    <td th:text="${ligne.article?.label}"></td>
+                                    <td>
+                                        <span th:if="${ligne.lot != null}" th:text="${ligne.lot.numeroLot}"></span>
+                                        <span th:unless="${ligne.lot != null}" class="text-muted">-</span>
+                                    </td>
+                                    <td th:text="${ligne.quantite}"></td>
+                                    <td th:text="${ligne.prixUnitaire != null ? #numbers.formatDecimal(ligne.prixUnitaire, 0, 'COMMA', 0, 'POINT') + ' MGA' : '-'}"></td>
+                                    <td>
+                                        <span th:if="${ligne.prixUnitaire != null}" 
+                                              th:text="${#numbers.formatDecimal(ligne.quantite * ligne.prixUnitaire, 0, 'COMMA', 0, 'POINT')} + ' MGA'"></span>
+                                    </td>
+                                </tr>
+                            </tbody>
+                            <tfoot>
+                                <tr>
+                                    <th colspan="4" class="text-end">Total :</th>
+                                    <th th:text="${sortie.coutTotal != null ? #numbers.formatDecimal(sortie.coutTotal, 0, 'COMMA', 0, 'POINT') + ' MGA' : '-'}"></th>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4">
+            <!-- Statut -->
+            <div class="card mb-3">
+                <div class="card-body text-center">
+                    <h6 class="text-muted">Statut actuel</h6>
+                    <h3>
+                        <span class="badge" 
+                              th:classappend="${sortie.statutCode == 'BROUILLON' ? 'bg-secondary' : 
+                                               sortie.statutCode == 'SOUMISE' ? 'bg-warning' : 
+                                               sortie.statutCode == 'APPROUVEE' ? 'bg-info' :
+                                               sortie.statutCode == 'EXECUTEE' ? 'bg-success' : 'bg-danger'}"
+                              th:text="${sortie.statutCode}"></span>
+                    </h3>
+                </div>
+            </div>
+            
+            <!-- Actions -->
+            <div class="card">
+                <div class="card-header">
+                    <h6 class="mb-0">Actions</h6>
+                </div>
+                <div class="card-body">
+                    <form th:if="${sortie.statutCode == 'BROUILLON'}" 
+                          th:action="@{/stock/sorties/{id}/soumettre(id=${sortie.id})}" 
+                          method="post" class="mb-2">
+                        <button type="submit" class="btn btn-primary w-100">
+                            <i class="bi bi-send me-2"></i>Soumettre pour approbation
+                        </button>
+                    </form>
+                    
+                    <form th:if="${sortie.statutCode == 'SOUMISE'}" 
+                          th:action="@{/stock/sorties/{id}/approuver(id=${sortie.id})}" 
+                          method="post" class="mb-2">
+                        <button type="submit" class="btn btn-success w-100">
+                            <i class="bi bi-check-circle me-2"></i>Approuver
+                        </button>
+                    </form>
+                    
+                    <button th:if="${sortie.statutCode == 'SOUMISE'}" 
+                            type="button" 
+                            class="btn btn-danger w-100 mb-2" 
+                            data-bs-toggle="modal" 
+                            data-bs-target="#refuserModal">
+                        <i class="bi bi-x-circle me-2"></i>Refuser
+                    </button>
+                    
+                    <form th:if="${sortie.statutCode == 'APPROUVEE'}" 
+                          th:action="@{/stock/sorties/{id}/executer(id=${sortie.id})}" 
+                          method="post" class="mb-2">
+                        <button type="submit" class="btn btn-primary w-100">
+                            <i class="bi bi-box-arrow-right me-2"></i>Exécuter la sortie
+                        </button>
+                    </form>
+                    
+                    <a th:href="@{/stock/sorties}" class="btn btn-outline-secondary w-100">
+                        <i class="bi bi-arrow-left me-2"></i>Retour à la liste
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modal Refus -->
+    <div class="modal fade" id="refuserModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <form th:action="@{/stock/sorties/{id}/refuser(id=${sortie.id})}" method="post">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Refuser la demande de sortie</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label for="motifRefus" class="form-label">Motif du refus <span class="text-danger">*</span></label>
+                            <textarea class="form-control" id="motifRefus" name="motif" rows="4" required></textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                        <button type="submit" class="btn btn-danger">Confirmer le refus</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+</html>

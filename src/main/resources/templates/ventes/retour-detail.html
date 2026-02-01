@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{layout/main}">
+<head>
+    <title>Détail retour client</title>
+</head>
+<body>
+<div layout:fragment="content">
+    <div class="page-header mb-4">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a th:href="@{/dashboard}">Accueil</a></li>
+                <li class="breadcrumb-item"><a th:href="@{/ventes/retours}">Retours</a></li>
+                <li class="breadcrumb-item active" th:text="${retour.numero}">RET-XXXX</li>
+            </ol>
+        </nav>
+    </div>
+    
+    <!-- En-tête avec actions -->
+    <div class="card mb-4">
+        <div class="card-header bg-warning bg-opacity-10">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h4 class="mb-0">Retour <span th:text="${retour.numero}"></span></h4>
+                    <span class="badge mt-2" 
+                          th:classappend="${retour.statutCode == 'DEMANDE' ? 'bg-warning' : 
+                                           retour.statutCode == 'APPROUVE' ? 'bg-info' : 
+                                           retour.statutCode == 'RECEPTIONNE' ? 'bg-primary' :
+                                           retour.statutCode == 'CONTROLE' ? 'bg-secondary' :
+                                           retour.statutCode == 'INTEGRE' ? 'bg-success' :
+                                           retour.statutCode == 'REFUSE' ? 'bg-danger' : 'bg-light'}"
+                          th:text="${retour.statutCode}"></span>
+                </div>
+                
+                <!-- Actions selon statut -->
+                <div class="btn-group">
+                    <form th:if="${retour.statutCode == 'DEMANDE'}" 
+                          th:action="@{/ventes/retours/{id}/approuver(id=${retour.id})}" 
+                          method="post" style="display: inline;">
+                        <button type="submit" class="btn btn-success me-2">
+                            <i class="bi bi-check-circle"></i> Approuver
+                        </button>
+                    </form>
+                    
+                    <button th:if="${retour.statutCode == 'DEMANDE'}" 
+                            type="button" 
+                            class="btn btn-danger" 
+                            data-bs-toggle="modal" 
+                            data-bs-target="#refuserModal">
+                        <i class="bi bi-x-circle"></i> Refuser
+                    </button>
+                    
+                    <form th:if="${retour.statutCode == 'APPROUVE'}" 
+                          th:action="@{/ventes/retours/{id}/receptionner(id=${retour.id})}" 
+                          method="post" style="display: inline;">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-box-seam"></i> Réceptionner
+                        </button>
+                    </form>
+                    
+                    <form th:if="${retour.statutCode == 'RECEPTIONNE'}" 
+                          th:action="@{/ventes/retours/{id}/controler(id=${retour.id})}" 
+                          method="post" style="display: inline;">
+                        <button type="submit" class="btn btn-info">
+                            <i class="bi bi-clipboard-check"></i> Contrôler qualité
+                        </button>
+                    </form>
+                    
+                    <form th:if="${retour.statutCode == 'CONTROLE'}" 
+                          th:action="@{/ventes/retours/{id}/traiter(id=${retour.id})}" 
+                          method="post" style="display: inline;">
+                        <button type="submit" class="btn btn-success">
+                            <i class="bi bi-arrow-repeat"></i> Traiter & Intégrer
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <p><strong>Client :</strong> <span th:text="${retour.client?.name}"></span></p>
+                    <p><strong>Motif :</strong> <span class="badge bg-secondary" th:text="${retour.motifCode}"></span></p>
+                    <p th:if="${retour.commande != null}">
+                        <strong>Commande :</strong> 
+                        <a th:href="@{/ventes/commandes/{id}(id=${retour.commande.id})}" th:text="${retour.commande.numero}"></a>
+                    </p>
+                    <p th:if="${retour.facture != null}">
+                        <strong>Facture :</strong> <span th:text="${retour.facture.numero}"></span>
+                    </p>
+                </div>
+                <div class="col-md-6">
+                    <p><strong>Demandé par :</strong> <span th:text="${retour.demandeur?.username}"></span></p>
+                    <p><strong>Date demande :</strong> <span th:text="${#temporals.format(retour.dateDemande, 'dd/MM/yyyy HH:mm')}"></span></p>
+                    <p th:if="${retour.approbateur != null}">
+                        <strong>Approuvé par :</strong> <span th:text="${retour.approbateur?.username}"></span>
+                    </p>
+                    <p th:if="${retour.depotRetour != null}">
+                        <strong>Dépôt retour :</strong> <span th:text="${retour.depotRetour?.name}"></span>
+                    </p>
+                </div>
+            </div>
+            
+            <div th:if="${retour.description != null}" class="alert alert-info mt-3">
+                <strong>Description :</strong>
+                <p th:text="${retour.description}" class="mb-0"></p>
+            </div>
+            
+            <div th:if="${retour.notes != null}" class="alert alert-secondary mt-3">
+                <strong>Notes :</strong>
+                <p th:text="${retour.notes}" class="mb-0"></p>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Lignes de retour -->
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0">Articles retournés</h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-sm">
+                    <thead>
+                        <tr>
+                            <th>Article</th>
+                            <th>Lot</th>
+                            <th>Qty retournée</th>
+                            <th>Qty acceptée</th>
+                            <th>Qty rejetée</th>
+                            <th>État</th>
+                            <th>Décision</th>
+                            <th>Emplacement</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr th:each="ligne : ${retour.lignes}">
+                            <td th:text="${ligne.article?.label}"></td>
+                            <td>
+                                <span th:if="${ligne.lot != null}" th:text="${ligne.lot.numeroLot}"></span>
+                                <span th:if="${ligne.lot == null}" class="text-muted">-</span>
+                            </td>
+                            <td th:text="${ligne.qtyRetournee}"></td>
+                            <td th:text="${ligne.qtyAcceptee}" class="text-success"></td>
+                            <td th:text="${ligne.qtyRejetee}" class="text-danger"></td>
+                            <td>
+                                <span th:if="${ligne.etatMarchandise != null}" 
+                                      class="badge"
+                                      th:classappend="${ligne.etatMarchandise == 'INTACT' ? 'bg-success' : 
+                                                       ligne.etatMarchandise == 'ABIME' ? 'bg-warning' : 'bg-danger'}"
+                                      th:text="${ligne.etatMarchandise}"></span>
+                            </td>
+                            <td>
+                                <span th:if="${ligne.decision != null}" 
+                                      class="badge"
+                                      th:classappend="${ligne.decision == 'REINTEGRER' ? 'bg-success' : 
+                                                       ligne.decision == 'QUARANTAINE' ? 'bg-warning' : 'bg-dark'}"
+                                      th:text="${ligne.decision}"></span>
+                            </td>
+                            <td th:text="${ligne.emplacement?.code ?: '-'}"></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modal refuser -->
+    <div class="modal fade" id="refuserModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <form th:action="@{/ventes/retours/{id}/refuser(id=${retour.id})}" method="post">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Refuser le retour</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label class="form-label">Motif du refus *</label>
+                            <textarea class="form-control" name="motif" rows="3" required></textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                        <button type="submit" class="btn btn-danger">Confirmer le refus</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+</html>

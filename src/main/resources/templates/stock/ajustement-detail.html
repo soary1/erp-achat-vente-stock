@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{layout/main}">
+<head>
+    <title>Détail ajustement</title>
+</head>
+<body>
+<div layout:fragment="content">
+    <div class="page-header mb-4">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a th:href="@{/dashboard}">Accueil</a></li>
+                <li class="breadcrumb-item"><a th:href="@{/stock}">Stock</a></li>
+                <li class="breadcrumb-item"><a th:href="@{/stock/ajustements}">Ajustements</a></li>
+                <li class="breadcrumb-item active" th:text="${ajustement.numero}"></li>
+            </ol>
+        </nav>
+        <h1>Ajustement <span th:text="${ajustement.numero}"></span></h1>
+    </div>
+    
+    <div class="row">
+        <div class="col-md-8">
+            <!-- Informations générales -->
+            <div class="card mb-3">
+                <div class="card-header">
+                    <h5 class="mb-0">Informations de l'ajustement</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p><strong>Article :</strong> <span th:text="${ajustement.article?.label}"></span></p>
+                            <p><strong>Dépôt :</strong> <span th:text="${ajustement.depot?.name}"></span></p>
+                            <p th:if="${ajustement.emplacement != null}">
+                                <strong>Emplacement :</strong> <span th:text="${ajustement.emplacement.code}"></span>
+                            </p>
+                            <p th:if="${ajustement.lot != null}">
+                                <strong>Lot :</strong> <span th:text="${ajustement.lot.numeroLot}"></span>
+                            </p>
+                            <p><strong>Date demande :</strong> <span th:text="${#temporals.format(ajustement.dateDemande, 'dd/MM/yyyy HH:mm')}"></span></p>
+                        </div>
+                        <div class="col-md-6">
+                            <p><strong>Demandeur :</strong> <span th:text="${ajustement.demandeur?.username}"></span></p>
+                            <p th:if="${ajustement.approvateurNiveau1 != null}">
+                                <strong>Approbateur niveau 1 :</strong> <span th:text="${ajustement.approvateurNiveau1?.username}"></span>
+                                <small class="text-muted" th:text="${#temporals.format(ajustement.dateApprobationNiveau1, 'dd/MM/yyyy HH:mm')}"></small>
+                            </p>
+                            <p th:if="${ajustement.approvateurFinal != null}">
+                                <strong>Approbateur final :</strong> <span th:text="${ajustement.approvateurFinal?.username}"></span>
+                                <small class="text-muted" th:text="${#temporals.format(ajustement.dateApprobationFinal, 'dd/MM/yyyy HH:mm')}"></small>
+                            </p>
+                            <p th:if="${ajustement.executeur != null}">
+                                <strong>Exécuteur :</strong> <span th:text="${ajustement.executeur?.username}"></span>
+                                <small class="text-muted" th:text="${#temporals.format(ajustement.dateExecution, 'dd/MM/yyyy HH:mm')}"></small>
+                            </p>
+                        </div>
+                    </div>
+                    
+                    <!-- Analyse de l'écart -->
+                    <div class="card bg-light mt-3">
+                        <div class="card-body">
+                            <h6 class="mb-3">Analyse de l'écart</h6>
+                            <div class="row text-center">
+                                <div class="col-4">
+                                    <div class="border-end">
+                                        <h6 class="text-muted">Qty théorique</h6>
+                                        <h4 th:text="${ajustement.qtyTheorique}"></h4>
+                                    </div>
+                                </div>
+                                <div class="col-4">
+                                    <div class="border-end">
+                                        <h6 class="text-muted">Qty réelle</h6>
+                                        <h4 th:text="${ajustement.qtyReelle}"></h4>
+                                    </div>
+                                </div>
+                                <div class="col-4">
+                                    <h6 class="text-muted">Écart</h6>
+                                    <h4 th:class="${ajustement.qtyEcart > 0 ? 'text-success' : ajustement.qtyEcart < 0 ? 'text-danger' : 'text-muted'}"
+                                        th:text="${ajustement.qtyEcart > 0 ? '+' : ''} + ${ajustement.qtyEcart}"></h4>
+                                </div>
+                            </div>
+                            <hr>
+                            <div class="row text-center mt-3">
+                                <div class="col-6">
+                                    <h6 class="text-muted">Prix unitaire</h6>
+                                    <p th:text="${ajustement.prixUnitaire != null ? #numbers.formatDecimal(ajustement.prixUnitaire, 0, 'COMMA', 0, 'POINT') + ' MGA' : '-'}"></p>
+                                </div>
+                                <div class="col-6">
+                                    <h6 class="text-muted">Impact monétaire</h6>
+                                    <h5 th:if="${ajustement.montantImpact != null}"
+                                        th:class="${ajustement.montantImpact > 0 ? 'text-success' : ajustement.montantImpact < 0 ? 'text-danger' : 'text-muted'}"
+                                        th:text="${(ajustement.montantImpact > 0 ? '+' : '') + #numbers.formatDecimal(ajustement.montantImpact, 0, 'COMMA', 0, 'POINT')} + ' MGA'"></h5>
+                                </div>
+                            </div>
+                            
+                            <!-- Alerte double validation -->
+                            <div th:if="${ajustement.montantImpact != null && Math.abs(ajustement.montantImpact) > 50000}" 
+                                 class="alert alert-warning mt-3 mb-0">
+                                <i class="bi bi-exclamation-triangle me-2"></i>
+                                <strong>Attention :</strong> Montant supérieur à 50 000 MGA - Double validation requise
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div th:if="${ajustement.justification != null}" class="mt-3">
+                        <p><strong>Justification :</strong></p>
+                        <p class="text-muted" th:text="${ajustement.justification}"></p>
+                    </div>
+                    
+                    <div th:if="${ajustement.motifRefus != null}" class="alert alert-danger mt-3">
+                        <strong>Motif du refus :</strong>
+                        <p class="mb-0" th:text="${ajustement.motifRefus}"></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4">
+            <!-- Statut -->
+            <div class="card mb-3">
+                <div class="card-body text-center">
+                    <h6 class="text-muted">Statut actuel</h6>
+                    <h3>
+                        <span class="badge" 
+                              th:classappend="${ajustement.statutCode == 'BROUILLON' ? 'bg-secondary' : 
+                                               ajustement.statutCode == 'SOUMIS' ? 'bg-warning' : 
+                                               ajustement.statutCode == 'APPROUVE_NIVEAU1' ? 'bg-info' :
+                                               ajustement.statutCode == 'APPROUVE_FINAL' ? 'bg-primary' :
+                                               ajustement.statutCode == 'EXECUTE' ? 'bg-success' : 'bg-danger'}"
+                              th:text="${ajustement.statutCode}"></span>
+                    </h3>
+                    <p th:if="${ajustement.statutCode == 'APPROUVE_NIVEAU1'}" class="text-warning small mt-2 mb-0">
+                        <i class="bi bi-exclamation-triangle"></i> En attente validation finale
+                    </p>
+                </div>
+            </div>
+            
+            <!-- Règle de séparation -->
+            <div class="alert alert-info mb-3">
+                <i class="bi bi-info-circle me-2"></i>
+                <small><strong>Règle :</strong> Le demandeur ne peut pas approuver son propre ajustement</small>
+            </div>
+            
+            <!-- Actions -->
+            <div class="card">
+                <div class="card-header">
+                    <h6 class="mb-0">Actions</h6>
+                </div>
+                <div class="card-body">
+                    <form th:if="${ajustement.statutCode == 'BROUILLON'}" 
+                          th:action="@{/stock/ajustements/{id}/soumettre(id=${ajustement.id})}" 
+                          method="post" class="mb-2">
+                        <button type="submit" class="btn btn-primary w-100">
+                            <i class="bi bi-send me-2"></i>Soumettre
+                        </button>
+                    </form>
+                    
+                    <form th:if="${ajustement.statutCode == 'SOUMIS'}" 
+                          th:action="@{/stock/ajustements/{id}/approuver-niveau1(id=${ajustement.id})}" 
+                          method="post" class="mb-2">
+                        <button type="submit" class="btn btn-success w-100">
+                            <i class="bi bi-check-circle me-2"></i>Approuver (Niveau 1)
+                        </button>
+                    </form>
+                    
+                    <form th:if="${ajustement.statutCode == 'APPROUVE_NIVEAU1'}" 
+                          th:action="@{/stock/ajustements/{id}/approuver-final(id=${ajustement.id})}" 
+                          method="post" class="mb-2">
+                        <button type="submit" class="btn btn-success w-100">
+                            <i class="bi bi-check-circle-fill me-2"></i>Approbation finale
+                        </button>
+                    </form>
+                    
+                    <button th:if="${ajustement.statutCode == 'SOUMIS' || ajustement.statutCode == 'APPROUVE_NIVEAU1'}" 
+                            type="button" 
+                            class="btn btn-danger w-100 mb-2" 
+                            data-bs-toggle="modal" 
+                            data-bs-target="#refuserModal">
+                        <i class="bi bi-x-circle me-2"></i>Refuser
+                    </button>
+                    
+                    <form th:if="${ajustement.statutCode == 'APPROUVE_FINAL'}" 
+                          th:action="@{/stock/ajustements/{id}/executer(id=${ajustement.id})}" 
+                          method="post" class="mb-2">
+                        <button type="submit" class="btn btn-primary w-100">
+                            <i class="bi bi-pencil-square me-2"></i>Exécuter l'ajustement
+                        </button>
+                    </form>
+                    
+                    <a th:href="@{/stock/ajustements}" class="btn btn-outline-secondary w-100">
+                        <i class="bi bi-arrow-left me-2"></i>Retour à la liste
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modal Refus -->
+    <div class="modal fade" id="refuserModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <form th:action="@{/stock/ajustements/{id}/refuser(id=${ajustement.id})}" method="post">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Refuser l'ajustement</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label for="motifRefus" class="form-label">Motif du refus <span class="text-danger">*</span></label>
+                            <textarea class="form-control" id="motifRefus" name="motif" rows="4" required></textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                        <button type="submit" class="btn btn-danger">Confirmer le refus</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+</html>

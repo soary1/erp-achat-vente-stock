@@ -415,7 +415,18 @@ CREATE TABLE type_mouvement (
     label VARCHAR(100) NOT NULL,
     sens INT NOT NULL
 );
-INSERT INTO type_mouvement VALUES ('RECEPTION', 'Réception Fournisseur', 1), ('EXPEDITION', 'Livraison Client', -1), ('TRANSFERT', 'Transfert Interne', 0), ('AJUSTEMENT', 'Ajustement Inventaire', 0);
+INSERT INTO type_mouvement VALUES 
+('RECEPTION', 'Réception Fournisseur', 1), 
+('EXPEDITION', 'Livraison Client', -1), 
+('RETOUR_CLIENT', 'Retour Client (SAV)', 1),
+('TRANSFERT_SORTIE', 'Transfert Sortant (Départ)', -1),
+('TRANSFERT_ENTREE', 'Transfert Entrant (Arrivée)', 1),
+('TRANSFERT_EMPLACEMENT', 'Transfert d emplacement', 0),
+('CONSOMMATION', 'Consommation Interne', -1),
+('REBUT', 'Mise au Rebut', -1),
+('AJUSTEMENT_POS', 'Ajustement Positif', 1),
+('AJUSTEMENT_NEG', 'Ajustement Négatif', -1),
+('AJUSTEMENT', 'Ajustement Inventaire', 0);
 
 CREATE TABLE mouvement_stock (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -622,3 +633,284 @@ CREATE TABLE encaissement_client (
     montant DECIMAL(19, 2) NOT NULL,
     mode_paiement_code VARCHAR(50) NOT NULL REFERENCES mode_paiement(code)
 );
+
+-- ==============================================================================
+-- 11. RETOURS CLIENT (SAV)
+-- ==============================================================================
+
+CREATE TABLE statut_retour_client (
+    code VARCHAR(50) PRIMARY KEY,
+    label VARCHAR(100) NOT NULL
+);
+INSERT INTO statut_retour_client VALUES 
+('DEMANDE', 'Demande de retour'),
+('APPROUVE', 'Retour approuvé'),
+('RECEPTIONNE', 'Marchandise réceptionnée'),
+('CONTROLE', 'En contrôle qualité'),
+('INTEGRE', 'Réintégré au stock'),
+('REBUTE', 'Mis au rebut'),
+('REMBOURSE', 'Client remboursé'),
+('REFUSE', 'Retour refusé');
+
+CREATE TABLE motif_retour (
+    code VARCHAR(50) PRIMARY KEY,
+    label VARCHAR(100) NOT NULL
+);
+INSERT INTO motif_retour VALUES 
+('DEFECTUEUX', 'Produit défectueux'),
+('NON_CONFORME', 'Non conforme à la commande'),
+('ERREUR_LIVRAISON', 'Erreur de livraison'),
+('ENDOMMAGE', 'Produit endommagé'),
+('PERIME', 'Produit périmé ou proche péremption'),
+('REPENTIR', 'Droit de rétractation'),
+('AUTRE', 'Autre motif');
+
+CREATE TABLE retour_client (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    numero VARCHAR(50) NOT NULL UNIQUE,
+    client_id UUID NOT NULL REFERENCES client(id),
+    commande_id UUID REFERENCES commande_client(id),
+    facture_id UUID REFERENCES facture_client(id),
+    bon_livraison_id UUID REFERENCES bon_livraison(id),
+    
+    motif_code VARCHAR(50) NOT NULL REFERENCES motif_retour(code),
+    description TEXT,
+    
+    statut_code VARCHAR(50) NOT NULL REFERENCES statut_retour_client(code),
+    
+    demandeur_id UUID REFERENCES utilisateur(id),
+    approbateur_id UUID REFERENCES utilisateur(id),
+    
+    date_demande TIMESTAMPTZ DEFAULT NOW(),
+    date_approbation TIMESTAMPTZ,
+    date_reception TIMESTAMPTZ,
+    
+    depot_retour_id UUID REFERENCES depot(id),
+    
+    montant_rembourse DECIMAL(19, 2),
+    notes TEXT
+);
+
+CREATE TABLE ligne_retour_client (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    retour_id UUID NOT NULL REFERENCES retour_client(id),
+    ligne_livraison_id UUID REFERENCES ligne_bon_livraison(id),
+    article_id UUID NOT NULL REFERENCES article(id),
+    lot_id UUID REFERENCES lot(id),
+    
+    qty_retournee DECIMAL(19, 4) NOT NULL,
+    qty_acceptee DECIMAL(19, 4) DEFAULT 0,
+    qty_rejetee DECIMAL(19, 4) DEFAULT 0,
+    
+    etat_marchandise VARCHAR(50), -- 'INTACT', 'ABIME', 'DEFECTUEUX'
+    decision VARCHAR(50), -- 'REINTEGRER', 'REBUTER', 'QUARANTAINE'
+    emplacement_id UUID REFERENCES emplacement(id),
+    
+    notes TEXT
+);
+
+-- ==============================================================================
+-- 12. TRANSFERTS INTER-DÉPÔTS
+-- ==============================================================================
+
+CREATE TABLE statut_transfert (
+    code VARCHAR(50) PRIMARY KEY,
+    label VARCHAR(100) NOT NULL
+);
+INSERT INTO statut_transfert VALUES 
+('DEMANDE', 'Demandé'),
+('APPROUVE', 'Approuvé'),
+('EXPEDIE', 'Expédié'),
+('EN_TRANSIT', 'En transit'),
+('RECEPTIONNE', 'Réceptionné'),
+('CLOTURE', 'Clôturé'),
+('ANNULE', 'Annulé');
+
+CREATE TABLE transfert_stock (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    numero VARCHAR(50) NOT NULL UNIQUE,
+    
+    depot_source_id UUID NOT NULL REFERENCES depot(id),
+    depot_dest_id UUID NOT NULL REFERENCES depot(id),
+    
+    statut_code VARCHAR(50) NOT NULL REFERENCES statut_transfert(code),
+    
+    demandeur_id UUID NOT NULL REFERENCES utilisateur(id),
+    approbateur_id UUID REFERENCES utilisateur(id),
+    expediteur_id UUID REFERENCES utilisateur(id),
+    recepteur_id UUID REFERENCES utilisateur(id),
+    
+    date_demande TIMESTAMPTZ DEFAULT NOW(),
+    date_approbation TIMESTAMPTZ,
+    date_expedition TIMESTAMPTZ,
+    date_reception TIMESTAMPTZ,
+    
+    motif TEXT,
+    notes TEXT
+);
+
+CREATE TABLE ligne_transfert_stock (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    transfert_id UUID NOT NULL REFERENCES transfert_stock(id),
+    article_id UUID NOT NULL REFERENCES article(id),
+    lot_id UUID REFERENCES lot(id),
+    
+    emplacement_source_id UUID REFERENCES emplacement(id),
+    emplacement_dest_id UUID REFERENCES emplacement(id),
+    
+    qty_demandee DECIMAL(19, 4) NOT NULL,
+    qty_expedie DECIMAL(19, 4) DEFAULT 0,
+    qty_recue DECIMAL(19, 4) DEFAULT 0,
+    
+    unit_cost DECIMAL(19, 4)
+);
+
+-- ==============================================================================
+-- 13. CONSOMMATION INTERNE & REBUT
+-- ==============================================================================
+
+CREATE TABLE statut_demande_sortie (
+    code VARCHAR(50) PRIMARY KEY,
+    label VARCHAR(100) NOT NULL
+);
+INSERT INTO statut_demande_sortie VALUES 
+('BROUILLON', 'Brouillon'),
+('SOUMISE', 'Soumise'),
+('APPROUVEE', 'Approuvée'),
+('REJETEE', 'Rejetée'),
+('EXECUTEE', 'Exécutée');
+
+CREATE TABLE motif_sortie (
+    code VARCHAR(50) PRIMARY KEY,
+    label VARCHAR(100) NOT NULL,
+    type VARCHAR(50) NOT NULL -- 'CONSOMMATION' ou 'REBUT'
+);
+INSERT INTO motif_sortie VALUES 
+('CONSO_INTERNE', 'Consommation interne (fournitures bureau)', 'CONSOMMATION'),
+('CONSO_PRODUCTION', 'Consommation production', 'CONSOMMATION'),
+('CONSO_DEMO', 'Démonstration / Échantillon', 'CONSOMMATION'),
+('REBUT_CASSE', 'Produit cassé', 'REBUT'),
+('REBUT_PERIME', 'Produit périmé', 'REBUT'),
+('REBUT_OBSOLETE', 'Produit obsolète', 'REBUT'),
+('REBUT_QUALITE', 'Non-conformité qualité', 'REBUT'),
+('REBUT_VOL', 'Vol / Perte', 'REBUT');
+
+CREATE TABLE demande_sortie_stock (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    numero VARCHAR(50) NOT NULL UNIQUE,
+    type VARCHAR(50) NOT NULL, -- 'CONSOMMATION' ou 'REBUT'
+    
+    depot_id UUID NOT NULL REFERENCES depot(id),
+    motif_code VARCHAR(50) NOT NULL REFERENCES motif_sortie(code),
+    
+    statut_code VARCHAR(50) NOT NULL REFERENCES statut_demande_sortie(code),
+    
+    demandeur_id UUID NOT NULL REFERENCES utilisateur(id),
+    approbateur_id UUID REFERENCES utilisateur(id),
+    executeur_id UUID REFERENCES utilisateur(id),
+    
+    date_demande TIMESTAMPTZ DEFAULT NOW(),
+    date_approbation TIMESTAMPTZ,
+    date_execution TIMESTAMPTZ,
+    
+    justification TEXT NOT NULL,
+    commentaire_approbation TEXT,
+    
+    -- Coût total de la perte (calculé)
+    cout_total DECIMAL(19, 2)
+);
+
+CREATE TABLE ligne_demande_sortie (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    demande_id UUID NOT NULL REFERENCES demande_sortie_stock(id),
+    article_id UUID NOT NULL REFERENCES article(id),
+    lot_id UUID REFERENCES lot(id),
+    emplacement_id UUID REFERENCES emplacement(id),
+    
+    qty_demandee DECIMAL(19, 4) NOT NULL,
+    qty_executee DECIMAL(19, 4) DEFAULT 0,
+    
+    unit_cost DECIMAL(19, 4),
+    montant DECIMAL(19, 2)
+);
+
+-- ==============================================================================
+-- 14. AJUSTEMENTS STOCK PONCTUELS
+-- ==============================================================================
+
+CREATE TABLE statut_ajustement (
+    code VARCHAR(50) PRIMARY KEY,
+    label VARCHAR(100) NOT NULL
+);
+INSERT INTO statut_ajustement VALUES 
+('BROUILLON', 'Brouillon'),
+('SOUMIS', 'Soumis pour validation'),
+('APPROUVE_NIVEAU1', 'Approuvé Niveau 1'),
+('APPROUVE_FINAL', 'Approuvé - Validation finale'),
+('REJETE', 'Rejeté'),
+('EXECUTE', 'Exécuté / Stock ajusté');
+
+CREATE TABLE motif_ajustement (
+    code VARCHAR(50) PRIMARY KEY,
+    label VARCHAR(100) NOT NULL
+);
+INSERT INTO motif_ajustement VALUES 
+('ECART_INVENTAIRE', 'Écart suite à inventaire'),
+('PERTE', 'Perte / Introuvable'),
+('ERREUR_SAISIE', 'Erreur de saisie'),
+('REGULARISATION', 'Régularisation comptable'),
+('CASSE', 'Casse non déclarée'),
+('AUTRE', 'Autre motif');
+
+CREATE TABLE ajustement_stock (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    numero VARCHAR(50) NOT NULL UNIQUE,
+    
+    depot_id UUID NOT NULL REFERENCES depot(id),
+    article_id UUID NOT NULL REFERENCES article(id),
+    lot_id UUID REFERENCES lot(id),
+    emplacement_id UUID REFERENCES emplacement(id),
+    
+    qty_theorique DECIMAL(19, 4) NOT NULL,
+    qty_reelle DECIMAL(19, 4) NOT NULL,
+    qty_ecart DECIMAL(19, 4) GENERATED ALWAYS AS (qty_reelle - qty_theorique) STORED,
+    
+    motif_code VARCHAR(50) NOT NULL REFERENCES motif_ajustement(code),
+    statut_code VARCHAR(50) NOT NULL REFERENCES statut_ajustement(code),
+    
+    demandeur_id UUID NOT NULL REFERENCES utilisateur(id),
+    approbateur_niveau1_id UUID REFERENCES utilisateur(id),
+    approbateur_final_id UUID REFERENCES utilisateur(id),
+    
+    date_demande TIMESTAMPTZ DEFAULT NOW(),
+    date_approbation_niveau1 TIMESTAMPTZ,
+    date_approbation_finale TIMESTAMPTZ,
+    date_execution TIMESTAMPTZ,
+    
+    justification TEXT NOT NULL,
+    commentaire_approbation TEXT,
+    
+    unit_cost DECIMAL(19, 4),
+    montant_impact DECIMAL(19, 2),
+    
+    -- Photo de preuve
+    photo_url TEXT
+);
+
+-- Règle : Le demandeur ne peut PAS être approbateur
+CREATE OR REPLACE FUNCTION check_ajustement_separation_taches()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF NEW.approbateur_niveau1_id = NEW.demandeur_id THEN
+        RAISE EXCEPTION 'Le demandeur ne peut pas approuver son propre ajustement';
+    END IF;
+    IF NEW.approbateur_final_id = NEW.demandeur_id THEN
+        RAISE EXCEPTION 'Le demandeur ne peut pas approuver son propre ajustement';
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER tr_ajustement_separation
+BEFORE INSERT OR UPDATE ON ajustement_stock
+FOR EACH ROW EXECUTE FUNCTION check_ajustement_separation_taches();

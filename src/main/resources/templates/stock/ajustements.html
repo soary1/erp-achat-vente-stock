@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{layout/main}">
+<head>
+    <title>Ajustements de stock</title>
+</head>
+<body>
+<div layout:fragment="content">
+    <div class="page-header d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1>Ajustements de stock</h1>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a th:href="@{/dashboard}">Accueil</a></li>
+                    <li class="breadcrumb-item"><a th:href="@{/stock}">Stock</a></li>
+                    <li class="breadcrumb-item active">Ajustements</li>
+                </ol>
+            </nav>
+        </div>
+        <a th:href="@{/stock/ajustements/add}" class="btn btn-warning">
+            <i class="bi bi-pencil-square me-2"></i>Nouvel ajustement
+        </a>
+    </div>
+    
+    <!-- Statistiques -->
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="card bg-warning bg-opacity-10">
+                <div class="card-body">
+                    <h6 class="text-muted">En attente validation</h6>
+                    <h3 th:text="${enAttente}">0</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card bg-danger bg-opacity-10">
+                <div class="card-body">
+                    <h6 class="text-muted">Double validation requise</h6>
+                    <h3 th:text="${doubleValidation}">0</h3>
+                    <small class="text-muted">Montant > <span th:text="${#numbers.formatDecimal(seuilDoubleValidation, 0, 'COMMA', 0, 'POINT')}"></span> MGA</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="alert alert-info mb-0">
+                <i class="bi bi-info-circle me-2"></i>
+                <strong>Règle de séparation :</strong> Le demandeur ne peut pas valider son propre ajustement
+            </div>
+        </div>
+    </div>
+    
+    <div class="card">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Numéro</th>
+                            <th>Date</th>
+                            <th>Article</th>
+                            <th>Dépôt</th>
+                            <th>Qty théorique</th>
+                            <th>Qty réelle</th>
+                            <th>Écart</th>
+                            <th>Impact €</th>
+                            <th>Statut</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr th:each="ajustement : ${ajustements.content}">
+                            <td>
+                                <a th:href="@{/stock/ajustements/{id}(id=${ajustement.id})}" 
+                                   th:text="${ajustement.numero}"
+                                   class="fw-bold"></a>
+                            </td>
+                            <td th:text="${#temporals.format(ajustement.dateDemande, 'dd/MM/yyyy')}"></td>
+                            <td th:text="${ajustement.article?.label}"></td>
+                            <td th:text="${ajustement.depot?.name}"></td>
+                            <td th:text="${ajustement.qtyTheorique}"></td>
+                            <td th:text="${ajustement.qtyReelle}"></td>
+                            <td>
+                                <span th:class="${ajustement.qtyEcart > 0 ? 'text-success' : ajustement.qtyEcart < 0 ? 'text-danger' : 'text-muted'}"
+                                      th:text="${ajustement.qtyEcart > 0 ? '+' : ''} + ${ajustement.qtyEcart}">
+                                </span>
+                            </td>
+                            <td>
+                                <span th:if="${ajustement.montantImpact != null}"
+                                      th:class="${ajustement.montantImpact > 0 ? 'text-success' : ajustement.montantImpact < 0 ? 'text-danger' : 'text-muted'}"
+                                      th:text="${(ajustement.montantImpact > 0 ? '+' : '') + #numbers.formatDecimal(ajustement.montantImpact, 0, 'COMMA', 0, 'POINT')} + ' MGA'">
+                                </span>
+                            </td>
+                            <td>
+                                <span class="badge" 
+                                      th:classappend="${ajustement.statutCode == 'BROUILLON' ? 'bg-secondary' : 
+                                                       ajustement.statutCode == 'SOUMIS' ? 'bg-warning' : 
+                                                       ajustement.statutCode == 'APPROUVE_NIVEAU1' ? 'bg-info' :
+                                                       ajustement.statutCode == 'APPROUVE_FINAL' ? 'bg-primary' :
+                                                       ajustement.statutCode == 'EXECUTE' ? 'bg-success' : 'bg-danger'}"
+                                      th:text="${ajustement.statutCode}"></span>
+                                <i th:if="${ajustement.statutCode == 'APPROUVE_NIVEAU1'}" 
+                                   class="bi bi-exclamation-triangle text-warning" 
+                                   title="Double validation requise"></i>
+                            </td>
+                            <td>
+                                <a th:href="@{/stock/ajustements/{id}(id=${ajustement.id})}" 
+                                   class="btn btn-sm btn-outline-primary">
+                                    <i class="bi bi-eye"></i>
+                                </a>
+                            </td>
+                        </tr>
+                        <tr th:if="${ajustements.content.empty}">
+                            <td colspan="10" class="text-center text-muted py-4">
+                                <i class="bi bi-inbox display-4"></i>
+                                <p class="mt-2">Aucun ajustement</p>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+</html>

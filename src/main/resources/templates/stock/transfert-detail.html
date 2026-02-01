@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{layout/main}">
+<head>
+    <title>Détail transfert</title>
+</head>
+<body>
+<div layout:fragment="content">
+    <div class="page-header mb-4">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a th:href="@{/dashboard}">Accueil</a></li>
+                <li class="breadcrumb-item"><a th:href="@{/stock}">Stock</a></li>
+                <li class="breadcrumb-item"><a th:href="@{/stock/transferts}">Transferts</a></li>
+                <li class="breadcrumb-item active" th:text="${transfert.numero}"></li>
+            </ol>
+        </nav>
+        <h1>Transfert <span th:text="${transfert.numero}"></span></h1>
+    </div>
+    
+    <div class="row">
+        <div class="col-md-8">
+            <!-- Informations générales -->
+            <div class="card mb-3">
+                <div class="card-header">
+                    <h5 class="mb-0">Informations du transfert</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p><strong>Dépôt source :</strong> <span th:text="${transfert.depotSource?.name}"></span></p>
+                            <p><strong>Dépôt destination :</strong> <span th:text="${transfert.depotDest?.name}"></span></p>
+                            <p><strong>Date demande :</strong> <span th:text="${#temporals.format(transfert.dateDemande, 'dd/MM/yyyy HH:mm')}"></span></p>
+                        </div>
+                        <div class="col-md-6">
+                            <p><strong>Demandeur :</strong> <span th:text="${transfert.demandeur?.username}"></span></p>
+                            <p th:if="${transfert.approbateur != null}">
+                                <strong>Approbateur :</strong> <span th:text="${transfert.approbateur?.username}"></span>
+                                <small class="text-muted" th:text="${#temporals.format(transfert.dateApprobation, 'dd/MM/yyyy HH:mm')}"></small>
+                            </p>
+                            <p th:if="${transfert.expediteur != null}">
+                                <strong>Expéditeur :</strong> <span th:text="${transfert.expediteur?.username}"></span>
+                                <small class="text-muted" th:text="${#temporals.format(transfert.dateExpedition, 'dd/MM/yyyy HH:mm')}"></small>
+                            </p>
+                            <p th:if="${transfert.recepteur != null}">
+                                <strong>Récepteur :</strong> <span th:text="${transfert.recepteur?.username}"></span>
+                                <small class="text-muted" th:text="${#temporals.format(transfert.dateReception, 'dd/MM/yyyy HH:mm')}"></small>
+                            </p>
+                        </div>
+                    </div>
+                    <div th:if="${transfert.observations != null}">
+                        <p><strong>Observations :</strong></p>
+                        <p class="text-muted" th:text="${transfert.observations}"></p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Lignes du transfert -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Articles à transférer</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Article</th>
+                                    <th>Lot</th>
+                                    <th>Emplacement source</th>
+                                    <th>Emplacement dest.</th>
+                                    <th>Quantité</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr th:each="ligne : ${transfert.lignes}">
+                                    <td th:text="${ligne.article?.label}"></td>
+                                    <td>
+                                        <span th:if="${ligne.lot != null}" th:text="${ligne.lot.numeroLot}"></span>
+                                        <span th:unless="${ligne.lot != null}" class="text-muted">-</span>
+                                    </td>
+                                    <td th:text="${ligne.emplacementSource?.code ?: '-'}"></td>
+                                    <td th:text="${ligne.emplacementDest?.code ?: '-'}"></td>
+                                    <td th:text="${ligne.quantite}"></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4">
+            <!-- Statut -->
+            <div class="card mb-3">
+                <div class="card-body text-center">
+                    <h6 class="text-muted">Statut actuel</h6>
+                    <h3>
+                        <span class="badge" 
+                              th:classappend="${transfert.statutCode == 'DEMANDE' ? 'bg-warning' : 
+                                               transfert.statutCode == 'APPROUVE' ? 'bg-info' : 
+                                               transfert.statutCode == 'EN_TRANSIT' ? 'bg-primary' :
+                                               transfert.statutCode == 'CLOTURE' ? 'bg-success' : 'bg-secondary'}"
+                              th:text="${transfert.statutCode}"></span>
+                    </h3>
+                </div>
+            </div>
+            
+            <!-- Actions -->
+            <div class="card">
+                <div class="card-header">
+                    <h6 class="mb-0">Actions</h6>
+                </div>
+                <div class="card-body">
+                    <form th:if="${transfert.statutCode == 'DEMANDE'}" 
+                          th:action="@{/stock/transferts/{id}/approuver(id=${transfert.id})}" 
+                          method="post" class="mb-2">
+                        <button type="submit" class="btn btn-success w-100">
+                            <i class="bi bi-check-circle me-2"></i>Approuver
+                        </button>
+                    </form>
+                    
+                    <form th:if="${transfert.statutCode == 'DEMANDE'}" 
+                          th:action="@{/stock/transferts/{id}/refuser(id=${transfert.id})}" 
+                          method="post" class="mb-2">
+                        <button type="submit" class="btn btn-danger w-100">
+                            <i class="bi bi-x-circle me-2"></i>Refuser
+                        </button>
+                    </form>
+                    
+                    <form th:if="${transfert.statutCode == 'APPROUVE'}" 
+                          th:action="@{/stock/transferts/{id}/expedier(id=${transfert.id})}" 
+                          method="post" class="mb-2">
+                        <button type="submit" class="btn btn-primary w-100">
+                            <i class="bi bi-box-arrow-right me-2"></i>Expédier
+                        </button>
+                    </form>
+                    
+                    <form th:if="${transfert.statutCode == 'EN_TRANSIT'}" 
+                          th:action="@{/stock/transferts/{id}/recevoir(id=${transfert.id})}" 
+                          method="post" class="mb-2">
+                        <button type="submit" class="btn btn-success w-100">
+                            <i class="bi bi-box-arrow-in-down me-2"></i>Réceptionner
+                        </button>
+                    </form>
+                    
+                    <a th:href="@{/stock/transferts}" class="btn btn-outline-secondary w-100">
+                        <i class="bi bi-arrow-left me-2"></i>Retour à la liste
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+</html>

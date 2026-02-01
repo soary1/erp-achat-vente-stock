@@ -103,11 +103,22 @@
                                         <span th:if="${!ligne.estTraitee}" class="badge bg-secondary">En attente</span>
                                     </td>
                                     <td>
-                                        <div class="btn-group btn-group-sm" th:if="${inventaire.statutCode == 'EN_COURS'}">
-                                            <a th:href="@{/inventaires/{invId}/lignes/{ligneId}/saisie(invId=${inventaire.id}, ligneId=${ligne.id})}" 
+                                        <div class="btn-group btn-group-sm">
+                                            <!-- Bouton de comptage -->
+                                            <a th:if="${inventaire.statutCode == 'EN_COURS' and !ligne.estTraitee}" 
+                                               th:href="@{/inventaires/{invId}/lignes/{ligneId}/saisie(invId=${inventaire.id}, ligneId=${ligne.id})}" 
                                                class="btn btn-outline-primary" title="Saisir comptage">
                                                 <i class="bi bi-pencil"></i>
                                             </a>
+                                            <!-- Bouton de validation -->
+                                            <form th:if="${inventaire.statutCode == 'EN_COURS' and ligne.estTraitee and !ligne.estValidee}" 
+                                                  th:action="@{/inventaires/lignes/{ligneId}/validate(ligneId=${ligne.id})}" 
+                                                  method="post" style="display: inline;">
+                                                <input type="hidden" name="inventaireId" th:value="${inventaire.id}" />
+                                                <button type="submit" class="btn btn-outline-success" title="Valider le comptage">
+                                                    <i class="bi bi-check-lg"></i>
+                                                </button>
+                                            </form>
                                         </div>
                                     </td>
                                 </tr>

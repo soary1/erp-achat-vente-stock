@@ -45,6 +45,9 @@ public class ReferentielService {
     private final CommandeAchatRepository commandeAchatRepository;
     private final BonReceptionRepository bonReceptionRepository;
     private final TypeMouvementRepository typeMouvementRepository;
+    private final MotifRetourRepository motifRetourRepository;
+    private final MotifSortieRepository motifSortieRepository;
+    private final MotifAjustementRepository motifAjustementRepository;
     
     // ============ DEVISES ============
     public List<Devise> findAllDevises() {
@@ -178,7 +181,7 @@ public class ReferentielService {
     }
     
     public Optional<Depot> findDepotById(UUID id) {
-        return depotRepository.findById(id);
+        return depotRepository.findByIdWithSite(id);
     }
     
     public Depot saveDepot(Depot depot) {
@@ -319,5 +322,22 @@ public class ReferentielService {
     // ============ TYPES MOUVEMENT STOCK ============
     public List<TypeMouvement> findAllTypesMouvement() {
         return typeMouvementRepository.findAll();
+    }
+    
+    // ============ MOTIFS ============
+    public List<MotifRetour> findAllMotifs(String type) {
+        // Pour compatibilité, "retour" renvoie les motifs de retour
+        if ("retour".equalsIgnoreCase(type)) {
+            return motifRetourRepository.findAll();
+        }
+        return motifRetourRepository.findAll(); // par défaut
+    }
+    
+    public List<MotifSortie> findMotifsByType(String type) {
+        return motifSortieRepository.findByType(type.toUpperCase());
+    }
+    
+    public List<MotifAjustement> findAllMotifsAjustement() {
+        return motifAjustementRepository.findAll();
     }
 }

@@ -56,6 +56,12 @@ public class InventaireService {
         inventaire.setNumero(generateInventaireNumero(inventaire.getTypeCode()));
         inventaire.setStatutCode("PLANIFIE");
         inventaire.setCreePar(createur);
+        
+        // Récupérer le site à partir du dépôt
+        if (inventaire.getDepot() != null && inventaire.getSite() == null) {
+            inventaire.setSite(inventaire.getDepot().getSite());
+        }
+        
         Inventaire saved = inventaireRepository.save(inventaire);
         
         // Générer les lignes d'inventaire à partir du stock théorique
@@ -98,6 +104,24 @@ public class InventaireService {
         Inventaire inventaire = inventaireRepository.findById(inventaireId)
             .orElseThrow(() -> new RuntimeException("Inventaire non trouvé"));
         
+        // Vérifier que toutes les lignes ont été comptées
+        long lignesNonTraitees = inventaire.getLignes().stream()
+            .filter(ligne -> !Boolean.TRUE.equals(ligne.getEstTraitee()))
+            .count();
+        
+        if (lignesNonTraitees > 0) {
+            throw new RuntimeException("Impossible de passer en analyse : " + lignesNonTraitees + " ligne(s) non comptée(s)");
+        }
+        
+        // Vérifier que toutes les lignes ont été validées
+        long lignesNonValidees = inventaire.getLignes().stream()
+            .filter(ligne -> !Boolean.TRUE.equals(ligne.getEstValidee()))
+            .count();
+        
+        if (lignesNonValidees > 0) {
+            throw new RuntimeException("Impossible de passer en analyse : " + lignesNonValidees + " ligne(s) non validée(s)");
+        }
+        
         inventaire.setStatutCode("ANALYSE");
         Inventaire saved = inventaireRepository.save(inventaire);
         
@@ -112,6 +136,7 @@ public class InventaireService {
         LigneInventaire ligne = ligneInventaireRepository.findById(ligneId)
             .orElseThrow(() -> new RuntimeException("Ligne inventaire non trouvée"));
         
+        // Créer la saisie
         SaisieInventaire saisie = SaisieInventaire.builder()
             .ligneInventaire(ligne)
             .operateur(operateur)
@@ -119,10 +144,17 @@ public class InventaireService {
             .qtyComptee(qtyComptee)
             .tourComptage(tour)
             .dateSaisie(OffsetDateTime.now())
-            .estRetenue(false)
+            .estRetenue(true) // Retenue automatiquement
             .build();
         
-        return saisieInventaireRepository.save(saisie);
+        SaisieInventaire savedSaisie = saisieInventaireRepository.save(saisie);
+        
+        // Mettre à jour la ligne avec la quantité comptée
+        ligne.setQtyReelleRetenue(qtyComptee);
+        ligne.setEstTraitee(true);
+        ligneInventaireRepository.save(ligne);
+        
+        return savedSaisie;
     }
     
     public LigneInventaire retenirSaisie(UUID saisieId, Utilisateur validateur) {
@@ -145,13 +177,18 @@ public class InventaireService {
         LigneInventaire ligne = ligneInventaireRepository.findById(ligneId)
             .orElseThrow(() -> new RuntimeException("Ligne inventaire non trouvée"));
         
-        // Vérification séparation des tâches
-        List<SaisieInventaire> saisies = saisieInventaireRepository.findByLigneInventaireIdOrderByTourComptage(ligneId);
-        boolean operateurEstValidateur = saisies.stream()
-            .anyMatch(s -> s.getOperateur().getId().equals(validateur.getId()));
+        // Vérification séparation des tâches (sauf pour les admins)
+        boolean estAdmin = validateur.getRoles().stream()
+            .anyMatch(role -> "ADMIN".equals(role.getCode()));
         
-        if (operateurEstValidateur) {
-            throw new RuntimeException("L'opérateur ne peut pas valider son propre comptage");
+        if (!estAdmin) {
+            List<SaisieInventaire> saisies = saisieInventaireRepository.findByLigneInventaireIdOrderByTourComptage(ligneId);
+            boolean operateurEstValidateur = saisies.stream()
+                .anyMatch(s -> s.getOperateur().getId().equals(validateur.getId()));
+            
+            if (operateurEstValidateur) {
+                throw new RuntimeException("L'opérateur ne peut pas valider son propre comptage");
+            }
         }
         
         ligne.setEstValidee(true);
@@ -243,8 +280,8 @@ public class InventaireService {
         
         Map<String, Object> stats = new HashMap<>();
         stats.put("totalLignes", inventaire.getLignes().size());
-        stats.put("lignesTraitees", inventaire.getLignes().stream().filter(LigneInventaire::getEstTraitee).count());
-        stats.put("lignesValidees", inventaire.getLignes().stream().filter(LigneInventaire::getEstValidee).count());
+        stats.put("lignesTraitees", inventaire.getLignes().stream().filter(l -> Boolean.TRUE.equals(l.getEstTraitee())).count());
+        stats.put("lignesValidees", inventaire.getLignes().stream().filter(l -> Boolean.TRUE.equals(l.getEstValidee())).count());
         stats.put("totalEcart", getTotalEcart(inventaireId));
         
         return stats;

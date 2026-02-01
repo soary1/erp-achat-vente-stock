@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{layout/main}">
+<head>
+    <title>Transferts inter-dépôts</title>
+</head>
+<body>
+<div layout:fragment="content">
+    <div class="page-header d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1>Transferts inter-dépôts</h1>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a th:href="@{/dashboard}">Accueil</a></li>
+                    <li class="breadcrumb-item"><a th:href="@{/stock}">Stock</a></li>
+                    <li class="breadcrumb-item active">Transferts</li>
+                </ol>
+            </nav>
+        </div>
+        <a th:href="@{/stock/transferts/add}" class="btn btn-primary">
+            <i class="bi bi-arrow-left-right me-2"></i>Nouveau transfert
+        </a>
+    </div>
+    
+    <!-- Statistiques -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card bg-warning bg-opacity-10">
+                <div class="card-body">
+                    <h6 class="text-muted">En demande</h6>
+                    <h3 th:text="${enDemande}">0</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card bg-info bg-opacity-10">
+                <div class="card-body">
+                    <h6 class="text-muted">En transit</h6>
+                    <h3 th:text="${enTransit}">0</h3>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="card">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Numéro</th>
+                            <th>Date</th>
+                            <th>Dépôt source</th>
+                            <th>Dépôt destination</th>
+                            <th>Demandeur</th>
+                            <th>Statut</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr th:each="transfert : ${transferts.content}">
+                            <td>
+                                <a th:href="@{/stock/transferts/{id}(id=${transfert.id})}" 
+                                   th:text="${transfert.numero}"
+                                   class="fw-bold"></a>
+                            </td>
+                            <td th:text="${#temporals.format(transfert.dateDemande, 'dd/MM/yyyy')}"></td>
+                            <td th:text="${transfert.depotSource?.name}"></td>
+                            <td th:text="${transfert.depotDest?.name}"></td>
+                            <td th:text="${transfert.demandeur?.username}"></td>
+                            <td>
+                                <span class="badge" 
+                                      th:classappend="${transfert.statutCode == 'DEMANDE' ? 'bg-warning' : 
+                                                       transfert.statutCode == 'APPROUVE' ? 'bg-info' : 
+                                                       transfert.statutCode == 'EN_TRANSIT' ? 'bg-primary' :
+                                                       transfert.statutCode == 'CLOTURE' ? 'bg-success' : 'bg-secondary'}"
+                                      th:text="${transfert.statutCode}"></span>
+                            </td>
+                            <td>
+                                <a th:href="@{/stock/transferts/{id}(id=${transfert.id})}" 
+                                   class="btn btn-sm btn-outline-primary">
+                                    <i class="bi bi-eye"></i>
+                                </a>
+                            </td>
+                        </tr>
+                        <tr th:if="${transferts.content.empty}">
+                            <td colspan="7" class="text-center text-muted py-4">
+                                <i class="bi bi-inbox display-4"></i>
+                                <p class="mt-2">Aucun transfert</p>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+</html>

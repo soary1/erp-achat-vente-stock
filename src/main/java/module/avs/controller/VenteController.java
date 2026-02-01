@@ -223,4 +223,139 @@ public class VenteController {
         }
         return "redirect:/ventes/livraisons/" + id;
     }
+    
+    // ============ RETOURS CLIENT (SAV) ============
+    
+    @GetMapping("/retours")
+    public String listRetours(@RequestParam(defaultValue = "0") int page,
+                             @RequestParam(defaultValue = "10") int size,
+                             Model model) {
+        Pageable pageable = PageRequest.of(page, size);
+        Page<RetourClient> retours = venteService.findAllRetours(pageable);
+        model.addAttribute("retours", retours);
+        
+        // Statistiques
+        model.addAttribute("totalRetours", retours.getTotalElements());
+        model.addAttribute("enAttente", venteService.findRetoursByStatut("DEMANDE").size());
+        model.addAttribute("approuves", venteService.findRetoursByStatut("APPROUVE").size());
+        model.addAttribute("integres", venteService.findRetoursByStatut("INTEGRE").size());
+        
+        return "ventes/retours";
+    }
+    
+    @GetMapping("/retours/{id}")
+    public String viewRetour(@PathVariable UUID id, Model model) {
+        venteService.findRetourById(id).ifPresent(r -> model.addAttribute("retour", r));
+        return "ventes/retour-detail";
+    }
+    
+    @GetMapping("/retours/add")
+    public String addRetourForm(@RequestParam(required = false) UUID commandeId,
+                               @RequestParam(required = false) UUID livraisonId,
+                               Model model) {
+        model.addAttribute("retour", new RetourClient());
+        model.addAttribute("clients", referentielService.findAllClients());
+        model.addAttribute("depots", referentielService.findAllDepots());
+        model.addAttribute("motifsRetour", referentielService.findAllMotifs("retour"));
+        
+        if (commandeId != null) {
+            venteService.findCommandeClientById(commandeId).ifPresent(cmd -> 
+                model.addAttribute("commande", cmd)
+            );
+        }
+        
+        if (livraisonId != null) {
+            venteService.findBonLivraisonById(livraisonId).ifPresent(bl -> 
+                model.addAttribute("bonLivraison", bl)
+            );
+        }
+        
+        return "ventes/retour-form";
+    }
+    
+    @PostMapping("/retours/save")
+    public String saveRetour(@ModelAttribute("retour") RetourClient retour,
+                            Authentication auth,
+                            RedirectAttributes redirectAttributes) {
+        try {
+            Utilisateur user = getCurrentUser(auth);
+            RetourClient saved = venteService.createRetour(retour, user);
+            redirectAttributes.addFlashAttribute("success", "Demande de retour créée");
+            return "redirect:/ventes/retours/" + saved.getId();
+        } catch (Exception e) {
+            redirectAttributes.addFlashAttribute("error", e.getMessage());
+            return "redirect:/ventes/retours/add";
+        }
+    }
+    
+    @PostMapping("/retours/{id}/approuver")
+    public String approuverRetour(@PathVariable UUID id,
+                                  Authentication auth,
+                                  RedirectAttributes redirectAttributes) {
+        try {
+            Utilisateur user = getCurrentUser(auth);
+            venteService.approuverRetour(id, user);
+            redirectAttributes.addFlashAttribute("success", "Retour approuvé");
+        } catch (Exception e) {
+            redirectAttributes.addFlashAttribute("error", e.getMessage());
+        }
+        return "redirect:/ventes/retours/" + id;
+    }
+    
+    @PostMapping("/retours/{id}/refuser")
+    public String refuserRetour(@PathVariable UUID id,
+                               @RequestParam String motif,
+                               Authentication auth,
+                               RedirectAttributes redirectAttributes) {
+        try {
+            Utilisateur user = getCurrentUser(auth);
+            venteService.refuserRetour(id, user, motif);
+            redirectAttributes.addFlashAttribute("success", "Retour refusé");
+        } catch (Exception e) {
+            redirectAttributes.addFlashAttribute("error", e.getMessage());
+        }
+        return "redirect:/ventes/retours/" + id;
+    }
+    
+    @PostMapping("/retours/{id}/receptionner")
+    public String receptionnerRetour(@PathVariable UUID id,
+                                     Authentication auth,
+                                     RedirectAttributes redirectAttributes) {
+        try {
+            Utilisateur user = getCurrentUser(auth);
+            venteService.receptionnerRetour(id, user);
+            redirectAttributes.addFlashAttribute("success", "Retour réceptionné");
+        } catch (Exception e) {
+            redirectAttributes.addFlashAttribute("error", e.getMessage());
+        }
+        return "redirect:/ventes/retours/" + id;
+    }
+    
+    @PostMapping("/retours/{id}/controler")
+    public String controlerRetour(@PathVariable UUID id,
+                                  Authentication auth,
+                                  RedirectAttributes redirectAttributes) {
+        try {
+            Utilisateur user = getCurrentUser(auth);
+            venteService.controlerRetour(id, user);
+            redirectAttributes.addFlashAttribute("success", "Retour en contrôle qualité");
+        } catch (Exception e) {
+            redirectAttributes.addFlashAttribute("error", e.getMessage());
+        }
+        return "redirect:/ventes/retours/" + id;
+    }
+    
+    @PostMapping("/retours/{id}/traiter")
+    public String traiterRetour(@PathVariable UUID id,
+                               Authentication auth,
+                               RedirectAttributes redirectAttributes) {
+        try {
+            Utilisateur user = getCurrentUser(auth);
+            venteService.traiterRetour(id, user);
+            redirectAttributes.addFlashAttribute("success", "Retour traité - Stock mis à jour");
+        } catch (Exception e) {
+            redirectAttributes.addFlashAttribute("error", e.getMessage());
+        }
+        return "redirect:/ventes/retours/" + id;
+    }
 }

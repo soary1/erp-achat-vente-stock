@@ -36,14 +36,14 @@
                                 <label class="form-label">Type d'inventaire <span class="text-danger">*</span></label>
                                 <select class="form-select" th:field="*{typeCode}" required id="type-select">
                                     <option value="">-- Sélectionner le type --</option>
-                                    <option value="COMPLET">Inventaire complet</option>
-                                    <option value="PARTIEL">Inventaire partiel (par emplacement)</option>
+                                    <option value="ANNUEL">Inventaire annuel/complet</option>
+                                    <option value="SPOT">Inventaire ponctuel (ciblé)</option>
                                     <option value="TOURNANT">Inventaire tournant (par famille)</option>
                                 </select>
                             </div>
                         </div>
                         
-                        <!-- Sélection d'emplacements (pour inventaire partiel) -->
+                        <!-- Sélection d'emplacements (pour inventaire ponctuel) -->
                         <div id="emplacements-section" class="mt-4" style="display: none;">
                             <label class="form-label">Emplacements à inventorier</label>
                             <div class="row g-2" id="emplacements-list">
@@ -133,7 +133,7 @@
         
         document.getElementById('type-select').addEventListener('change', function() {
             const type = this.value;
-            document.getElementById('emplacements-section').style.display = type === 'PARTIEL' ? 'block' : 'none';
+            document.getElementById('emplacements-section').style.display = type === 'SPOT' ? 'block' : 'none';
             document.getElementById('familles-section').style.display = type === 'TOURNANT' ? 'block' : 'none';
         });
         

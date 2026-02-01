@@ -80,6 +80,57 @@
             </div>
         </div>
     </div>
+    
+    <!-- Modal Contrôle QC -->
+    <div class="modal fade" id="controleModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <form th:action="@{/stock/lots/controle-qc}" method="post">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Contrôle qualité</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <input type="hidden" name="lotId" id="lotIdInput">
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Résultat du contrôle <span class="text-danger">*</span></label>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="conforme" value="true" id="conforme" required>
+                                <label class="form-check-label text-success" for="conforme">
+                                    <i class="bi bi-check-circle"></i> Conforme - Accepté
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="conforme" value="false" id="nonConforme" required>
+                                <label class="form-check-label text-danger" for="nonConforme">
+                                    <i class="bi bi-x-circle"></i> Non conforme - Rejeté
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="notes" class="form-label">Observations</label>
+                            <textarea class="form-control" name="notes" id="notes" rows="3" placeholder="Notes sur le contrôle qualité..."></textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                        <button type="submit" class="btn btn-primary">Valider le contrôle</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Récupérer l'ID du lot lors de l'ouverture de la modal
+        document.getElementById('controleModal').addEventListener('show.bs.modal', function (event) {
+            const button = event.relatedTarget;
+            const lotId = button.getAttribute('data-lot-id');
+            document.getElementById('lotIdInput').value = lotId;
+        });
+    </script>
 </div>
 </body>
 </html>

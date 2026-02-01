@@ -188,6 +188,10 @@ public class StockService {
         return stockRepository.findAll(pageable);
     }
     
+    public List<Stock> findAllStocks() {
+        return stockRepository.findAll();
+    }
+    
     // ============ LOTS ============
     
     public List<Lot> findAllLots() {
@@ -529,5 +533,9 @@ public class StockService {
         
         auditService.logAction("LOT", lotId, conforme ? "CONFORME" : "REJET", user, 
             notes);
+    }
+    
+    public Optional<Stock> findStockById(UUID stockId) {
+        return stockRepository.findById(stockId);
     }
 }

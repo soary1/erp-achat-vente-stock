@@ -29,9 +29,12 @@ public class VenteService {
     private final ReservationStockRepository reservationStockRepository;
     private final BonLivraisonRepository bonLivraisonRepository;
     private final LigneBonLivraisonRepository ligneBonLivraisonRepository;
+    private final RetourClientRepository retourClientRepository;
+    private final LigneRetourClientRepository ligneRetourClientRepository;
     private final StockRepository stockRepository;
     private final MouvementStockRepository mouvementStockRepository;
     private final TypeMouvementRepository typeMouvementRepository;
+    private final LotRepository lotRepository;
     private final AuditService auditService;
     private final UtilisateurService utilisateurService;
     
@@ -347,5 +350,194 @@ public class VenteService {
         }
         // Vérifier si le validateur a le droit d'accorder cette remise
         return utilisateurService.hasRoleWithDelegation(validateurId, "MANAGER");
+    }
+    
+    // ============ RETOURS CLIENT (SAV) ============
+    
+    public List<RetourClient> findAllRetours() {
+        return retourClientRepository.findAll();
+    }
+    
+    public Page<RetourClient> findAllRetours(Pageable pageable) {
+        return retourClientRepository.findAllByOrderByDateDemandeDesc(pageable);
+    }
+    
+    public Optional<RetourClient> findRetourById(UUID id) {
+        return retourClientRepository.findById(id);
+    }
+    
+    public List<RetourClient> findRetoursByStatut(String statut) {
+        return retourClientRepository.findByStatutCode(statut);
+    }
+    
+    public List<RetourClient> findRetoursByClient(UUID clientId) {
+        return retourClientRepository.findByClientId(clientId);
+    }
+    
+    public String generateRetourNumero() {
+        String prefix = "RET-" + LocalDate.now().format(DateTimeFormatter.ofPattern("yyMM")) + "-";
+        Integer maxNum = retourClientRepository.findMaxNumero(prefix + "%");
+        return prefix + String.format("%03d", (maxNum != null ? maxNum : 0) + 1);
+    }
+    
+    public RetourClient createRetour(RetourClient retour, Utilisateur demandeur) {
+        retour.setNumero(generateRetourNumero());
+        retour.setStatutCode("DEMANDE");
+        retour.setDemandeur(demandeur);
+        retour.setDateDemande(OffsetDateTime.now());
+        
+        RetourClient saved = retourClientRepository.save(retour);
+        auditService.logAction("RETOUR_CLIENT", saved.getId(), "CREATION", demandeur, null);
+        return saved;
+    }
+    
+    public RetourClient approuverRetour(UUID retourId, Utilisateur approbateur) {
+        RetourClient retour = retourClientRepository.findById(retourId)
+            .orElseThrow(() -> new RuntimeException("Retour non trouvé"));
+        
+        if (!"DEMANDE".equals(retour.getStatutCode())) {
+            throw new RuntimeException("Seuls les retours en statut DEMANDE peuvent être approuvés");
+        }
+        
+        retour.setStatutCode("APPROUVE");
+        retour.setApprobateur(approbateur);
+        retour.setDateApprobation(OffsetDateTime.now());
+        
+        RetourClient saved = retourClientRepository.save(retour);
+        auditService.logWorkflow("RETOUR_CLIENT", retourId, "DEMANDE", "APPROUVE", approbateur, "APPROBATION", null);
+        return saved;
+    }
+    
+    public RetourClient refuserRetour(UUID retourId, Utilisateur approbateur, String motif) {
+        RetourClient retour = retourClientRepository.findById(retourId)
+            .orElseThrow(() -> new RuntimeException("Retour non trouvé"));
+        
+        retour.setStatutCode("REFUSE");
+        retour.setApprobateur(approbateur);
+        retour.setDateApprobation(OffsetDateTime.now());
+        retour.setNotes(motif);
+        
+        RetourClient saved = retourClientRepository.save(retour);
+        auditService.logWorkflow("RETOUR_CLIENT", retourId, retour.getStatutCode(), "REFUSE", approbateur, "REFUS", motif);
+        return saved;
+    }
+    
+    public RetourClient receptionnerRetour(UUID retourId, Utilisateur recepteur) {
+        RetourClient retour = retourClientRepository.findById(retourId)
+            .orElseThrow(() -> new RuntimeException("Retour non trouvé"));
+        
+        if (!"APPROUVE".equals(retour.getStatutCode())) {
+            throw new RuntimeException("Seuls les retours approuvés peuvent être réceptionnés");
+        }
+        
+        retour.setStatutCode("RECEPTIONNE");
+        retour.setDateReception(OffsetDateTime.now());
+        
+        RetourClient saved = retourClientRepository.save(retour);
+        auditService.logWorkflow("RETOUR_CLIENT", retourId, "APPROUVE", "RECEPTIONNE", recepteur, "RECEPTION", null);
+        return saved;
+    }
+    
+    public RetourClient controlerRetour(UUID retourId, Utilisateur controleur) {
+        RetourClient retour = retourClientRepository.findById(retourId)
+            .orElseThrow(() -> new RuntimeException("Retour non trouvé"));
+        
+        retour.setStatutCode("CONTROLE");
+        RetourClient saved = retourClientRepository.save(retour);
+        auditService.logWorkflow("RETOUR_CLIENT", retourId, retour.getStatutCode(), "CONTROLE", controleur, "CONTROLE_QUALITE", null);
+        return saved;
+    }
+    
+    public RetourClient traiterRetour(UUID retourId, Utilisateur responsable) {
+        RetourClient retour = retourClientRepository.findById(retourId)
+            .orElseThrow(() -> new RuntimeException("Retour non trouvé"));
+        
+        if (!"CONTROLE".equals(retour.getStatutCode()) && !"RECEPTIONNE".equals(retour.getStatutCode())) {
+            throw new RuntimeException("Le retour doit être réceptionné ou en contrôle pour être traité");
+        }
+        
+        TypeMouvement typeMouvement = typeMouvementRepository.findById("RETOUR_CLIENT")
+            .orElseThrow(() -> new RuntimeException("Type mouvement RETOUR_CLIENT non trouvé"));
+        
+        // Traiter chaque ligne selon la décision
+        for (LigneRetourClient ligne : retour.getLignes()) {
+            if ("REINTEGRER".equals(ligne.getDecision()) && ligne.getQtyAcceptee().compareTo(BigDecimal.ZERO) > 0) {
+                // Réintégrer au stock
+                Stock stock = findOrCreateStock(
+                    retour.getDepotRetour(),
+                    ligne.getEmplacement(),
+                    ligne.getArticle(),
+                    ligne.getLot()
+                );
+                
+                stock.setQtyReel(stock.getQtyReel().add(ligne.getQtyAcceptee()));
+                stockRepository.save(stock);
+                
+                // Créer mouvement de retour
+                creerMouvementRetour(typeMouvement, retour, ligne, responsable);
+                
+            } else if ("QUARANTAINE".equals(ligne.getDecision())) {
+                // Mettre en quarantaine
+                if (ligne.getLot() != null) {
+                    ligne.getLot().setStatutQualiteCode("QUARANTAINE");
+                    lotRepository.save(ligne.getLot());
+                }
+            }
+            // REBUTER : ne rien faire, la marchandise ne rentre pas en stock
+        }
+        
+        retour.setStatutCode("INTEGRE");
+        RetourClient saved = retourClientRepository.save(retour);
+        auditService.logWorkflow("RETOUR_CLIENT", retourId, retour.getStatutCode(), "INTEGRE", responsable, "TRAITEMENT", null);
+        return saved;
+    }
+    
+    private Stock findOrCreateStock(module.avs.model.organisation.Depot depot,
+                                   module.avs.model.organisation.Emplacement emplacement,
+                                   module.avs.model.article.Article article,
+                                   Lot lot) {
+        Optional<Stock> existingStock = emplacement != null
+            ? stockRepository.findByDepotIdAndEmplacementIdAndArticleIdAndLotId(
+                depot.getId(), emplacement.getId(), article.getId(), lot != null ? lot.getId() : null)
+            : stockRepository.findByDepotIdAndArticleIdAndLotId(
+                depot.getId(), article.getId(), lot != null ? lot.getId() : null);
+        
+        return existingStock.orElseGet(() -> {
+            Stock newStock = Stock.builder()
+                .depot(depot)
+                .emplacement(emplacement)
+                .article(article)
+                .lot(lot)
+                .qtyReel(BigDecimal.ZERO)
+                .qtyReserve(BigDecimal.ZERO)
+                .build();
+            return stockRepository.save(newStock);
+        });
+    }
+    
+    private void creerMouvementRetour(TypeMouvement typeMouvement, RetourClient retour,
+                                      LigneRetourClient ligne, Utilisateur user) {
+        String numeroMvt = "MVT-" + LocalDate.now().format(DateTimeFormatter.ofPattern("yyMM")) + "-";
+        Integer maxNum = mouvementStockRepository.findMaxNumero(numeroMvt);
+        numeroMvt += String.format("%05d", (maxNum != null ? maxNum : 0) + 1);
+        
+        MouvementStock mouvement = MouvementStock.builder()
+            .numero(numeroMvt)
+            .typeMouvement(typeMouvement)
+            .referenceDoc(retour.getNumero())
+            .article(ligne.getArticle())
+            .lot(ligne.getLot())
+            .depotDest(retour.getDepotRetour())
+            .emplacementDest(ligne.getEmplacement())
+            .qty(ligne.getQtyAcceptee())
+            .utilisateur(user)
+            .createdAt(OffsetDateTime.now())
+            .build();
+        
+        mouvementStockRepository.save(mouvement);
+    }
+    
+    public Optional<BonLivraison> findBonLivraisonById(UUID id) {
+        return bonLivraisonRepository.findById(id);
     }
 }

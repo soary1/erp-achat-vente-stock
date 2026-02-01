@@ -17,6 +17,6 @@ public interface InventaireRepository extends JpaRepository<Inventaire, UUID> {
     List<Inventaire> findByDepotId(UUID depotId);
     Page<Inventaire> findAllByOrderByDateDebutDesc(Pageable pageable);
     
-    @Query("SELECT COALESCE(MAX(CAST(SUBSTRING(i.numero, 9) AS int)), 0) FROM Inventaire i WHERE i.numero LIKE :prefix")
+    @Query("SELECT COALESCE(MAX(CAST(SUBSTRING(i.numero, LENGTH(i.numero) - 2) AS int)), 0) FROM Inventaire i WHERE i.numero LIKE :prefix")
     Integer findMaxNumero(String prefix);
 }

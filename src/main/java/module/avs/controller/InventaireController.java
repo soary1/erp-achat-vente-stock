@@ -68,6 +68,8 @@ public class InventaireController {
     public String addInventaireForm(Model model) {
         model.addAttribute("inventaire", new Inventaire());
         model.addAttribute("depots", referentielService.findAllDepots());
+        model.addAttribute("emplacements", referentielService.findAllEmplacements());
+        model.addAttribute("familles", referentielService.findAllFamilles());
         return "inventaires/inventaire-form";
     }
     
@@ -75,10 +77,21 @@ public class InventaireController {
     public String saveInventaire(@Valid @ModelAttribute Inventaire inventaire,
                                  BindingResult result,
                                  Authentication auth,
+                                 Model model,
                                  RedirectAttributes redirectAttributes) {
         if (result.hasErrors()) {
+            model.addAttribute("depots", referentielService.findAllDepots());
+            model.addAttribute("emplacements", referentielService.findAllEmplacements());
+            model.addAttribute("familles", referentielService.findAllFamilles());
             return "inventaires/inventaire-form";
         }
+        
+        // Récupérer le dépôt complet avec son site
+        if (inventaire.getDepot() != null && inventaire.getDepot().getId() != null) {
+            referentielService.findDepotById(inventaire.getDepot().getId())
+                .ifPresent(inventaire::setDepot);
+        }
+        
         Utilisateur user = getCurrentUser(auth);
         Inventaire saved = inventaireService.createInventaire(inventaire, user);
         redirectAttributes.addFlashAttribute("success", "Inventaire créé avec succès");

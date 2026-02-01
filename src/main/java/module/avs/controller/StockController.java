@@ -3,9 +3,7 @@ package module.avs.controller;
 import lombok.RequiredArgsConstructor;
 import module.avs.model.security.Utilisateur;
 import module.avs.model.stock.*;
-import module.avs.service.ReferentielService;
-import module.avs.service.StockService;
-import module.avs.service.UtilisateurService;
+import module.avs.service.*;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -30,6 +28,9 @@ import java.util.UUID;
 public class StockController {
     
     private final StockService stockService;
+    private final TransfertStockService transfertStockService;
+    private final SortieStockService sortieStockService;
+    private final AjustementStockService ajustementStockService;
     private final ReferentielService referentielService;
     private final UtilisateurService utilisateurService;
     
@@ -95,6 +96,23 @@ public class StockController {
         model.addAttribute("lots", stockService.findLotsExpiringSoon(jours));
         model.addAttribute("titre", "Lots expirant dans " + jours + " jours");
         return "stock/lots";
+    }
+    
+    @PostMapping("/lots/controle-qc")
+    public String controleQualiteLot(@RequestParam UUID lotId,
+                                     @RequestParam boolean conforme,
+                                     @RequestParam(required = false) String notes,
+                                     Authentication auth,
+                                     RedirectAttributes redirectAttributes) {
+        try {
+            Utilisateur user = getCurrentUser(auth);
+            stockService.updateLotQualite(lotId, conforme, notes, user);
+            redirectAttributes.addFlashAttribute("success", 
+                "Contrôle qualité enregistré : " + (conforme ? "Lot CONFORME" : "Lot REJETÉ"));
+        } catch (Exception e) {
+            redirectAttributes.addFlashAttribute("error", "Erreur : " + e.getMessage());
+        }
+        return "redirect:/stock/lots";
     }
     
     // ============ RÉCEPTIONS ============
@@ -245,13 +263,6 @@ public class StockController {
     
     // ============ TRANSFERTS ============
     
-    @GetMapping("/transferts/add")
-    public String addTransfertForm(Model model) {
-        model.addAttribute("depots", referentielService.findAllDepots());
-        model.addAttribute("articles", referentielService.findAllArticles());
-        return "stock/transfert-form";
-    }
-    
     @PostMapping("/transferts/execute")
     public String executerTransfert(@RequestParam UUID articleId,
                                     @RequestParam UUID depotSourceId,
@@ -292,5 +303,370 @@ public class StockController {
             redirectAttributes.addFlashAttribute("error", e.getMessage());
         }
         return "redirect:/stock/lots";
+    }
+    
+    // ============ TRANSFERTS INTER-DÉPÔTS ============
+    
+    @GetMapping("/transferts")
+    public String listTransferts(@RequestParam(defaultValue = "0") int page,
+                                 @RequestParam(defaultValue = "10") int size,
+                                 Model model) {
+        Pageable pageable = PageRequest.of(page, size);
+        Page<TransfertStock> transferts = transfertStockService.findAllTransferts(pageable);
+        model.addAttribute("transferts", transferts);
+        
+        // Statistiques
+        model.addAttribute("enDemande", transfertStockService.findTransfertsByStatut("DEMANDE").size());
+        model.addAttribute("enTransit", transfertStockService.findTransfertsByStatut("EN_TRANSIT").size());
+        
+        return "stock/transferts";
+    }
+    
+    @GetMapping("/transferts/{id}")
+    public String viewTransfert(@PathVariable UUID id, Model model) {
+        transfertStockService.findTransfertById(id).ifPresent(t -> model.addAttribute("transfert", t));
+        return "stock/transfert-detail";
+    }
+    
+    @GetMapping("/transferts/add")
+    public String addTransfertForm(Model model) {
+        model.addAttribute("transfert", new TransfertStock());
+        model.addAttribute("depots", referentielService.findAllDepots());
+        model.addAttribute("articles", referentielService.findAllArticles());
+        model.addAttribute("stocks", stockService.findAllStocks());
+        return "stock/transfert-form";
+    }
+    
+    @PostMapping("/transferts/save")
+    public String saveTransfert(@ModelAttribute("transfert") TransfertStock transfert,
+                               Authentication auth,
+                               RedirectAttributes redirectAttributes) {
+        try {
+            Utilisateur user = getCurrentUser(auth);
+            TransfertStock saved = transfertStockService.createTransfert(transfert, user);
+            redirectAttributes.addFlashAttribute("success", "Transfert créé");
+            return "redirect:/stock/transferts/" + saved.getId();
+        } catch (Exception e) {
+            redirectAttributes.addFlashAttribute("error", e.getMessage());
+            return "redirect:/stock/transferts/add";
+        }
+    }
+    
+    @PostMapping("/transferts/{id}/approuver")
+    public String approuverTransfert(@PathVariable UUID id,
+                                    Authentication auth,
+                                    RedirectAttributes redirectAttributes) {
+        try {
+            Utilisateur user = getCurrentUser(auth);
+            transfertStockService.approuverTransfert(id, user);
+            redirectAttributes.addFlashAttribute("success", "Transfert approuvé");
+        } catch (Exception e) {
+            redirectAttributes.addFlashAttribute("error", e.getMessage());
+        }
+        return "redirect:/stock/transferts/" + id;
+    }
+    
+    @PostMapping("/transferts/{id}/expedier")
+    public String expedierTransfert(@PathVariable UUID id,
+                                   Authentication auth,
+                                   RedirectAttributes redirectAttributes) {
+        try {
+            Utilisateur user = getCurrentUser(auth);
+            transfertStockService.expedierTransfert(id, user);
+            redirectAttributes.addFlashAttribute("success", "Transfert expédié - Stock source décrémenté");
+        } catch (Exception e) {
+            redirectAttributes.addFlashAttribute("error", e.getMessage());
+        }
+        return "redirect:/stock/transferts/" + id;
+    }
+    
+    @PostMapping("/transferts/{id}/recevoir")
+    public String recevoirTransfert(@PathVariable UUID id,
+                                   Authentication auth,
+                                   RedirectAttributes redirectAttributes) {
+        try {
+            Utilisateur user = getCurrentUser(auth);
+            transfertStockService.recevoirTransfert(id, user);
+            redirectAttributes.addFlashAttribute("success", "Transfert réceptionné - Stock destination incrémenté");
+        } catch (Exception e) {
+            redirectAttributes.addFlashAttribute("error", e.getMessage());
+        }
+        return "redirect:/stock/transferts/" + id;
+    }
+    
+    @PostMapping("/transferts/{id}/annuler")
+    public String annulerTransfert(@PathVariable UUID id,
+                                  @RequestParam String motif,
+                                  Authentication auth,
+                                  RedirectAttributes redirectAttributes) {
+        try {
+            Utilisateur user = getCurrentUser(auth);
+            transfertStockService.annulerTransfert(id, user, motif);
+            redirectAttributes.addFlashAttribute("success", "Transfert annulé");
+        } catch (Exception e) {
+            redirectAttributes.addFlashAttribute("error", e.getMessage());
+        }
+        return "redirect:/stock/transferts/" + id;
+    }
+    
+    @PostMapping("/stocks/{id}/changer-emplacement")
+    public String changerEmplacement(@PathVariable UUID id,
+                                    @RequestParam UUID nouvelEmplacementId,
+                                    Authentication auth,
+                                    RedirectAttributes redirectAttributes) {
+        try {
+            Utilisateur user = getCurrentUser(auth);
+            transfertStockService.transfererEmplacement(id, nouvelEmplacementId, user);
+            redirectAttributes.addFlashAttribute("success", "Emplacement modifié");
+        } catch (Exception e) {
+            redirectAttributes.addFlashAttribute("error", e.getMessage());
+        }
+        return "redirect:/stock";
+    }
+    
+    // ============ CONSOMMATION INTERNE / REBUT ============
+    
+    @GetMapping("/sorties")
+    public String listSorties(@RequestParam(defaultValue = "0") int page,
+                             @RequestParam(defaultValue = "10") int size,
+                             @RequestParam(required = false) String type,
+                             Model model) {
+        Pageable pageable = PageRequest.of(page, size);
+        Page<DemandeSortieStock> sorties = type != null 
+            ? sortieStockService.findDemandesByType(type, pageable)
+            : sortieStockService.findAllDemandes(pageable);
+        
+        model.addAttribute("sorties", sorties);
+        model.addAttribute("typeFiltre", type);
+        
+        // Statistiques
+        model.addAttribute("consommationEnAttente", sortieStockService.countConsommationByStatut("SOUMISE"));
+        model.addAttribute("rebutEnAttente", sortieStockService.countRebutByStatut("SOUMISE"));
+        
+        return "stock/sorties";
+    }
+    
+    @GetMapping("/sorties/{id}")
+    public String viewSortie(@PathVariable UUID id, Model model) {
+        sortieStockService.findDemandeById(id).ifPresent(s -> model.addAttribute("sortie", s));
+        return "stock/sortie-detail";
+    }
+    
+    @GetMapping("/sorties/add")
+    public String addSortieForm(@RequestParam String type, Model model) {
+        DemandeSortieStock demande = new DemandeSortieStock();
+        demande.setType(type);
+        
+        model.addAttribute("sortie", demande);
+        model.addAttribute("depots", referentielService.findAllDepots());
+        model.addAttribute("motifs", referentielService.findMotifsByType(type));
+        model.addAttribute("articles", referentielService.findAllArticles());
+        
+        return "stock/sortie-form";
+    }
+    
+    @PostMapping("/sorties/save")
+    public String saveSortie(@ModelAttribute("sortie") DemandeSortieStock sortie,
+                            Authentication auth,
+                            RedirectAttributes redirectAttributes) {
+        try {
+            Utilisateur user = getCurrentUser(auth);
+            DemandeSortieStock saved = sortieStockService.createDemande(sortie, user);
+            redirectAttributes.addFlashAttribute("success", "Demande créée");
+            return "redirect:/stock/sorties/" + saved.getId();
+        } catch (Exception e) {
+            redirectAttributes.addFlashAttribute("error", e.getMessage());
+            return "redirect:/stock/sorties/add?type=" + sortie.getType();
+        }
+    }
+    
+    @PostMapping("/sorties/{id}/soumettre")
+    public String soumettreSortie(@PathVariable UUID id,
+                                 Authentication auth,
+                                 RedirectAttributes redirectAttributes) {
+        try {
+            Utilisateur user = getCurrentUser(auth);
+            sortieStockService.soumettreDemande(id, user);
+            redirectAttributes.addFlashAttribute("success", "Demande soumise pour approbation");
+        } catch (Exception e) {
+            redirectAttributes.addFlashAttribute("error", e.getMessage());
+        }
+        return "redirect:/stock/sorties/" + id;
+    }
+    
+    @PostMapping("/sorties/{id}/approuver")
+    public String approuverSortie(@PathVariable UUID id,
+                                 @RequestParam(required = false) String commentaire,
+                                 Authentication auth,
+                                 RedirectAttributes redirectAttributes) {
+        try {
+            Utilisateur user = getCurrentUser(auth);
+            sortieStockService.approuverDemande(id, user, commentaire);
+            redirectAttributes.addFlashAttribute("success", "Demande approuvée");
+        } catch (Exception e) {
+            redirectAttributes.addFlashAttribute("error", e.getMessage());
+        }
+        return "redirect:/stock/sorties/" + id;
+    }
+    
+    @PostMapping("/sorties/{id}/rejeter")
+    public String rejeterSortie(@PathVariable UUID id,
+                               @RequestParam String motif,
+                               Authentication auth,
+                               RedirectAttributes redirectAttributes) {
+        try {
+            Utilisateur user = getCurrentUser(auth);
+            sortieStockService.rejeterDemande(id, user, motif);
+            redirectAttributes.addFlashAttribute("success", "Demande rejetée");
+        } catch (Exception e) {
+            redirectAttributes.addFlashAttribute("error", e.getMessage());
+        }
+        return "redirect:/stock/sorties/" + id;
+    }
+    
+    @PostMapping("/sorties/{id}/executer")
+    public String executerSortie(@PathVariable UUID id,
+                                Authentication auth,
+                                RedirectAttributes redirectAttributes) {
+        try {
+            Utilisateur user = getCurrentUser(auth);
+            sortieStockService.executerDemande(id, user);
+            redirectAttributes.addFlashAttribute("success", "Sortie exécutée - Stock décrémenté");
+        } catch (Exception e) {
+            redirectAttributes.addFlashAttribute("error", e.getMessage());
+        }
+        return "redirect:/stock/sorties/" + id;
+    }
+    
+    // ============ AJUSTEMENTS STOCK ============
+    
+    @GetMapping("/ajustements")
+    public String listAjustements(@RequestParam(defaultValue = "0") int page,
+                                 @RequestParam(defaultValue = "10") int size,
+                                 Model model) {
+        Pageable pageable = PageRequest.of(page, size);
+        Page<AjustementStock> ajustements = ajustementStockService.findAllAjustements(pageable);
+        
+        model.addAttribute("ajustements", ajustements);
+        model.addAttribute("enAttente", ajustementStockService.findAjustementsByStatut("SOUMIS").size());
+        model.addAttribute("doubleValidation", ajustementStockService.findAjustementsEnAttenteDoubleValidation().size());
+        model.addAttribute("seuilDoubleValidation", ajustementStockService.getSeuilDoubleValidation());
+        
+        return "stock/ajustements";
+    }
+    
+    @GetMapping("/ajustements/{id}")
+    public String viewAjustement(@PathVariable UUID id, Model model) {
+        ajustementStockService.findAjustementById(id).ifPresent(a -> model.addAttribute("ajustement", a));
+        return "stock/ajustement-detail";
+    }
+    
+    @GetMapping("/ajustements/add")
+    public String addAjustementForm(@RequestParam(required = false) UUID stockId, Model model) {
+        model.addAttribute("ajustement", new AjustementStock());
+        model.addAttribute("depots", referentielService.findAllDepots());
+        model.addAttribute("articles", referentielService.findAllArticles());
+        model.addAttribute("motifs", referentielService.findAllMotifsAjustement());
+        
+        if (stockId != null) {
+            stockService.findStockById(stockId).ifPresent(stock -> 
+                model.addAttribute("stock", stock)
+            );
+        }
+        
+        return "stock/ajustement-form";
+    }
+    
+    @PostMapping("/ajustements/save")
+    public String saveAjustement(@ModelAttribute("ajustement") AjustementStock ajustement,
+                                Authentication auth,
+                                RedirectAttributes redirectAttributes) {
+        try {
+            Utilisateur user = getCurrentUser(auth);
+            AjustementStock saved = ajustementStockService.createAjustement(ajustement, user);
+            redirectAttributes.addFlashAttribute("success", "Ajustement créé");
+            return "redirect:/stock/ajustements/" + saved.getId();
+        } catch (Exception e) {
+            redirectAttributes.addFlashAttribute("error", e.getMessage());
+            return "redirect:/stock/ajustements/add";
+        }
+    }
+    
+    @PostMapping("/ajustements/{id}/soumettre")
+    public String soumettreAjustement(@PathVariable UUID id,
+                                     Authentication auth,
+                                     RedirectAttributes redirectAttributes) {
+        try {
+            Utilisateur user = getCurrentUser(auth);
+            ajustementStockService.soumettreAjustement(id, user);
+            redirectAttributes.addFlashAttribute("success", "Ajustement soumis pour validation");
+        } catch (Exception e) {
+            redirectAttributes.addFlashAttribute("error", e.getMessage());
+        }
+        return "redirect:/stock/ajustements/" + id;
+    }
+    
+    @PostMapping("/ajustements/{id}/approuver-niveau1")
+    public String approuverAjustementN1(@PathVariable UUID id,
+                                       @RequestParam(required = false) String commentaire,
+                                       Authentication auth,
+                                       RedirectAttributes redirectAttributes) {
+        try {
+            Utilisateur user = getCurrentUser(auth);
+            AjustementStock ajustement = ajustementStockService.approuverNiveau1(id, user, commentaire);
+            
+            if ("APPROUVE_NIVEAU1".equals(ajustement.getStatutCode())) {
+                redirectAttributes.addFlashAttribute("warning", "Montant élevé - Double validation requise");
+            } else {
+                redirectAttributes.addFlashAttribute("success", "Ajustement approuvé");
+            }
+        } catch (Exception e) {
+            redirectAttributes.addFlashAttribute("error", e.getMessage());
+        }
+        return "redirect:/stock/ajustements/" + id;
+    }
+    
+    @PostMapping("/ajustements/{id}/approuver-final")
+    public String approuverAjustementFinal(@PathVariable UUID id,
+                                          @RequestParam(required = false) String commentaire,
+                                          Authentication auth,
+                                          RedirectAttributes redirectAttributes) {
+        try {
+            Utilisateur user = getCurrentUser(auth);
+            ajustementStockService.approuverFinal(id, user, commentaire);
+            redirectAttributes.addFlashAttribute("success", "Ajustement validé - Peut être exécuté");
+        } catch (Exception e) {
+            redirectAttributes.addFlashAttribute("error", e.getMessage());
+        }
+        return "redirect:/stock/ajustements/" + id;
+    }
+    
+    @PostMapping("/ajustements/{id}/rejeter")
+    public String rejeterAjustement(@PathVariable UUID id,
+                                   @RequestParam String motif,
+                                   Authentication auth,
+                                   RedirectAttributes redirectAttributes) {
+        try {
+            Utilisateur user = getCurrentUser(auth);
+            ajustementStockService.rejeterAjustement(id, user, motif);
+            redirectAttributes.addFlashAttribute("success", "Ajustement rejeté");
+        } catch (Exception e) {
+            redirectAttributes.addFlashAttribute("error", e.getMessage());
+        }
+        return "redirect:/stock/ajustements/" + id;
+    }
+    
+    @PostMapping("/ajustements/{id}/executer")
+    public String executerAjustement(@PathVariable UUID id,
+                                    Authentication auth,
+                                    RedirectAttributes redirectAttributes) {
+        try {
+            Utilisateur user = getCurrentUser(auth);
+            ajustementStockService.executerAjustement(id, user);
+            redirectAttributes.addFlashAttribute("success", "Ajustement exécuté - Stock mis à jour");
+        } catch (Exception e) {
+            redirectAttributes.addFlashAttribute("error", e.getMessage());
+        }
+        return "redirect:/stock/ajustements/" + id;
     }
 }
