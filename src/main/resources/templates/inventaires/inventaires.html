@@ -44,10 +44,10 @@
                                 <a th:href="@{/inventaires/{id}(id=${inventaire.id})}" th:text="${inventaire.numero}"></a>
                             </td>
                             <td th:text="${inventaire.typeCode}"></td>
-                            <td th:text="${inventaire.depot?.nom}"></td>
+                            <td th:text="${inventaire.depot?.name}"></td>
                             <td th:text="${inventaire.dateDebut != null ? #temporals.format(inventaire.dateDebut, 'dd/MM/yyyy') : '-'}"></td>
                             <td th:text="${inventaire.dateCloture != null ? #temporals.format(inventaire.dateCloture, 'dd/MM/yyyy') : '-'}"></td>
-                            <td th:text="${inventaire.creePar?.nom + ' ' + inventaire.creePar?.prenom}"></td>
+                            <td th:text="${inventaire.creePar?.username}"></td>
                             <td>
                                 <span class="badge" 
                                       th:classappend="${inventaire.statutCode == 'PLANIFIE'} ? 'bg-secondary' : 

@@ -182,10 +182,9 @@
                         <tr>
                             <th>Code</th>
                             <th>Nom</th>
-                            <th>Contact</th>
                             <th>Email</th>
                             <th>Téléphone</th>
-                            <th>Ville</th>
+                            <th>Adresse</th>
                             <th>Localisation</th>
                             <th>Statut</th>
                             <th>Actions</th>
@@ -202,12 +201,11 @@
                                     <span th:text="${client.name}"></span>
                                 </div>
                             </td>
-                            <td th:text="${client.contactName}"></td>
                             <td>
                                 <a th:href="'mailto:' + ${client.email}" th:text="${client.email}"></a>
                             </td>
-                            <td th:text="${client.phone}"></td>
-                            <td th:text="${client.city}"></td>
+                            <td th:text="${client.telephone}"></td>
+                            <td th:text="${client.adresse != null ? #strings.abbreviate(client.adresse, 30) : '-'}"></td>
                             <td>
                                 <span th:if="${client.latitude != null && client.longitude != null}" 
                                       class="badge bg-success cursor-pointer"

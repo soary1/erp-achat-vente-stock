@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{layout/main}">
+<head>
+    <title>Détail réception</title>
+</head>
+<body>
+<div layout:fragment="content">
+    <div class="page-header d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1>Bon de réception <span th:text="${reception?.numero}" class="text-primary"></span></h1>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a th:href="@{/dashboard}">Accueil</a></li>
+                    <li class="breadcrumb-item"><a th:href="@{/stock/receptions}">Réceptions</a></li>
+                    <li class="breadcrumb-item active" th:text="${reception?.numero}"></li>
+                </ol>
+            </nav>
+        </div>
+        <div class="d-flex gap-2" th:if="${reception != null}">
+            <span class="badge fs-6" 
+                  th:classappend="${reception.statutCode == 'VALIDE'} ? 'bg-success' : 
+                                 (${reception.statutCode == 'BROUILLON'} ? 'bg-warning' : 'bg-secondary')"
+                  th:text="${reception.statutCode}"></span>
+            <form th:if="${reception.statutCode == 'BROUILLON'}" 
+                  th:action="@{/stock/receptions/{id}/validate(id=${reception.id})}" method="post" class="d-inline">
+                <button type="submit" class="btn btn-success" 
+                        onclick="return confirm('Valider ce bon de réception ?')">
+                    <i class="bi bi-check-lg me-1"></i>Valider
+                </button>
+            </form>
+        </div>
+    </div>
+    
+    <div th:if="${reception == null}" class="alert alert-warning">
+        <i class="bi bi-exclamation-triangle me-2"></i>Réception non trouvée.
+    </div>
+    
+    <div th:if="${reception != null}">
+        <!-- Informations générales -->
+        <div class="row g-4 mb-4">
+            <div class="col-lg-6">
+                <div class="card h-100">
+                    <div class="card-header">
+                        <i class="bi bi-info-circle me-2"></i>Informations générales
+                    </div>
+                    <div class="card-body">
+                        <dl class="row mb-0">
+                            <dt class="col-sm-5">Numéro BR :</dt>
+                            <dd class="col-sm-7" th:text="${reception.numero}"></dd>
+                            
+                            <dt class="col-sm-5">Date réception :</dt>
+                            <dd class="col-sm-7" th:text="${#temporals.format(reception.dateReception, 'dd/MM/yyyy HH:mm')}"></dd>
+                            
+                            <dt class="col-sm-5">Commande achat :</dt>
+                            <dd class="col-sm-7">
+                                <a th:if="${reception.commandeAchat != null}" 
+                                   th:href="@{/achats/commandes/{id}(id=${reception.commandeAchat.id})}"
+                                   th:text="${reception.commandeAchat.numero}"></a>
+                                <span th:if="${reception.commandeAchat == null}" class="text-muted">N/A</span>
+                            </dd>
+                            
+                            <dt class="col-sm-5">Site :</dt>
+                            <dd class="col-sm-7" th:text="${reception.site?.name ?: 'N/A'}"></dd>
+                            
+                            <dt class="col-sm-5">Dépôt :</dt>
+                            <dd class="col-sm-7" th:text="${reception.depot?.name ?: 'N/A'}"></dd>
+                        </dl>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-lg-6">
+                <div class="card h-100">
+                    <div class="card-header">
+                        <i class="bi bi-truck me-2"></i>Fournisseur
+                    </div>
+                    <div class="card-body">
+                        <dl class="row mb-0" th:if="${reception.commandeAchat?.fournisseur != null}">
+                            <dt class="col-sm-5">Nom :</dt>
+                            <dd class="col-sm-7" th:text="${reception.commandeAchat.fournisseur.name}"></dd>
+                            
+                            <dt class="col-sm-5">Code :</dt>
+                            <dd class="col-sm-7" th:text="${reception.commandeAchat.fournisseur.code}"></dd>
+                            
+                            <dt class="col-sm-5">Email :</dt>
+                            <dd class="col-sm-7" th:text="${reception.commandeAchat.fournisseur.email ?: 'N/A'}"></dd>
+                            
+                            <dt class="col-sm-5">Téléphone :</dt>
+                            <dd class="col-sm-7" th:text="${reception.commandeAchat.fournisseur.telephone ?: 'N/A'}"></dd>
+                        </dl>
+                        <p th:if="${reception.commandeAchat?.fournisseur == null}" class="text-muted mb-0">
+                            Aucun fournisseur lié
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Lignes de réception -->
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-list-ul me-2"></i>Articles réceptionnés
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Article</th>
+                                <th>Code</th>
+                                <th class="text-end">Quantité reçue</th>
+                                <th class="text-end">Coût unitaire</th>
+                                <th>Lot</th>
+                                <th>Emplacement</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr th:each="ligne : ${reception.lignes}">
+                                <td th:text="${ligne.article?.label ?: 'N/A'}"></td>
+                                <td th:text="${ligne.article?.sku ?: 'N/A'}"></td>
+                                <td class="text-end" th:text="${#numbers.formatDecimal(ligne.qtyReceived, 1, 2)}"></td>
+                                <td class="text-end" th:text="${ligne.unitCost != null ? #numbers.formatDecimal(ligne.unitCost, 1, 2) + 'Ar' : '-'}"></td>
+                                <td>
+                                    <a th:if="${ligne.lot != null}" 
+                                       th:href="@{/stock/tracabilite/lot/{id}(id=${ligne.lot.id})}"
+                                       th:text="${ligne.lot.numeroLot}" class="text-primary"></a>
+                                    <span th:if="${ligne.lot == null}" class="text-muted">-</span>
+                                </td>
+                                <td th:text="${ligne.emplacement?.code ?: '-'}"></td>
+                            </tr>
+                            <tr th:if="${#lists.isEmpty(reception.lignes)}">
+                                <td colspan="6" class="text-center text-muted py-4">
+                                    <i class="bi bi-inbox fs-1 d-block mb-2"></i>
+                                    Aucune ligne de réception
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Actions -->
+        <div class="d-flex justify-content-between mt-4">
+            <a th:href="@{/stock/receptions}" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left me-1"></i>Retour à la liste
+            </a>
+            <div class="d-flex gap-2">
+                <a th:href="@{/stock/mouvements(referenceDoc=${reception.numero})}" class="btn btn-outline-info">
+                    <i class="bi bi-arrow-left-right me-1"></i>Voir les mouvements
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+</html>

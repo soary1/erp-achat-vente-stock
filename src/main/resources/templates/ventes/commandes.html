@@ -43,8 +43,8 @@
                                 <a th:href="@{/ventes/commandes/{id}(id=${commande.id})}" th:text="${commande.numero}"></a>
                             </td>
                             <td th:text="${#temporals.format(commande.createdAt, 'dd/MM/yyyy')}"></td>
-                            <td th:text="${commande.client?.raisonSociale}"></td>
-                            <td th:text="${commande.commercial?.nom + ' ' + commande.commercial?.prenom}"></td>
+                            <td th:text="${commande.client?.name}"></td>
+                            <td th:text="${commande.commercial?.username}"></td>
                             <td th:text="${#numbers.formatDecimal(commande.totalTTC, 0, 'COMMA', 0, 'POINT')} + ' MGA'"></td>
                             <td>
                                 <span class="badge badge-status" 

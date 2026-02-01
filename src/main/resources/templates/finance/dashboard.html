@@ -69,7 +69,7 @@
                             <tbody>
                                 <tr th:each="facture : ${facturesClientRetard}">
                                     <td><a th:href="@{/finance/factures-client/{id}(id=${facture.id})}" th:text="${facture.numero}"></a></td>
-                                    <td th:text="${facture.client?.raisonSociale}"></td>
+                                    <td th:text="${facture.client?.name}"></td>
                                     <td th:text="${#temporals.format(facture.dateEcheance, 'dd/MM/yyyy')}"></td>
                                     <td class="fw-bold text-danger" th:text="${#numbers.formatDecimal(facture.montantRestant, 0, 'COMMA', 0, 'POINT')}"></td>
                                 </tr>
@@ -102,8 +102,8 @@
                             </thead>
                             <tbody>
                                 <tr th:each="facture : ${facturesFournisseurRetard}">
-                                    <td><a th:href="@{/finance/factures-fournisseur/{id}(id=${facture.id})}" th:text="${facture.numeroFacture}"></a></td>
-                                    <td th:text="${facture.fournisseur?.raisonSociale}"></td>
+                                    <td><a th:href="@{/finance/factures-fournisseur/{id}(id=${facture.id})}" th:text="${facture.refInterne}"></a></td>
+                                    <td th:text="${facture.fournisseur?.name}"></td>
                                     <td th:text="${#temporals.format(facture.dateEcheance, 'dd/MM/yyyy')}"></td>
                                     <td class="fw-bold text-danger" th:text="${#numbers.formatDecimal(facture.montantRestant, 0, 'COMMA', 0, 'POINT')}"></td>
                                 </tr>

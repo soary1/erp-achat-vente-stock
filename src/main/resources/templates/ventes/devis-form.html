@@ -32,42 +32,19 @@
                                 <select class="form-select" th:field="*{client.id}" required id="client-select">
                                     <option value="">-- Sélectionner un client --</option>
                                     <option th:each="client : ${clients}" th:value="${client.id}" 
-                                            th:text="${client.raisonSociale}"
-                                            th:data-limite-credit="${client.limiteCredit}"
-                                            th:data-solde="${client.solde}"></option>
-                                </select>
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label">Commercial</label>
-                                <select class="form-select" th:field="*{commercial.id}">
-                                    <option value="">-- Aucun commercial --</option>
-                                    <option th:each="user : ${commerciaux}" th:value="${user.id}" th:text="${user.nom + ' ' + user.prenom}"></option>
+                                            th:text="${client.name}"></option>
                                 </select>
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label">Site <span class="text-danger">*</span></label>
                                 <select class="form-select" th:field="*{site.id}" required>
                                     <option value="">-- Sélectionner un site --</option>
-                                    <option th:each="site : ${sites}" th:value="${site.id}" th:text="${site.nom}"></option>
-                                </select>
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label">Devise <span class="text-danger">*</span></label>
-                                <select class="form-select" th:field="*{devise.code}" required>
-                                    <option value="">-- Sélectionner une devise --</option>
-                                    <option th:each="devise : ${devises}" th:value="${devise.code}" th:text="${devise.libelle + ' (' + devise.code + ')'}"></option>
+                                    <option th:each="site : ${sites}" th:value="${site.id}" th:text="${site.name}"></option>
                                 </select>
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label">Date validité</label>
                                 <input type="date" class="form-control" th:field="*{dateValidite}" />
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label">Mode de paiement</label>
-                                <select class="form-select" th:field="*{modePaiement.code}">
-                                    <option value="">-- Sélectionner --</option>
-                                    <option th:each="mode : ${modesPaiement}" th:value="${mode.code}" th:text="${mode.libelle}"></option>
-                                </select>
                             </div>
                         </div>
                     </div>
@@ -101,21 +78,20 @@
                                             <select class="form-select form-select-sm article-select" th:name="'lignes[' + ${stat.index} + '].article.id'" required onchange="updatePrix(this)">
                                                 <option th:each="article : ${articles}" th:value="${article.id}" 
                                                         th:text="${article.label}" 
-                                                        th:data-prix="${article.prixVente}"
                                                         th:selected="${article.id == ligne.article?.id}"></option>
                                             </select>
                                         </td>
                                         <td>
-                                            <input type="number" class="form-control form-control-sm qty-input" th:name="'lignes[' + ${stat.index} + '].qtyDevis'" th:value="${ligne.qtyDevis}" step="0.01" min="0.01" required onchange="calculateTotal(this)" />
+                                            <input type="number" class="form-control form-control-sm qty-input" th:name="'lignes[' + ${stat.index} + '].qty'" th:value="${ligne.qty}" step="0.01" min="0.01" required onchange="calculateTotal(this)" />
                                         </td>
                                         <td>
-                                            <input type="number" class="form-control form-control-sm prix-input" th:name="'lignes[' + ${stat.index} + '].prixUnit'" th:value="${ligne.prixUnit}" step="0.01" min="0" required onchange="calculateTotal(this)" />
+                                            <input type="number" class="form-control form-control-sm prix-input" th:name="'lignes[' + ${stat.index} + '].priceUnit'" th:value="${ligne.priceUnit}" step="0.01" min="0" required onchange="calculateTotal(this)" />
                                         </td>
                                         <td>
-                                            <input type="number" class="form-control form-control-sm remise-input" th:name="'lignes[' + ${stat.index} + '].remise'" th:value="${ligne.remise ?: 0}" step="0.01" min="0" max="100" onchange="calculateTotal(this)" />
+                                            <input type="number" class="form-control form-control-sm remise-input" th:name="'lignes[' + ${stat.index} + '].remisePct'" th:value="${ligne.remisePct ?: 0}" step="0.01" min="0" max="100" onchange="calculateTotal(this)" />
                                         </td>
                                         <td>
-                                            <input type="text" class="form-control form-control-sm total-input" readonly th:value="${ligne.totalHT}" />
+                                            <input type="text" class="form-control form-control-sm total-input" readonly th:value="${ligne.montantHT}" />
                                         </td>
                                         <td class="text-center">
                                             <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeLigneDevis(this)">
@@ -146,46 +122,9 @@
                     </div>
                 </div>
                 
-                <!-- Conditions -->
-                <div class="card mt-4">
-                    <div class="card-header">Conditions et notes</div>
-                    <div class="card-body">
-                        <div class="row g-3">
-                            <div class="col-md-6">
-                                <label class="form-label">Conditions de paiement</label>
-                                <textarea class="form-control" th:field="*{conditionsPaiement}" rows="3"></textarea>
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label">Conditions de livraison</label>
-                                <textarea class="form-control" th:field="*{conditionsLivraison}" rows="3"></textarea>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
             
             <!-- Panneau latéral -->
             <div class="col-lg-4">
-                <!-- Info client -->
-                <div class="card mb-4" id="client-info" style="display: none;">
-                    <div class="card-header">Situation client</div>
-                    <div class="card-body">
-                        <div class="d-flex justify-content-between mb-2">
-                            <span>Limite de crédit</span>
-                            <strong id="client-limite">-</strong>
-                        </div>
-                        <div class="d-flex justify-content-between mb-2">
-                            <span>Solde actuel</span>
-                            <strong id="client-solde">-</strong>
-                        </div>
-                        <hr>
-                        <div class="d-flex justify-content-between">
-                            <span>Crédit disponible</span>
-                            <strong id="client-dispo" class="text-success">-</strong>
-                        </div>
-                    </div>
-                </div>
-                
                 <!-- Actions -->
                 <div class="card">
                     <div class="card-header">Actions</div>
@@ -209,12 +148,17 @@
     
     <script th:inline="javascript">
         let ligneIndex = [[${devis?.lignes?.size() ?: 0}]];
-        const articles = /*[[${articles}]]*/ [];
+        // Transformer les articles en objets simples pour éviter les problèmes de sérialisation Hibernate
+        const articles = [
+            /*[# th:each="a : ${articles}"]*/
+            { id: '[[${a.id}]]', label: '[[${a.label}]]' },
+            /*[/]*/
+        ].filter(a => a.id);
         
         function addLigneDevis() {
             const tbody = document.getElementById('lignes-body');
             const articleOptions = articles.map(a => 
-                `<option value="${a.id}" data-prix="${a.prixVente || 0}">${a.designation}</option>`
+                `<option value="${a.id}">${a.label}</option>`
             ).join('');
             
             const html = `
@@ -226,13 +170,13 @@
                         </select>
                     </td>
                     <td>
-                        <input type="number" class="form-control form-control-sm qty-input" name="lignes[${ligneIndex}].qtyDevis" step="0.01" min="0.01" required onchange="calculateTotal(this)" />
+                        <input type="number" class="form-control form-control-sm qty-input" name="lignes[${ligneIndex}].qty" step="0.01" min="0.01" required onchange="calculateTotal(this)" />
                     </td>
                     <td>
-                        <input type="number" class="form-control form-control-sm prix-input" name="lignes[${ligneIndex}].prixUnit" step="0.01" min="0" required onchange="calculateTotal(this)" />
+                        <input type="number" class="form-control form-control-sm prix-input" name="lignes[${ligneIndex}].priceUnit" step="0.01" min="0" required onchange="calculateTotal(this)" />
                     </td>
                     <td>
-                        <input type="number" class="form-control form-control-sm remise-input" name="lignes[${ligneIndex}].remise" value="0" step="0.01" min="0" max="100" onchange="calculateTotal(this)" />
+                        <input type="number" class="form-control form-control-sm remise-input" name="lignes[${ligneIndex}].remisePct" value="0" step="0.01" min="0" max="100" onchange="calculateTotal(this)" />
                     </td>
                     <td>
                         <input type="text" class="form-control form-control-sm total-input" readonly value="0.00" />
@@ -285,26 +229,6 @@
             document.getElementById('total-tva').textContent = tva.toFixed(2);
             document.getElementById('total-ttc').textContent = ttc.toFixed(2);
         }
-        
-        // Client info
-        document.getElementById('client-select')?.addEventListener('change', function() {
-            const selected = this.options[this.selectedIndex];
-            const infoCard = document.getElementById('client-info');
-            if (selected.value) {
-                const limite = parseFloat(selected.dataset.limiteCredit) || 0;
-                const solde = parseFloat(selected.dataset.solde) || 0;
-                const dispo = limite - solde;
-                
-                document.getElementById('client-limite').textContent = limite.toLocaleString() + ' MGA';
-                document.getElementById('client-solde').textContent = solde.toLocaleString() + ' MGA';
-                document.getElementById('client-dispo').textContent = dispo.toLocaleString() + ' MGA';
-                document.getElementById('client-dispo').className = dispo >= 0 ? 'text-success' : 'text-danger';
-                
-                infoCard.style.display = 'block';
-            } else {
-                infoCard.style.display = 'none';
-            }
-        });
         
         // Init totals on page load
         updateTotals();

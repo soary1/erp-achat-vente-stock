@@ -18,8 +18,8 @@
         </nav>
     </div>
     
-    <form th:action="@{/stock/receptions/save}" method="post" th:object="${reception}">
-        <input type="hidden" th:field="*{id}" />
+    <form th:action="@{/stock/receptions/save}" method="post">
+        <input type="hidden" name="id" value="" />
         
         <div class="row g-4">
             <div class="col-lg-8">
@@ -29,30 +29,23 @@
                         <div class="row g-3">
                             <div class="col-md-6">
                                 <label class="form-label">Commande fournisseur <span class="text-danger">*</span></label>
-                                <select class="form-select" th:field="*{commandeAchat.id}" required id="commande-select">
+                                <select class="form-select" name="commandeAchatId" required id="commande-select">
                                     <option value="">-- Sélectionner une commande --</option>
                                     <option th:each="cmd : ${commandesEnvoyees}" th:value="${cmd.id}" 
-                                            th:text="${cmd.numero + ' - ' + cmd.fournisseur?.raisonSociale}"></option>
+                                            th:text="${cmd.numero + ' - ' + cmd.fournisseur?.name}"
+                                            th:selected="${selectedCommandeId != null && selectedCommandeId == cmd.id}"></option>
                                 </select>
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label">Dépôt de destination <span class="text-danger">*</span></label>
-                                <select class="form-select" th:field="*{depot.id}" required>
+                                <select class="form-select" name="depotId" required>
                                     <option value="">-- Sélectionner un dépôt --</option>
-                                    <option th:each="depot : ${depots}" th:value="${depot.id}" th:text="${depot.nom}"></option>
+                                    <option th:each="depot : ${depots}" th:value="${depot.id}" th:text="${depot.name}"></option>
                                 </select>
                             </div>
                             <div class="col-md-6">
-                                <label class="form-label">N° BL fournisseur</label>
-                                <input type="text" class="form-control" th:field="*{numeroBLFournisseur}" placeholder="Numéro du bon de livraison fournisseur" />
-                            </div>
-                            <div class="col-md-6">
                                 <label class="form-label">Date réception</label>
-                                <input type="date" class="form-control" th:field="*{dateReception}" />
-                            </div>
-                            <div class="col-12">
-                                <label class="form-label">Commentaire</label>
-                                <textarea class="form-control" th:field="*{commentaire}" rows="2" placeholder="Observations..."></textarea>
+                                <input type="datetime-local" class="form-control" name="dateReception" />
                             </div>
                         </div>
                     </div>
@@ -74,6 +67,7 @@
                                         <th class="text-end">Commandé</th>
                                         <th class="text-end">Déjà reçu</th>
                                         <th class="text-end">À recevoir</th>
+                                        <th class="text-end">Coût unitaire</th>
                                         <th>N° Lot</th>
                                         <th>Date péremption</th>
                                         <th>Emplacement</th>
@@ -154,11 +148,20 @@
     </form>
     
     <script th:inline="javascript">
+        // Les emplacements sont déjà formatés côté serveur comme des maps simples
         const emplacements = /*[[${emplacements}]]*/ [];
         
+        let currentDepotId = null;
+        
         // Toggle contrôle qualité details
-        document.getElementById('controle-requis').addEventListener('change', function() {
+        document.getElementById('controle-requis')?.addEventListener('change', function() {
             document.getElementById('controle-details').style.display = this.checked ? 'block' : 'none';
+        });
+        
+        // Charger les emplacements quand le dépôt change
+        document.querySelector('select[name="depotId"]')?.addEventListener('change', function() {
+            currentDepotId = this.value;
+            updateEmplacementsInLignes();
         });
         
         // Load lignes when commande is selected
@@ -170,46 +173,83 @@
                 return;
             }
             
-            // In a real app, this would fetch from the server
-            // For now, we show the structure
-            document.getElementById('lignes-loading').style.display = 'none';
-            document.getElementById('lignes-container').style.display = 'block';
+            document.getElementById('lignes-loading').innerHTML = '<i class="bi bi-hourglass-split fs-1 d-block mb-2"></i>Chargement des articles...';
             
-            // Fetch lignes via AJAX would go here
-            // fetch(`/api/achats/commandes/${commandeId}/lignes`)
-            //     .then(response => response.json())
-            //     .then(lignes => populateLignes(lignes));
+            // Fetch lignes via AJAX
+            fetch('/api/achats/commandes/' + commandeId + '/lignes')
+                .then(response => {
+                    if (!response.ok) throw new Error('Commande non trouvée');
+                    return response.json();
+                })
+                .then(lignes => {
+                    document.getElementById('lignes-loading').style.display = 'none';
+                    document.getElementById('lignes-container').style.display = 'block';
+                    populateLignes(lignes);
+                })
+                .catch(error => {
+                    document.getElementById('lignes-loading').innerHTML = '<i class="bi bi-exclamation-triangle fs-1 d-block mb-2 text-warning"></i>Erreur: ' + error.message;
+                });
         });
+        
+        function updateEmplacementsInLignes() {
+            // Mettre à jour tous les selects d'emplacement
+            const emplacementSelects = document.querySelectorAll('select[name^="lignes"][name$=".emplacementId"]');
+            const filteredEmplacements = currentDepotId 
+                ? emplacements.filter(e => e.depotId === currentDepotId)
+                : emplacements;
+            
+            const options = `<option value="">-- --</option>` + 
+                filteredEmplacements.map(e => `<option value="${e.id}">${e.code}</option>`).join('');
+            
+            emplacementSelects.forEach(select => {
+                const currentValue = select.value;
+                select.innerHTML = options;
+                select.value = currentValue; // Restaurer la sélection si possible
+            });
+        }
         
         function populateLignes(lignes) {
             const tbody = document.getElementById('lignes-body');
-            const emplacementOptions = emplacements.map(e => 
+            const filteredEmplacements = currentDepotId 
+                ? emplacements.filter(e => e.depotId === currentDepotId)
+                : emplacements;
+            
+            const emplacementOptions = filteredEmplacements.map(e => 
                 `<option value="${e.id}">${e.code}</option>`
             ).join('');
             
             tbody.innerHTML = lignes.map((ligne, index) => `
                 <tr>
                     <td>
-                        ${ligne.article.label}
-                        <small class="d-block text-muted">${ligne.article.sku}</small>
+                        ${ligne.article?.label || 'N/A'}
+                        <small class="d-block text-muted">${ligne.article?.sku || ''}</small>
                         <input type="hidden" name="lignes[${index}].ligneCommandeId" value="${ligne.id}" />
-                        <input type="hidden" name="lignes[${index}].article.id" value="${ligne.article.id}" />
+                        <input type="hidden" name="lignes[${index}].articleId" value="${ligne.article?.id || ''}" />
                     </td>
                     <td class="text-end">${ligne.qtyOrdered}</td>
                     <td class="text-end">${ligne.qtyReceived || 0}</td>
                     <td>
-                        <input type="number" class="form-control form-control-sm" name="lignes[${index}].qtyRecue" 
+                        <input type="number" class="form-control form-control-sm qty-input" 
+                               name="lignes[${index}].qtyReceived" 
                                value="${ligne.qtyOrdered - (ligne.qtyReceived || 0)}" 
                                min="0" max="${ligne.qtyOrdered - (ligne.qtyReceived || 0)}" step="0.01" />
                     </td>
                     <td>
-                        <input type="text" class="form-control form-control-sm" name="lignes[${index}].numeroLot" placeholder="Lot..." />
+                        <input type="number" class="form-control form-control-sm text-end" 
+                               name="lignes[${index}].unitCost" 
+                               value="${ligne.unitPrice || 0}" 
+                               min="0" step="0.01" placeholder="Coût..." />
                     </td>
                     <td>
-                        <input type="date" class="form-control form-control-sm" name="lignes[${index}].datePeremption" />
+                        <input type="text" class="form-control form-control-sm" 
+                               name="lignes[${index}].numeroLot" placeholder="Lot..." />
                     </td>
                     <td>
-                        <select class="form-select form-select-sm" name="lignes[${index}].emplacement.id">
+                        <input type="date" class="form-control form-control-sm" 
+                               name="lignes[${index}].datePeremption" />
+                    </td>
+                    <td>
+                        <select class="form-select form-select-sm" name="lignes[${index}].emplacementId">
                             <option value="">-- --</option>
                             ${emplacementOptions}
                         </select>
@@ -218,12 +258,29 @@
             `).join('');
             
             updateRecap(lignes.length);
+            
+            // Add event listeners for qty changes
+            document.querySelectorAll('.qty-input').forEach(input => {
+                input.addEventListener('change', () => updateRecap(lignes.length));
+            });
         }
         
         function updateRecap(count) {
             document.getElementById('recap-lignes').textContent = count;
-            document.getElementById('recap-articles').textContent = count;
+            let totalArticles = 0;
+            document.querySelectorAll('.qty-input').forEach(input => {
+                totalArticles += parseFloat(input.value) || 0;
+            });
+            document.getElementById('recap-articles').textContent = totalArticles;
         }
+        
+        // Trigger change on page load if a commande is already selected
+        document.addEventListener('DOMContentLoaded', function() {
+            const commandeSelect = document.getElementById('commande-select');
+            if (commandeSelect && commandeSelect.value) {
+                commandeSelect.dispatchEvent(new Event('change'));
+            }
+        });
     </script>
 </div>
 </body>

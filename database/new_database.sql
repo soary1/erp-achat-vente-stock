@@ -419,6 +419,7 @@ INSERT INTO type_mouvement VALUES ('RECEPTION', 'Réception Fournisseur', 1), ('
 
 CREATE TABLE mouvement_stock (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    numero VARCHAR(50) UNIQUE NOT NULL,
     type_mouvement_code VARCHAR(50) NOT NULL REFERENCES type_mouvement(code),
     reference_doc VARCHAR(100),
     article_id UUID NOT NULL REFERENCES article(id),
@@ -432,6 +433,26 @@ CREATE TABLE mouvement_stock (
     utilisateur_id UUID REFERENCES utilisateur(id),
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- Séquence pour numérotation automatique des mouvements
+CREATE SEQUENCE mouvement_stock_seq START 1;
+
+-- TRIGGER : Empêcher modification/suppression des mouvements (AUDIT TRAIL)
+CREATE OR REPLACE FUNCTION prevent_mouvement_modification()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF TG_OP = 'UPDATE' THEN
+        RAISE EXCEPTION 'Les mouvements de stock ne peuvent pas être modifiés (ID: %)', OLD.id;
+    ELSIF TG_OP = 'DELETE' THEN
+        RAISE EXCEPTION 'Les mouvements de stock ne peuvent pas être supprimés (ID: %)', OLD.id;
+    END IF;
+    RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER tr_mouvement_immutable
+BEFORE UPDATE OR DELETE ON mouvement_stock
+FOR EACH ROW EXECUTE FUNCTION prevent_mouvement_modification();
 
 CREATE TABLE stock (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),

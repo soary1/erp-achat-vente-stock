@@ -40,7 +40,7 @@
                             </td>
                             <td th:text="${#temporals.format(livraison.dateExpedition, 'dd/MM/yyyy')}"></td>
                             <td th:text="${livraison.commande?.numero}"></td>
-                            <td th:text="${livraison.commande?.client?.raisonSociale}"></td>
+                            <td th:text="${livraison.commande?.client?.name}"></td>
                             <td>
                                 <span class="badge badge-status" 
                                       th:classappend="'badge-' + ${livraison.statutCode?.toLowerCase()}"

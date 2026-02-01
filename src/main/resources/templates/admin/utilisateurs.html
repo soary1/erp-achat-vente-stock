@@ -43,22 +43,22 @@
                         <tr th:each="utilisateur : ${utilisateurs.content}">
                             <td>
                                 <div class="d-flex align-items-center">
-                                    <div class="user-avatar me-2" th:text="${#strings.substring(utilisateur.nom, 0, 1).toUpperCase()}">U</div>
+                                    <div class="user-avatar me-2" th:text="${#strings.substring(utilisateur.username, 0, 1).toUpperCase()}">U</div>
                                     <div>
-                                        <div th:text="${utilisateur.nom + ' ' + utilisateur.prenom}"></div>
+                                        <div th:text="${utilisateur.username}"></div>
                                     </div>
                                 </div>
                             </td>
-                            <td><code th:text="${utilisateur.login}"></code></td>
+                            <td><code th:text="${utilisateur.username}"></code></td>
                             <td th:text="${utilisateur.email}"></td>
                             <td>
-                                <span class="badge bg-primary" th:text="${utilisateur.role?.libelle}"></span>
+                                <span th:each="role : ${utilisateur.roles}" class="badge bg-primary me-1" th:text="${role.label}"></span>
                             </td>
-                            <td th:text="${utilisateur.departement?.nom}"></td>
-                            <td th:text="${utilisateur.site?.nom}"></td>
+                            <td th:text="${utilisateur.departement?.name}"></td>
+                            <td>-</td>
                             <td>
-                                <span class="badge" th:classappend="${utilisateur.actif} ? 'bg-success' : 'bg-secondary'"
-                                      th:text="${utilisateur.actif} ? 'Actif' : 'Inactif'"></span>
+                                <span class="badge" th:classappend="${utilisateur.isActive} ? 'bg-success' : 'bg-secondary'"
+                                      th:text="${utilisateur.isActive} ? 'Actif' : 'Inactif'"></span>
                             </td>
                             <td>
                                 <div class="btn-group btn-group-sm">
@@ -70,8 +70,8 @@
                                     </a>
                                     <form th:action="@{/admin/utilisateurs/{id}/toggle(id=${utilisateur.id})}" method="post" class="d-inline">
                                         <button type="submit" class="btn btn-outline-warning" 
-                                                th:title="${utilisateur.actif} ? 'Désactiver' : 'Activer'">
-                                            <i class="bi" th:classappend="${utilisateur.actif} ? 'bi-toggle-on' : 'bi-toggle-off'"></i>
+                                                th:title="${utilisateur.isActive} ? 'Désactiver' : 'Activer'">
+                                            <i class="bi" th:classappend="${utilisateur.isActive} ? 'bi-toggle-on' : 'bi-toggle-off'"></i>
                                         </button>
                                     </form>
                                 </div>

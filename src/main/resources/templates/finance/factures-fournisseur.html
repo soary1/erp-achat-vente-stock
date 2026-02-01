@@ -44,10 +44,10 @@
                         <tr th:each="facture : ${factures.content}"
                             th:classappend="${facture.dateEcheance != null and facture.dateEcheance.isBefore(T(java.time.LocalDate).now()) and facture.montantRestant.compareTo(T(java.math.BigDecimal).ZERO) > 0} ? 'table-warning' : ''">
                             <td>
-                                <a th:href="@{/finance/factures-fournisseur/{id}(id=${facture.id})}" th:text="${facture.numeroFacture}"></a>
+                                <a th:href="@{/finance/factures-fournisseur/{id}(id=${facture.id})}" th:text="${facture.refInterne}"></a>
                             </td>
                             <td th:text="${#temporals.format(facture.dateFacture, 'dd/MM/yyyy')}"></td>
-                            <td th:text="${facture.fournisseur?.raisonSociale}"></td>
+                            <td th:text="${facture.fournisseur?.name}"></td>
                             <td th:text="${facture.dateEcheance != null ? #temporals.format(facture.dateEcheance, 'dd/MM/yyyy') : '-'}"></td>
                             <td class="text-end" th:text="${#numbers.formatDecimal(facture.montantTTC, 0, 'COMMA', 0, 'POINT')}"></td>
                             <td class="text-end" th:text="${#numbers.formatDecimal(facture.montantPaye, 0, 'COMMA', 0, 'POINT')}"></td>

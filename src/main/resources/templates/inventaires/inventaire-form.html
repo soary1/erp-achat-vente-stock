@@ -29,7 +29,7 @@
                                 <label class="form-label">Dépôt <span class="text-danger">*</span></label>
                                 <select class="form-select" th:field="*{depot.id}" required id="depot-select">
                                     <option value="">-- Sélectionner un dépôt --</option>
-                                    <option th:each="depot : ${depots}" th:value="${depot.id}" th:text="${depot.nom}"></option>
+                                    <option th:each="depot : ${depots}" th:value="${depot.id}" th:text="${depot.name}"></option>
                                 </select>
                             </div>
                             <div class="col-md-6">
@@ -58,7 +58,7 @@
                                 <div class="col-md-6" th:each="famille : ${familles}">
                                     <div class="form-check">
                                         <input class="form-check-input" type="checkbox" name="familleIds" th:value="${famille.id}" th:id="'famille-' + ${famille.id}" />
-                                        <label class="form-check-label" th:for="'famille-' + ${famille.id}" th:text="${famille.libelle}"></label>
+                                        <label class="form-check-label" th:for="'famille-' + ${famille.id}" th:text="${famille.name}"></label>
                                     </div>
                                 </div>
                             </div>

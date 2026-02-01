@@ -28,7 +28,7 @@ public interface CommandeAchatRepository extends JpaRepository<CommandeAchat, UU
     @Query("SELECT SUM(c.totalTTC) FROM CommandeAchat c WHERE c.dateCommande BETWEEN :startDate AND :endDate")
     BigDecimal sumTotalByPeriod(LocalDate startDate, LocalDate endDate);
     
-    @Query("SELECT c FROM CommandeAchat c LEFT JOIN FETCH c.fournisseur LEFT JOIN FETCH c.site LEFT JOIN FETCH c.devise LEFT JOIN FETCH c.acheteur LEFT JOIN FETCH c.lignes l LEFT JOIN FETCH l.article LEFT JOIN FETCH l.taxes WHERE c.id = :id")
+    @Query("SELECT c FROM CommandeAchat c LEFT JOIN FETCH c.fournisseur LEFT JOIN FETCH c.site LEFT JOIN FETCH c.devise LEFT JOIN FETCH c.acheteur LEFT JOIN FETCH c.lignes l LEFT JOIN FETCH l.article WHERE c.id = :id")
     Optional<CommandeAchat> findByIdWithDetails(UUID id);
     
     @Query("SELECT COUNT(c) FROM CommandeAchat c WHERE c.statutCode = :statut")

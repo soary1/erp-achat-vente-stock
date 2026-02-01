@@ -34,9 +34,9 @@
                     </thead>
                     <tbody>
                         <tr th:each="log : ${logs.content}">
-                            <td th:text="${#temporals.format(log.timestamp, 'dd/MM/yyyy HH:mm:ss')}"></td>
-                            <td th:text="${log.utilisateur?.nom + ' ' + log.utilisateur?.prenom}"></td>
-                            <td><span class="badge bg-secondary" th:text="${log.entityType}"></span></td>
+                            <td th:text="${#temporals.format(log.createdAt, 'dd/MM/yyyy HH:mm:ss')}"></td>
+                            <td th:text="${log.utilisateur != null ? log.utilisateur.username : '-'}"></td>
+                            <td><span class="badge bg-secondary" th:text="${log.entityName}"></span></td>
                             <td>
                                 <span class="badge" 
                                       th:classappend="${log.action == 'CREATION'} ? 'bg-success' : 
@@ -46,7 +46,7 @@
                             </td>
                             <td><code th:text="${log.entityId}"></code></td>
                             <td>
-                                <small class="text-muted" th:text="${#strings.abbreviate(log.details, 50)}"></small>
+                                <small class="text-muted" th:text="${log.changes != null ? log.changes.toString() : '-'}"></small>
                             </td>
                         </tr>
                         <tr th:if="${logs.content.isEmpty()}">

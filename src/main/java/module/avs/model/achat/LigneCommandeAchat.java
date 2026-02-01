@@ -35,10 +35,6 @@ public class LigneCommandeAchat {
     @DecimalMin(value = "0.01", inclusive = false)
     private BigDecimal qtyOrdered;
     
-    @Column(name = "qty_received", precision = 19, scale = 4)
-    @Builder.Default
-    private BigDecimal qtyReceived = BigDecimal.ZERO;
-    
     @Column(name = "unit_price", precision = 19, scale = 4, nullable = false)
     @NotNull
     @DecimalMin(value = "0", inclusive = false)
@@ -56,10 +52,6 @@ public class LigneCommandeAchat {
     public BigDecimal getMontantHT() {
         return (unitPrice != null && qtyOrdered != null) ? unitPrice.multiply(qtyOrdered) : BigDecimal.ZERO;
     }
-    
-    public BigDecimal getQtyRestante() {
-        return qtyOrdered.subtract(qtyReceived != null ? qtyReceived : BigDecimal.ZERO);
-    }
 
     @Override
     public String toString() {
@@ -67,7 +59,6 @@ public class LigneCommandeAchat {
                 "id=" + id +
                 ", article=" + (article != null ? article.getSku() : null) +
                 ", qtyOrdered=" + qtyOrdered +
-                ", qtyReceived=" + qtyReceived +
                 ", unitPrice=" + unitPrice +
                 ", taxes=" + (taxes != null ? taxes.size() : "0") +
                 '}';

@@ -4,10 +4,12 @@ import lombok.RequiredArgsConstructor;
 import module.avs.model.achat.*;
 import module.avs.model.security.Utilisateur;
 import module.avs.repository.achat.*;
+import module.avs.repository.stock.LigneBonReceptionRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
@@ -21,6 +23,7 @@ public class AchatService {
     private final LigneDemandeAchatRepository ligneDemandeAchatRepository;
     private final CommandeAchatRepository commandeAchatRepository;
     private final LigneCommandeAchatRepository ligneCommandeAchatRepository;
+    private final LigneBonReceptionRepository ligneBonReceptionRepository;
     private final AuditService auditService;
     private final UtilisateurService utilisateurService;
     
@@ -205,8 +208,16 @@ public class AchatService {
         CommandeAchat commande = commandeAchatRepository.findById(commandeId)
             .orElseThrow(() -> new RuntimeException("Commande non trouvée"));
         
+        // Vérifier si toutes les lignes de commande ont été entièrement reçues
         boolean toutRecu = commande.getLignes().stream()
-            .allMatch(l -> l.getQtyRestante().compareTo(java.math.BigDecimal.ZERO) <= 0);
+            .allMatch(ligne -> {
+                BigDecimal qtyCommandee = ligne.getQtyOrdered();
+                BigDecimal qtyRecue = ligneBonReceptionRepository.sumQtyReceivedForCommandeAndArticle(
+                    commandeId, 
+                    ligne.getArticle().getId()
+                );
+                return qtyRecue.compareTo(qtyCommandee) >= 0;
+            });
         
         if (toutRecu) {
             commande.setStatutCode("CLOTUREE");

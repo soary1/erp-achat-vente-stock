@@ -17,40 +17,114 @@
         </nav>
     </div>
     
+    <!-- Filtres -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <i class="bi bi-funnel me-2"></i>Filtres
+        </div>
+        <div class="card-body">
+            <form th:action="@{/stock/mouvements}" method="get" class="row g-3">
+                <div class="col-md-2">
+                    <label class="form-label">Type</label>
+                    <select class="form-select" name="type">
+                        <option value="">Tous</option>
+                        <option th:each="t : ${typesMouvement}" 
+                                th:value="${t.code}" 
+                                th:text="${t.label}"
+                                th:selected="${t.code == selectedType}"></option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Article</label>
+                    <select class="form-select" name="articleId">
+                        <option value="">Tous</option>
+                        <option th:each="a : ${articles}" 
+                                th:value="${a.id}" 
+                                th:text="${a.sku + ' - ' + a.label}"
+                                th:selected="${a.id == selectedArticleId}"></option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Dépôt</label>
+                    <select class="form-select" name="depotId">
+                        <option value="">Tous</option>
+                        <option th:each="d : ${depots}" 
+                                th:value="${d.id}" 
+                                th:text="${d.name}"
+                                th:selected="${d.id == selectedDepotId}"></option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Du</label>
+                    <input type="date" class="form-control" name="dateDebut" th:value="${selectedDateDebut}">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Au</label>
+                    <input type="date" class="form-control" name="dateFin" th:value="${selectedDateFin}">
+                </div>
+                <div class="col-md-1 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="bi bi-search"></i>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
     <div class="card">
         <div class="card-body">
             <div class="table-responsive">
                 <table class="table table-hover">
                     <thead>
                         <tr>
+                            <th>Numéro</th>
                             <th>Date</th>
                             <th>Type</th>
                             <th>Référence</th>
                             <th>Article</th>
+                            <th>Lot</th>
                             <th>Dépôt source</th>
                             <th>Dépôt dest.</th>
                             <th class="text-end">Quantité</th>
                             <th>Utilisateur</th>
+                            <th></th>
                         </tr>
                     </thead>
                     <tbody>
                         <tr th:each="mouvement : ${mouvements.content}">
+                            <td>
+                                <a th:href="@{/stock/mouvements/{id}(id=${mouvement.id})}" 
+                                   class="fw-bold text-decoration-none"
+                                   th:text="${mouvement.numero}"></a>
+                            </td>
                             <td th:text="${#temporals.format(mouvement.createdAt, 'dd/MM/yyyy HH:mm')}"></td>
                             <td>
                                 <span class="badge" 
-                                      th:classappend="${mouvement.typeMouvement?.code == 'ENTREE'} ? 'bg-success' : 
-                                                     (${mouvement.typeMouvement?.code == 'SORTIE'} ? 'bg-danger' : 'bg-info')"
-                                      th:text="${mouvement.typeMouvement?.libelle}"></span>
+                                      th:classappend="${mouvement.typeMouvement?.code == 'RECEPTION'} ? 'bg-success' : 
+                                                     (${mouvement.typeMouvement?.code == 'EXPEDITION'} ? 'bg-danger' : 'bg-info')"
+                                      th:text="${mouvement.typeMouvement?.label}"></span>
                             </td>
                             <td th:text="${mouvement.referenceDoc}"></td>
-                            <td th:text="${mouvement.article?.designation}"></td>
-                            <td th:text="${mouvement.depotSource?.nom}"></td>
-                            <td th:text="${mouvement.depotDest?.nom}"></td>
+                            <td th:text="${mouvement.article?.label}"></td>
+                            <td>
+                                <a th:if="${mouvement.lot != null}"
+                                   th:href="@{/stock/tracabilite/lot/{id}(id=${mouvement.lot.id})}"
+                                   class="text-decoration-none"
+                                   th:text="${mouvement.lot?.numeroLot}"></a>
+                            </td>
+                            <td th:text="${mouvement.depotSource?.name}"></td>
+                            <td th:text="${mouvement.depotDest?.name}"></td>
                             <td class="text-end" th:text="${#numbers.formatDecimal(mouvement.qty, 0, 'COMMA', 2, 'POINT')}"></td>
-                            <td th:text="${mouvement.utilisateur?.nom + ' ' + mouvement.utilisateur?.prenom}"></td>
+                            <td th:text="${mouvement.utilisateur?.username}"></td>
+                            <td>
+                                <a th:href="@{/stock/mouvements/{id}(id=${mouvement.id})}" 
+                                   class="btn btn-sm btn-outline-secondary">
+                                    <i class="bi bi-eye"></i>
+                                </a>
+                            </td>
                         </tr>
                         <tr th:if="${mouvements.content.isEmpty()}">
-                            <td colspan="8" class="text-center text-muted py-4">
+                            <td colspan="11" class="text-center text-muted py-4">
                                 <i class="bi bi-arrow-left-right fs-1 d-block mb-2"></i>
                                 Aucun mouvement
                             </td>
@@ -58,6 +132,26 @@
                     </tbody>
                 </table>
             </div>
+            
+            <!-- Pagination -->
+            <nav th:if="${mouvements.totalPages > 1}" aria-label="Pagination">
+                <ul class="pagination justify-content-center mb-0">
+                    <li class="page-item" th:classappend="${mouvements.first} ? 'disabled'">
+                        <a class="page-link" th:href="@{/stock/mouvements(page=${mouvements.number - 1}, type=${selectedType}, articleId=${selectedArticleId}, depotId=${selectedDepotId}, dateDebut=${selectedDateDebut}, dateFin=${selectedDateFin})}">
+                            <i class="bi bi-chevron-left"></i>
+                        </a>
+                    </li>
+                    <li class="page-item" th:each="i : ${#numbers.sequence(0, mouvements.totalPages - 1)}"
+                        th:classappend="${i == mouvements.number} ? 'active'">
+                        <a class="page-link" th:href="@{/stock/mouvements(page=${i}, type=${selectedType}, articleId=${selectedArticleId}, depotId=${selectedDepotId}, dateDebut=${selectedDateDebut}, dateFin=${selectedDateFin})}" th:text="${i + 1}"></a>
+                    </li>
+                    <li class="page-item" th:classappend="${mouvements.last} ? 'disabled'">
+                        <a class="page-link" th:href="@{/stock/mouvements(page=${mouvements.number + 1}, type=${selectedType}, articleId=${selectedArticleId}, depotId=${selectedDepotId}, dateDebut=${selectedDateDebut}, dateFin=${selectedDateFin})}">
+                            <i class="bi bi-chevron-right"></i>
+                        </a>
+                    </li>
+                </ul>
+            </nav>
         </div>
     </div>
 </div>

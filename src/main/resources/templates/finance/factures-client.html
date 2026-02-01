@@ -42,7 +42,7 @@
                                 <a th:href="@{/finance/factures-client/{id}(id=${facture.id})}" th:text="${facture.numero}"></a>
                             </td>
                             <td th:text="${#temporals.format(facture.dateFacture, 'dd/MM/yyyy')}"></td>
-                            <td th:text="${facture.client?.raisonSociale}"></td>
+                            <td th:text="${facture.client?.name}"></td>
                             <td th:text="${facture.dateEcheance != null ? #temporals.format(facture.dateEcheance, 'dd/MM/yyyy') : '-'}"></td>
                             <td class="text-end" th:text="${#numbers.formatDecimal(facture.montantTTC, 0, 'COMMA', 0, 'POINT')}"></td>
                             <td class="text-end" th:text="${#numbers.formatDecimal(facture.montantEncaisse, 0, 'COMMA', 0, 'POINT')}"></td>

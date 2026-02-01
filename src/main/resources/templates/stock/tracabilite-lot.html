@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{layout/main}">
+<head>
+    <title>Traçabilité Lot</title>
+</head>
+<body>
+<div layout:fragment="content">
+    <div class="page-header mb-4">
+        <h1>
+            <i class="bi bi-diagram-3 me-2"></i>
+            Traçabilité du lot <span th:text="${lot.numeroLot}"></span>
+        </h1>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a th:href="@{/dashboard}">Accueil</a></li>
+                <li class="breadcrumb-item"><a th:href="@{/stock/lots}">Lots</a></li>
+                <li class="breadcrumb-item active" th:text="${lot.numeroLot}"></li>
+            </ol>
+        </nav>
+    </div>
+    
+    <div class="row g-4">
+        <!-- Informations du lot -->
+        <div class="col-lg-4">
+            <div class="card">
+                <div class="card-header">
+                    <i class="bi bi-box-seam me-2"></i>Informations du lot
+                </div>
+                <div class="card-body">
+                    <table class="table table-sm table-borderless">
+                        <tr>
+                            <th class="text-muted">Numéro lot</th>
+                            <td class="fw-bold" th:text="${lot.numeroLot}">-</td>
+                        </tr>
+                        <tr>
+                            <th class="text-muted">Article</th>
+                            <td>
+                                <span th:text="${lot.article?.sku}"></span>
+                                <br><small class="text-muted" th:text="${lot.article?.label}"></small>
+                            </td>
+                        </tr>
+                        <tr th:if="${lot.numeroSerie != null}">
+                            <th class="text-muted">N° série</th>
+                            <td th:text="${lot.numeroSerie}">-</td>
+                        </tr>
+                        <tr>
+                            <th class="text-muted">Date fabrication</th>
+                            <td th:text="${lot.dateFabrication != null ? #temporals.format(lot.dateFabrication, 'dd/MM/yyyy') : '-'}">-</td>
+                        </tr>
+                        <tr>
+                            <th class="text-muted">Date péremption</th>
+                            <td>
+                                <span th:if="${lot.datePeremption != null}" 
+                                      th:text="${#temporals.format(lot.datePeremption, 'dd/MM/yyyy')}"
+                                      th:classappend="${lot.datePeremption.isBefore(T(java.time.LocalDate).now())} ? 'text-danger fw-bold'"></span>
+                                <span th:if="${lot.datePeremption == null}" class="text-muted">Non définie</span>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th class="text-muted">Statut qualité</th>
+                            <td>
+                                <span class="badge"
+                                      th:classappend="${lot.statutQualiteCode == 'CONFORME'} ? 'bg-success' : 
+                                                     (${lot.statutQualiteCode == 'QUARANTAINE'} ? 'bg-warning' : 'bg-danger')"
+                                      th:text="${lot.statutQualiteCode}"></span>
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+            
+            <div class="card mt-4">
+                <div class="card-header">Actions</div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <a th:href="@{/stock/lots}" class="btn btn-outline-secondary">
+                            <i class="bi bi-arrow-left me-2"></i>Retour aux lots
+                        </a>
+                        <a th:href="@{/stock/mouvements(articleId=${lot.article?.id})}" class="btn btn-outline-primary">
+                            <i class="bi bi-arrow-left-right me-2"></i>Tous les mouvements article
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Timeline des mouvements -->
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header">
+                    <i class="bi bi-clock-history me-2"></i>Historique des mouvements
+                    <span class="badge bg-secondary ms-2" th:text="${#lists.size(mouvements)}"></span>
+                </div>
+                <div class="card-body">
+                    <div th:if="${#lists.isEmpty(mouvements)}" class="text-center py-4 text-muted">
+                        <i class="bi bi-inbox fs-1 d-block mb-2"></i>
+                        Aucun mouvement pour ce lot
+                    </div>
+                    
+                    <!-- Timeline -->
+                    <div th:if="${!#lists.isEmpty(mouvements)}" class="timeline">
+                        <div th:each="m, stat : ${mouvements}" class="timeline-item">
+                            <div class="row g-0">
+                                <div class="col-auto">
+                                    <div class="timeline-marker"
+                                         th:classappend="${m.typeMouvement?.code == 'RECEPTION'} ? 'bg-success' : 
+                                                        (${m.typeMouvement?.code == 'EXPEDITION'} ? 'bg-danger' : 'bg-info')">
+                                        <i class="bi" 
+                                           th:classappend="${m.typeMouvement?.code == 'RECEPTION'} ? 'bi-box-arrow-in-down' : 
+                                                          (${m.typeMouvement?.code == 'EXPEDITION'} ? 'bi-box-arrow-up' : 'bi-arrow-left-right')"></i>
+                                    </div>
+                                    <div th:if="${!stat.last}" class="timeline-line"></div>
+                                </div>
+                                <div class="col ps-3 pb-4">
+                                    <div class="d-flex justify-content-between align-items-start">
+                                        <div>
+                                            <span class="badge mb-1" 
+                                                  th:classappend="${m.typeMouvement?.code == 'RECEPTION'} ? 'bg-success' : 
+                                                                 (${m.typeMouvement?.code == 'EXPEDITION'} ? 'bg-danger' : 'bg-info')"
+                                                  th:text="${m.typeMouvement?.label}"></span>
+                                            <a th:href="@{/stock/mouvements/{id}(id=${m.id})}" 
+                                               class="d-block text-decoration-none fw-bold"
+                                               th:text="${m.numero}"></a>
+                                        </div>
+                                        <small class="text-muted" th:text="${#temporals.format(m.createdAt, 'dd/MM/yyyy HH:mm')}"></small>
+                                    </div>
+                                    <div class="mt-2">
+                                        <span class="me-3">
+                                            <i class="bi bi-hash me-1"></i>
+                                            <span th:text="${m.referenceDoc ?: '-'}"></span>
+                                        </span>
+                                        <span class="me-3">
+                                            <i class="bi bi-box me-1"></i>
+                                            <strong th:text="${#numbers.formatDecimal(m.qty, 0, 'COMMA', 2, 'POINT')}"></strong>
+                                        </span>
+                                    </div>
+                                    <div class="mt-1 small text-muted">
+                                        <span th:if="${m.depotSource != null}">
+                                            <i class="bi bi-geo-alt me-1"></i>De : <span th:text="${m.depotSource?.name}"></span>
+                                        </span>
+                                        <span th:if="${m.depotDest != null}">
+                                            <i class="bi bi-geo-alt-fill me-1"></i>Vers : <span th:text="${m.depotDest?.name}"></span>
+                                        </span>
+                                        <span class="ms-3">
+                                            <i class="bi bi-person me-1"></i><span th:text="${m.utilisateur?.username}"></span>
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.timeline-marker {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 14px;
+}
+.timeline-line {
+    width: 2px;
+    background-color: #dee2e6;
+    margin-left: 15px;
+    min-height: 20px;
+    flex-grow: 1;
+}
+.timeline-item {
+    position: relative;
+}
+</style>
+</body>
+</html>

@@ -54,11 +54,10 @@
                     <thead>
                         <tr>
                             <th>Code</th>
-                            <th>Raison sociale</th>
-                            <th>Contact</th>
+                            <th>Nom</th>
+                            <th>Email</th>
                             <th>Téléphone</th>
-                            <th class="text-end">Limite crédit</th>
-                            <th class="text-end">Solde</th>
+                            <th>Adresse</th>
                             <th class="text-center">État</th>
                             <th>Actions</th>
                         </tr>
@@ -67,18 +66,14 @@
                         <tr th:each="client : ${clients}">
                             <td><code th:text="${client.code}"></code></td>
                             <td>
-                                <a th:href="@{/clients/{id}(id=${client.id})}" th:text="${client.raisonSociale}"></a>
-                                <small class="d-block text-muted" th:text="${client.adresse}"></small>
+                                <a th:href="@{/clients/{id}(id=${client.id})}" th:text="${client.name}"></a>
                             </td>
-                            <td th:text="${client.contactNom}"></td>
+                            <td th:text="${client.email}"></td>
                             <td th:text="${client.telephone}"></td>
-                            <td class="text-end" th:text="${#numbers.formatDecimal(client.limiteCredit, 0, 'COMMA', 0, 'POINT')} + ' Ar'"></td>
-                            <td class="text-end" 
-                                th:classappend="${client.solde > client.limiteCredit} ? 'text-danger fw-bold' : ''"
-                                th:text="${#numbers.formatDecimal(client.solde, 0, 'COMMA', 0, 'POINT')} + ' Ar'"></td>
+                            <td><small class="text-muted" th:text="${client.adresse}"></small></td>
                             <td class="text-center">
-                                <span th:if="${client.actif}" class="badge bg-success">Actif</span>
-                                <span th:unless="${client.actif}" class="badge bg-secondary">Inactif</span>
+                                <span th:if="${client.isActive}" class="badge bg-success">Actif</span>
+                                <span th:unless="${client.isActive}" class="badge bg-secondary">Inactif</span>
                             </td>
                             <td>
                                 <div class="btn-group btn-group-sm">
@@ -95,7 +90,7 @@
                             </td>
                         </tr>
                         <tr th:if="${#lists.isEmpty(clients)}">
-                            <td colspan="8" class="text-center text-muted py-4">
+                            <td colspan="7" class="text-center text-muted py-4">
                                 <i class="bi bi-people fs-1 d-block mb-2"></i>
                                 Aucun client trouvé
                             </td>

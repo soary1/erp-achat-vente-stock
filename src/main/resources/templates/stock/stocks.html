@@ -72,18 +72,18 @@
                     </thead>
                     <tbody>
                         <tr th:each="stock : ${stocks.content}"
-                            th:classappend="${stock.qtyReel.compareTo(T(java.math.BigDecimal).valueOf(10)) < 0} ? 'table-warning' : ''">
-                            <td th:text="${stock.article?.designation}"></td>
+                            th:classappend="${stock.qtyReel != null and stock.qtyReel.intValue() < 10} ? 'table-warning' : ''">
+                            <td th:text="${stock.article?.label}"></td>
                             <td><code th:text="${stock.article?.sku}"></code></td>
-                            <td th:text="${stock.depot?.nom}"></td>
+                            <td th:text="${stock.depot?.name}"></td>
                             <td th:text="${stock.emplacement?.code}"></td>
                             <td th:text="${stock.lot?.numeroLot}"></td>
                             <td class="text-end" th:text="${#numbers.formatDecimal(stock.qtyReel, 0, 'COMMA', 2, 'POINT')}"></td>
                             <td class="text-end" th:text="${#numbers.formatDecimal(stock.qtyReserve, 0, 'COMMA', 2, 'POINT')}"></td>
                             <td class="text-end fw-bold" th:text="${#numbers.formatDecimal(stock.qtyDisponible, 0, 'COMMA', 2, 'POINT')}"></td>
                             <td>
-                                <span th:if="${stock.qtyReel.compareTo(T(java.math.BigDecimal).valueOf(10)) < 0}" class="badge bg-warning">Stock faible</span>
-                                <span th:if="${stock.qtyReel.compareTo(T(java.math.BigDecimal).ZERO) == 0}" class="badge bg-danger">Rupture</span>
+                                <span th:if="${stock.qtyReel != null and stock.qtyReel.intValue() > 0 and stock.qtyReel.intValue() < 10}" class="badge bg-warning">Stock faible</span>
+                                <span th:if="${stock.qtyReel == null or stock.qtyReel.intValue() == 0}" class="badge bg-danger">Rupture</span>
                             </td>
                         </tr>
                         <tr th:if="${stocks.content.isEmpty()}">

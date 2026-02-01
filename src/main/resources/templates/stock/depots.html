@@ -119,12 +119,13 @@
                                     </div>
                                 </div>
                                 <div class="btn-group btn-group-sm">
-                                    <button class="btn btn-outline-primary btn-sm" 
-                                            th:onclick="'focusDepot(' + ${depot.latitude} + ',' + ${depot.longitude} + ')'">
+                                    <button class="btn btn-outline-primary btn-sm focus-depot-btn" 
+                                            th:data-lat="${depot.latitude}"
+                                            th:data-lng="${depot.longitude}">
                                         <i class="bi bi-geo-alt"></i>
                                     </button>
-                                    <button class="btn btn-outline-secondary btn-sm"
-                                            th:onclick="'editDepot(\'' + ${depot.id} + '\')'">
+                                    <button class="btn btn-outline-secondary btn-sm edit-depot-btn"
+                                            th:data-id="${depot.id}">
                                         <i class="bi bi-pencil"></i>
                                     </button>
                                 </div>
@@ -162,7 +163,7 @@
                             <td th:text="${depot.site?.name}"></td>
                             <td th:text="${depot.address}"></td>
                             <td>
-                                <span class="badge bg-info" th:text="${depot.emplacements?.size() ?: 0}"></span>
+                                <span class="badge bg-info">-</span>
                             </td>
                             <td>
                                 <span th:if="${depot.isActive}" class="badge bg-success">Actif</span>
@@ -174,13 +175,17 @@
                                        class="btn btn-outline-info" title="Emplacements">
                                         <i class="bi bi-grid-3x3"></i>
                                     </a>
-                                    <button class="btn btn-outline-primary" th:onclick="'focusDepot(' + ${depot.latitude} + ',' + ${depot.longitude} + ')'" title="Carte">
+                                    <button class="btn btn-outline-primary focus-depot-btn" 
+                                            th:data-lat="${depot.latitude}" 
+                                            th:data-lng="${depot.longitude}" title="Carte">
                                         <i class="bi bi-geo-alt"></i>
                                     </button>
-                                    <button class="btn btn-outline-secondary" th:onclick="'editDepot(\'' + ${depot.id} + '\')'" title="Modifier">
+                                    <button class="btn btn-outline-secondary edit-depot-btn" 
+                                            th:data-id="${depot.id}" title="Modifier">
                                         <i class="bi bi-pencil"></i>
                                     </button>
-                                    <button class="btn btn-outline-danger" th:onclick="'deleteDepot(\'' + ${depot.id} + '\')'" title="Supprimer">
+                                    <button class="btn btn-outline-danger delete-depot-btn" 
+                                            th:data-id="${depot.id}" title="Supprimer">
                                         <i class="bi bi-trash"></i>
                                     </button>
                                 </div>
@@ -343,6 +348,29 @@
             document.querySelectorAll('.depot-item').forEach(item => {
                 const text = item.textContent.toLowerCase();
                 item.style.display = text.includes(search) ? '' : 'none';
+            });
+        });
+
+        // Event listeners pour les boutons avec data-* attributes
+        document.querySelectorAll('.focus-depot-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const lat = parseFloat(this.dataset.lat);
+                const lng = parseFloat(this.dataset.lng);
+                if (lat && lng) {
+                    focusDepot(lat, lng);
+                }
+            });
+        });
+
+        document.querySelectorAll('.edit-depot-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                editDepot(this.dataset.id);
+            });
+        });
+
+        document.querySelectorAll('.delete-depot-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                deleteDepot(this.dataset.id);
             });
         });
 

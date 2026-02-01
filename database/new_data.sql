@@ -203,8 +203,8 @@ BEGIN
     VALUES ('BC-2401-088', v_da_id, v_frs_local_id, v_site_tana_id, v_user_ach_mgr_id, 'MGA', 9500000, 9500000, 'ENVOYEE', CURRENT_DATE - INTERVAL '8 days') 
     RETURNING id INTO v_cmd_achat_id;
     
-    INSERT INTO ligne_commande_achat (commande_id, article_id, qty_ordered, unit_price, taxe_code) 
-    VALUES (v_cmd_achat_id, v_art_riz_id, 100, 95000, 'EXO');
+    INSERT INTO ligne_commande_achat (commande_id, article_id, qty_ordered, unit_price) 
+    VALUES (v_cmd_achat_id, v_art_riz_id, 100, 95000);
 
     INSERT INTO lot (article_id, numero_lot, date_fabrication, date_peremption, statut_qualite_code) 
     VALUES (v_art_riz_id, 'LOT-RIZ-DEC23', '2023-12-01', '2025-12-01', 'CONFORME') 
@@ -217,8 +217,8 @@ BEGIN
     INSERT INTO ligne_bon_reception (bon_reception_id, article_id, lot_id, emplacement_id, qty_received) 
     VALUES (v_reception_id, v_art_riz_id, v_lot_riz_id, v_emp_A1_id, 100);
     
-    INSERT INTO mouvement_stock (type_mouvement_code, reference_doc, article_id, lot_id, depot_dest_id, emplacement_dest_id, qty, unit_cost, utilisateur_id) 
-    VALUES ('RECEPTION', 'BR-2401-088', v_art_riz_id, v_lot_riz_id, v_depot_tanjo_id, v_emp_A1_id, 100, 95000, v_user_mag_chef_id);
+    INSERT INTO mouvement_stock (numero, type_mouvement_code, reference_doc, article_id, lot_id, depot_dest_id, emplacement_dest_id, qty, unit_cost, utilisateur_id) 
+    VALUES ('MVT-2401-00001', 'RECEPTION', 'BR-2401-088', v_art_riz_id, v_lot_riz_id, v_depot_tanjo_id, v_emp_A1_id, 100, 95000, v_user_mag_chef_id);
     
     -- Stock : Attention, la colonne 'cump' n'existe pas dans le CREATE TABLE stock du init-data.sql fourni
     -- (uniquement qty_reel, qty_reserve, version). Je l'enlève.
@@ -253,8 +253,8 @@ BEGIN
     INSERT INTO ligne_bon_livraison (livraison_id, article_id, lot_id, qty_livree) 
     VALUES (v_bl_id, v_art_riz_id, v_lot_riz_id, 10);
     
-    INSERT INTO mouvement_stock (type_mouvement_code, reference_doc, article_id, lot_id, depot_source_id, emplacement_source_id, qty, utilisateur_id) 
-    VALUES ('EXPEDITION', 'BL-CLI-500', v_art_riz_id, v_lot_riz_id, v_depot_tanjo_id, v_emp_A1_id, -10, v_user_mag_op_id);
+    INSERT INTO mouvement_stock (numero, type_mouvement_code, reference_doc, article_id, lot_id, depot_source_id, emplacement_source_id, qty, utilisateur_id) 
+    VALUES ('MVT-2401-00002', 'EXPEDITION', 'BL-CLI-500', v_art_riz_id, v_lot_riz_id, v_depot_tanjo_id, v_emp_A1_id, 10, v_user_mag_op_id);
     
     UPDATE stock SET qty_reel = qty_reel - 10, qty_reserve = qty_reserve - 10 WHERE depot_id = v_depot_tanjo_id AND lot_id = v_lot_riz_id;
 
@@ -271,5 +271,46 @@ BEGIN
     
     INSERT INTO journal_audit (entity_name, entity_id, action, utilisateur_id, changes) 
     VALUES ('STOCK', v_lot_riz_id, 'ECART_INVENTAIRE', v_user_daf_id, '{"message": "Detection ecart de -2 unites sur Riz Luxury"}');
+
+    -- ===========================================================================
+    -- 8. DONNEES WORKFLOW STOCK (pour tests complets)
+    -- ===========================================================================
+    
+    -- 8.1 Nouveau dépôt avec coordonnées GPS (Antsirabe) + emplacement
+    INSERT INTO depot (site_id, code, name, latitude, longitude, is_active) 
+    VALUES (v_site_tana_id, 'DEP_ANTSIRABE', 'Entrepot Antsirabe', -19.8659, 47.0333, TRUE)
+    RETURNING id INTO v_depot_port_id;  -- On réutilise cette variable
+    
+    -- Emplacements dans le nouveau dépôt
+    INSERT INTO emplacement (depot_id, code, aisle, rack, shelf) 
+    VALUES (v_depot_port_id, 'B-01-01', 'B', '01', '01');
+    
+    -- 8.2 Ajouter des coordonnées GPS aux dépôts existants (pour la carte)
+    UPDATE depot SET latitude = -18.9137, longitude = 47.5361 WHERE code = 'DEP_TANJO';
+    UPDATE depot SET latitude = -18.1443, longitude = 49.4028 WHERE code = 'DEP_PORT';
+    
+    -- 8.3 Nouvelle commande achat ENVOYEE (prête pour réception)
+    -- Totaux corrigés : Riz (200×95k=19M) + Laptop (50×1.2M=60M) + Coca (100×4.5k=0.45M) = 79,450,000 HT
+    -- TTC avec TVA 20% sur Laptop et Coca : 19M + 72M + 0.54M = 91,540,000
+    INSERT INTO commande_achat (numero, fournisseur_id, site_id, acheteur_id, devise_code, total_ht, total_ttc, statut_code, date_commande) 
+    VALUES ('BC-2601-001', v_frs_star_id, v_site_tana_id, v_user_ach_mgr_id, 'MGA', 79450000, 91540000, 'ENVOYEE', CURRENT_DATE - INTERVAL '3 days') 
+    RETURNING id INTO v_cmd_achat_id;
+    
+    -- Lignes de la nouvelle commande (plusieurs articles)
+    INSERT INTO ligne_commande_achat (commande_id, article_id, qty_ordered, unit_price) 
+    VALUES (v_cmd_achat_id, v_art_riz_id, 200, 95000);
+    
+    INSERT INTO ligne_commande_achat (commande_id, article_id, qty_ordered, unit_price) 
+    VALUES (v_cmd_achat_id, v_art_laptop_id, 50, 1200000);
+    
+    INSERT INTO ligne_commande_achat (commande_id, article_id, qty_ordered, unit_price) 
+    VALUES (v_cmd_achat_id, v_art_coca_id, 100, 4500);
+    
+    -- 8.4 Deuxième commande achat ENVOYEE (alternative)
+    INSERT INTO commande_achat (numero, fournisseur_id, site_id, acheteur_id, devise_code, total_ht, total_ttc, statut_code, date_commande) 
+    VALUES ('BC-2601-002', v_frs_china_id, v_site_tana_id, v_user_ach_mgr_id, 'USD', 15000, 18000, 'ENVOYEE', CURRENT_DATE - INTERVAL '1 day');
+    
+    INSERT INTO ligne_commande_achat (commande_id, article_id, qty_ordered, unit_price) 
+    VALUES ((SELECT id FROM commande_achat WHERE numero = 'BC-2601-002'), v_art_laptop_id, 100, 150);
 
 END $$;

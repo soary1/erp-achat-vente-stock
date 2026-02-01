@@ -44,8 +44,8 @@
                             </td>
                             <td th:text="${#temporals.format(reception.dateReception, 'dd/MM/yyyy')}"></td>
                             <td th:text="${reception.commandeAchat?.numero}"></td>
-                            <td th:text="${reception.commandeAchat?.fournisseur?.raisonSociale}"></td>
-                            <td th:text="${reception.depot?.nom}"></td>
+                            <td th:text="${reception.commandeAchat?.fournisseur?.name}"></td>
+                            <td th:text="${reception.depot?.name}"></td>
                             <td>
                                 <span class="badge badge-status" 
                                       th:classappend="'badge-' + ${reception.statutCode?.toLowerCase()}"
