@@ -34,24 +34,8 @@ public class DemandeAchat {
     @JoinColumn(name = "site_id", nullable = false)
     private Site site;
     
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "devise_code")
-    @ToString.Exclude
-    private Devise devise;
-    
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "fournisseur_suggere_id")
-    @ToString.Exclude
-    private Fournisseur fournisseurSuggere;
-    
-    @Column(name = "date_limite")
-    private LocalDate dateLimite;
-    
     @Column(name = "statut_code", length = 50, nullable = false)
     private String statutCode;
-    
-    @Column(columnDefinition = "TEXT")
-    private String justification;
     
     @Column(name = "created_at")
     @Builder.Default

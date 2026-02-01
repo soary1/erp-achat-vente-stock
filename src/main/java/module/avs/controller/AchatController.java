@@ -50,8 +50,6 @@ public class AchatController {
     public String addDemandeForm(Model model) {
         model.addAttribute("demande", new DemandeAchat());
         model.addAttribute("sites", referentielService.findAllSites());
-        model.addAttribute("devises", referentielService.findAllDevises());
-        model.addAttribute("fournisseurs", referentielService.findAllFournisseurs());
         model.addAttribute("articles", referentielService.findAllArticles());
         return "achats/demande-form";
     }
@@ -69,8 +67,6 @@ public class AchatController {
     public String editDemandeForm(@PathVariable UUID id, Model model) {
         achatService.findDemandeAchatById(id).ifPresent(d -> model.addAttribute("demande", d));
         model.addAttribute("sites", referentielService.findAllSites());
-        model.addAttribute("devises", referentielService.findAllDevises());
-        model.addAttribute("fournisseurs", referentielService.findAllFournisseurs());
         model.addAttribute("articles", referentielService.findAllArticles());
         return "achats/demande-form";
     }

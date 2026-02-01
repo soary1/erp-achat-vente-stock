@@ -34,28 +34,6 @@
                                     <option th:each="site : ${sites}" th:value="${site.id}" th:text="${site.name}"></option>
                                 </select>
                             </div>
-                            <div class="col-md-6">
-                                <label class="form-label">Devise <span class="text-danger">*</span></label>
-                                <select class="form-select" th:field="*{devise.code}" required>
-                                    <option value="">-- Sélectionner une devise --</option>
-                                    <option th:each="devise : ${devises}" th:value="${devise.code}" th:text="${devise.label + ' (' + devise.code + ')'}"></option>
-                                </select>
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label">Fournisseur suggéré</label>
-                                <select class="form-select" th:field="*{fournisseurSuggere.id}">
-                                    <option value="">-- Aucun fournisseur suggéré --</option>
-                                    <option th:each="fournisseur : ${fournisseurs}" th:value="${fournisseur.id}" th:text="${fournisseur.name}"></option>
-                                </select>
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label">Date limite</label>
-                                <input type="date" class="form-control" th:field="*{dateLimite}" />
-                            </div>
-                            <div class="col-12">
-                                <label class="form-label">Justification</label>
-                                <textarea class="form-control" th:field="*{justification}" rows="3" placeholder="Raison de la demande d'achat..."></textarea>
-                            </div>
                         </div>
                     </div>
                 </div>
