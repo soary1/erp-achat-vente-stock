@@ -7,6 +7,7 @@ import module.avs.model.tiers.Client;
 import module.avs.model.vente.*;
 import module.avs.repository.stock.*;
 import module.avs.repository.vente.*;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -16,9 +17,9 @@ import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
+import java.util.Map;
 
 @Service
-@RequiredArgsConstructor
 @Transactional
 public class VenteService {
     
@@ -37,9 +38,51 @@ public class VenteService {
     private final LotRepository lotRepository;
     private final AuditService auditService;
     private final UtilisateurService utilisateurService;
+    private final FinanceService financeService;
     private final module.avs.repository.article.ArticleRepository articleRepository;
     private final module.avs.repository.tiers.ClientRepository clientRepository;
     private final module.avs.repository.organisation.SiteRepository siteRepository;
+    
+    public VenteService(
+            DevisClientRepository devisClientRepository,
+            LigneDevisClientRepository ligneDevisClientRepository,
+            CommandeClientRepository commandeClientRepository,
+            LigneCommandeClientRepository ligneCommandeClientRepository,
+            ReservationStockRepository reservationStockRepository,
+            BonLivraisonRepository bonLivraisonRepository,
+            LigneBonLivraisonRepository ligneBonLivraisonRepository,
+            RetourClientRepository retourClientRepository,
+            LigneRetourClientRepository ligneRetourClientRepository,
+            StockRepository stockRepository,
+            MouvementStockRepository mouvementStockRepository,
+            TypeMouvementRepository typeMouvementRepository,
+            LotRepository lotRepository,
+            AuditService auditService,
+            UtilisateurService utilisateurService,
+            @Lazy FinanceService financeService,
+            module.avs.repository.article.ArticleRepository articleRepository,
+            module.avs.repository.tiers.ClientRepository clientRepository,
+            module.avs.repository.organisation.SiteRepository siteRepository) {
+        this.devisClientRepository = devisClientRepository;
+        this.ligneDevisClientRepository = ligneDevisClientRepository;
+        this.commandeClientRepository = commandeClientRepository;
+        this.ligneCommandeClientRepository = ligneCommandeClientRepository;
+        this.reservationStockRepository = reservationStockRepository;
+        this.bonLivraisonRepository = bonLivraisonRepository;
+        this.ligneBonLivraisonRepository = ligneBonLivraisonRepository;
+        this.retourClientRepository = retourClientRepository;
+        this.ligneRetourClientRepository = ligneRetourClientRepository;
+        this.stockRepository = stockRepository;
+        this.mouvementStockRepository = mouvementStockRepository;
+        this.typeMouvementRepository = typeMouvementRepository;
+        this.lotRepository = lotRepository;
+        this.auditService = auditService;
+        this.utilisateurService = utilisateurService;
+        this.financeService = financeService;
+        this.articleRepository = articleRepository;
+        this.clientRepository = clientRepository;
+        this.siteRepository = siteRepository;
+    }
     
     // ============ DEVIS ============
     
@@ -516,10 +559,21 @@ public class VenteService {
         }
         
         livraison.setStatutCode("VALIDE");
+        livraison.setValidateur(acteur);
+        livraison.setDateValidation(OffsetDateTime.now());
         BonLivraison saved = bonLivraisonRepository.save(livraison);
         
         // Mettre à jour le statut de la commande
         updateStatutCommandeApresLivraison(livraison.getCommande().getId());
+        
+        // CRÉATION AUTOMATIQUE DE LA FACTURE CLIENT
+        try {
+            financeService.createFactureFromBonLivraison(livraisonId, acteur);
+        } catch (Exception e) {
+            // Log error but don't fail the transaction
+            auditService.logAction("FACTURE_CLIENT", null, "CREATION_AUTO_FAILED", acteur, 
+                Map.of("bonLivraisonId", livraisonId.toString(), "error", e.getMessage()));
+        }
         
         auditService.logWorkflow("BON_LIVRAISON", livraisonId, "BROUILLON", "VALIDE", acteur, "VALIDATION", null);
         return saved;

@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{layout/main}">
+<head>
+    <title>Encaissement</title>
+</head>
+<body>
+<div layout:fragment="content">
+    <div class="page-header mb-4">
+        <h1><i class="bi bi-cash-stack me-2"></i>Encaissement</h1>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a th:href="@{/dashboard}">Accueil</a></li>
+                <li class="breadcrumb-item"><a th:href="@{/finance}">Finance</a></li>
+                <li class="breadcrumb-item"><a th:href="@{/finance/factures-client}">Factures clients</a></li>
+                <li class="breadcrumb-item"><a th:href="@{/finance/factures-client/{id}(id=${facture?.id})}" th:text="${facture?.numero}"></a></li>
+                <li class="breadcrumb-item active">Encaissement</li>
+            </ol>
+        </nav>
+    </div>
+    
+    <div th:if="${facture != null}" class="row justify-content-center">
+        <div class="col-lg-8">
+            <!-- Résumé facture -->
+            <div class="card mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="bi bi-file-text me-2"></i>Facture <span th:text="${facture.numero}"></span></h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p class="mb-1"><strong>Client :</strong> <span th:text="${facture.client?.name}"></span></p>
+                            <p class="mb-1"><strong>Date facture :</strong> <span th:text="${#temporals.format(facture.dateFacture, 'dd/MM/yyyy')}"></span></p>
+                            <p class="mb-0"><strong>Échéance :</strong> 
+                                <span th:classappend="${facture.dateEcheance != null and facture.dateEcheance.isBefore(T(java.time.LocalDate).now())} ? 'text-danger fw-bold' : ''"
+                                      th:text="${facture.dateEcheance != null ? #temporals.format(facture.dateEcheance, 'dd/MM/yyyy') : '-'}"></span>
+                            </p>
+                        </div>
+                        <div class="col-md-6 text-md-end">
+                            <p class="mb-1"><strong>Montant TTC :</strong> <span class="fs-5" th:text="${#numbers.formatDecimal(facture.montantTTC, 0, 'COMMA', 0, 'POINT')} + ' MGA'"></span></p>
+                            <p class="mb-1"><strong>Déjà encaissé :</strong> <span class="text-success" th:text="${#numbers.formatDecimal(facture.montantEncaisse ?: 0, 0, 'COMMA', 0, 'POINT')} + ' MGA'"></span></p>
+                            <p class="mb-0"><strong>Reste à payer :</strong> <span class="fs-4 fw-bold text-danger" th:text="${#numbers.formatDecimal(facture.montantRestant, 0, 'COMMA', 0, 'POINT')} + ' MGA'"></span></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Formulaire encaissement -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-plus-circle me-2"></i>Enregistrer un encaissement</h5>
+                </div>
+                <div class="card-body">
+                    <form th:action="@{/finance/factures-client/{id}/encaissement(id=${facture.id})}" method="post">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Montant à encaisser <span class="text-danger">*</span></label>
+                                <div class="input-group">
+                                    <input type="number" name="montant" class="form-control form-control-lg" 
+                                           step="0.01" min="0.01" 
+                                           th:max="${facture.montantRestant}"
+                                           th:value="${facture.montantRestant}"
+                                           required>
+                                    <span class="input-group-text">MGA</span>
+                                </div>
+                                <small class="text-muted">Maximum : <span th:text="${#numbers.formatDecimal(facture.montantRestant, 0, 'COMMA', 0, 'POINT')}"></span> MGA</small>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Mode de paiement <span class="text-danger">*</span></label>
+                                <select name="modeCode" class="form-select form-select-lg" required>
+                                    <option value="">-- Sélectionner --</option>
+                                    <option th:each="mode : ${modes}" th:value="${mode.code}" th:text="${mode.label}"></option>
+                                </select>
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label">Référence (n° chèque, n° virement, etc.)</label>
+                                <input type="text" name="reference" class="form-control" placeholder="Ex: CHQ-12345">
+                            </div>
+                        </div>
+                        
+                        <hr class="my-4">
+                        
+                        <div class="d-flex justify-content-between">
+                            <a th:href="@{/finance/factures-client/{id}(id=${facture.id})}" class="btn btn-outline-secondary">
+                                <i class="bi bi-x-lg me-1"></i>Annuler
+                            </a>
+                            <button type="submit" class="btn btn-success btn-lg">
+                                <i class="bi bi-check-lg me-1"></i>Enregistrer l'encaissement
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            
+            <!-- Raccourcis montants -->
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h6 class="mb-0">Raccourcis montants</h6>
+                </div>
+                <div class="card-body">
+                    <div class="btn-group w-100" role="group">
+                        <button type="button" class="btn btn-outline-primary" onclick="setMontant(25)">25%</button>
+                        <button type="button" class="btn btn-outline-primary" onclick="setMontant(50)">50%</button>
+                        <button type="button" class="btn btn-outline-primary" onclick="setMontant(75)">75%</button>
+                        <button type="button" class="btn btn-primary" onclick="setMontant(100)">100%</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div th:if="${facture == null}" class="alert alert-warning">
+        <i class="bi bi-exclamation-triangle me-2"></i>Facture non trouvée
+    </div>
+</div>
+
+<script layout:fragment="scripts" th:inline="javascript">
+    const montantRestant = [[${facture?.montantRestant}]];
+    
+    function setMontant(percentage) {
+        const montant = (montantRestant * percentage / 100).toFixed(2);
+        document.querySelector('input[name="montant"]').value = montant;
+    }
+</script>
+</body>
+</html>

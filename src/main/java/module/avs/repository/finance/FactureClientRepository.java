@@ -19,6 +19,13 @@ public interface FactureClientRepository extends JpaRepository<FactureClient, UU
     List<FactureClient> findByStatutCode(String statutCode);
     Page<FactureClient> findAllByOrderByDateFactureDesc(Pageable pageable);
     
+    // Check if invoice already exists for a bon de livraison
+    Optional<FactureClient> findByBonLivraisonId(UUID bonLivraisonId);
+    
+    // Find all invoices with their related documents
+    @Query("SELECT DISTINCT f FROM FactureClient f LEFT JOIN FETCH f.client LEFT JOIN FETCH f.commande LEFT JOIN FETCH f.bonLivraison WHERE f.id = :id")
+    Optional<FactureClient> findByIdWithDetails(UUID id);
+    
     @Query("SELECT f FROM FactureClient f WHERE f.statutCode IN ('A_PAYER', 'PAYEE_PARTIEL') AND f.dateEcheance < :today")
     List<FactureClient> findOverdueFactures(LocalDate today);
     
@@ -27,4 +34,12 @@ public interface FactureClientRepository extends JpaRepository<FactureClient, UU
     
     @Query("SELECT SUM(f.montantTTC) FROM FactureClient f WHERE f.dateFacture BETWEEN :start AND :end")
     BigDecimal sumByPeriod(LocalDate start, LocalDate end);
+    
+    // Stats for dashboard
+    @Query("SELECT COUNT(f) FROM FactureClient f WHERE f.statutCode = :statut")
+    long countByStatut(String statut);
+    
+    // Factures du mois
+    @Query("SELECT f FROM FactureClient f WHERE f.dateFacture >= :start ORDER BY f.dateFacture DESC")
+    List<FactureClient> findRecentFactures(LocalDate start);
 }

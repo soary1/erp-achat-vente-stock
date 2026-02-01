@@ -5,6 +5,7 @@ import module.avs.model.achat.*;
 import module.avs.model.security.Utilisateur;
 import module.avs.repository.achat.*;
 import module.avs.repository.stock.LigneBonReceptionRepository;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -13,9 +14,9 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
+import java.util.Map;
 
 @Service
-@RequiredArgsConstructor
 @Transactional
 public class AchatService {
     
@@ -26,6 +27,26 @@ public class AchatService {
     private final LigneBonReceptionRepository ligneBonReceptionRepository;
     private final AuditService auditService;
     private final UtilisateurService utilisateurService;
+    private final FinanceService financeService;
+    
+    public AchatService(
+            DemandeAchatRepository demandeAchatRepository,
+            LigneDemandeAchatRepository ligneDemandeAchatRepository,
+            CommandeAchatRepository commandeAchatRepository,
+            LigneCommandeAchatRepository ligneCommandeAchatRepository,
+            LigneBonReceptionRepository ligneBonReceptionRepository,
+            AuditService auditService,
+            UtilisateurService utilisateurService,
+            @Lazy FinanceService financeService) {
+        this.demandeAchatRepository = demandeAchatRepository;
+        this.ligneDemandeAchatRepository = ligneDemandeAchatRepository;
+        this.commandeAchatRepository = commandeAchatRepository;
+        this.ligneCommandeAchatRepository = ligneCommandeAchatRepository;
+        this.ligneBonReceptionRepository = ligneBonReceptionRepository;
+        this.auditService = auditService;
+        this.utilisateurService = utilisateurService;
+        this.financeService = financeService;
+    }
     
     // ============ DEMANDES D'ACHAT ============
     
@@ -199,6 +220,15 @@ public class AchatService {
         String ancienStatut = commande.getStatutCode();
         commande.setStatutCode("ENVOYEE");
         CommandeAchat saved = commandeAchatRepository.save(commande);
+        
+        // CRÉATION AUTOMATIQUE DE LA FACTURE FOURNISSEUR
+        try {
+            financeService.createFactureFromCommandeAchat(saved, acteur);
+        } catch (Exception e) {
+            // Log error but don't fail the transaction
+            auditService.logAction("FACTURE_FOURNISSEUR", null, "CREATION_AUTO_FAILED", acteur, 
+                Map.of("commandeAchatId", commandeId.toString(), "error", e.getMessage()));
+        }
         
         auditService.logWorkflow("COMMANDE_ACHAT", commandeId, ancienStatut, "ENVOYEE", acteur, "ENVOI", null);
         return saved;

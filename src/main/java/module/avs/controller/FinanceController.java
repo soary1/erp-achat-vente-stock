@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import module.avs.model.finance.*;
 import module.avs.model.security.Utilisateur;
 import module.avs.model.vente.CommandeClient;
+import module.avs.service.AchatService;
 import module.avs.service.FinanceService;
 import module.avs.service.ReferentielService;
 import module.avs.service.UtilisateurService;
@@ -18,6 +19,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.Map;
 import java.util.UUID;
 
 @Controller
@@ -27,6 +29,7 @@ public class FinanceController {
     
     private final FinanceService financeService;
     private final VenteService venteService;
+    private final AchatService achatService;
     private final ReferentielService referentielService;
     private final UtilisateurService utilisateurService;
     
@@ -39,10 +42,15 @@ public class FinanceController {
     
     @GetMapping
     public String dashboard(Model model) {
-        model.addAttribute("facturesClientImpayees", financeService.getTotalFacturesClientImpayees());
-        model.addAttribute("facturesFournisseurImpayees", financeService.getTotalFacturesFournisseurImpayees());
-        model.addAttribute("facturesClientRetard", financeService.getFacturesClientEnRetard());
-        model.addAttribute("facturesFournisseurRetard", financeService.getFacturesFournisseurEnRetard());
+        Map<String, Object> stats = financeService.getDashboardStats();
+        model.addAllAttributes(stats);
+        
+        // Pour compatibilité avec l'ancien template
+        model.addAttribute("facturesClientImpayees", stats.get("creancesClient"));
+        model.addAttribute("facturesFournisseurImpayees", stats.get("dettesFournisseur"));
+        model.addAttribute("facturesClientRetard", stats.get("facturesClientRetard"));
+        model.addAttribute("facturesFournisseurRetard", stats.get("facturesFournisseurRetard"));
+        
         return "finance/dashboard";
     }
     
@@ -60,7 +68,16 @@ public class FinanceController {
     
     @GetMapping("/factures-fournisseur/{id}")
     public String viewFactureFournisseur(@PathVariable UUID id, Model model) {
-        financeService.findFactureFournisseurById(id).ifPresent(f -> model.addAttribute("facture", f));
+        financeService.findFactureFournisseurByIdWithDetails(id).ifPresent(f -> {
+            model.addAttribute("facture", f);
+            model.addAttribute("paiements", financeService.findPaiementsByFactureFournisseur(id));
+            // Récupérer les lignes de commande si disponibles
+            if (f.getCommandeAchat() != null) {
+                achatService.findCommandeAchatById(f.getCommandeAchat().getId())
+                    .ifPresent(cmd -> model.addAttribute("commande", cmd));
+            }
+        });
+        model.addAttribute("modes", referentielService.findAllModesPaiement());
         return "finance/facture-fournisseur-detail";
     }
     
@@ -167,7 +184,20 @@ public class FinanceController {
     
     @GetMapping("/factures-client/{id}")
     public String viewFactureClient(@PathVariable UUID id, Model model) {
-        financeService.findFactureClientById(id).ifPresent(f -> model.addAttribute("facture", f));
+        financeService.findFactureClientByIdWithDetails(id).ifPresent(f -> {
+            model.addAttribute("facture", f);
+            model.addAttribute("encaissements", financeService.findEncaissementsByFactureClient(id));
+            // Récupérer les détails de la commande et du BL si disponibles
+            if (f.getCommande() != null) {
+                venteService.findCommandeClientById(f.getCommande().getId())
+                    .ifPresent(cmd -> model.addAttribute("commande", cmd));
+            }
+            if (f.getBonLivraison() != null) {
+                venteService.findLivraisonById(f.getBonLivraison().getId())
+                    .ifPresent(bl -> model.addAttribute("bonLivraison", bl));
+            }
+        });
+        model.addAttribute("modes", referentielService.findAllModesPaiement());
         return "finance/facture-client-detail";
     }
     

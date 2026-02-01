@@ -5,9 +5,12 @@ import module.avs.model.achat.CommandeAchat;
 import module.avs.model.finance.*;
 import module.avs.model.security.Utilisateur;
 import module.avs.model.stock.BonReception;
+import module.avs.model.vente.BonLivraison;
 import module.avs.model.vente.CommandeClient;
+import module.avs.model.vente.LigneBonLivraison;
 import module.avs.repository.finance.*;
 import module.avs.repository.stock.BonReceptionRepository;
+import module.avs.repository.vente.BonLivraisonRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -27,6 +30,7 @@ public class FinanceService {
     private final FactureClientRepository factureClientRepository;
     private final EncaissementClientRepository encaissementClientRepository;
     private final BonReceptionRepository bonReceptionRepository;
+    private final BonLivraisonRepository bonLivraisonRepository;
     private final AuditService auditService;
     
     // ============ FACTURES FOURNISSEUR ============
@@ -190,9 +194,98 @@ public class FinanceService {
      * C'est la méthode recommandée selon le workflow
      */
     public FactureClient createFactureFromBonLivraison(UUID bonLivraisonId, Utilisateur createur) {
-        // Récupérer le BL via le repository qui devra être injecté
-        // Pour l'instant, on simule
-        throw new UnsupportedOperationException("Nécessite l'injection de BonLivraisonRepository - à implémenter");
+        BonLivraison bonLivraison = bonLivraisonRepository.findById(bonLivraisonId)
+            .orElseThrow(() -> new RuntimeException("Bon de livraison non trouvé"));
+        
+        // Vérifier si une facture existe déjà pour ce BL
+        Optional<FactureClient> existing = factureClientRepository.findByBonLivraisonId(bonLivraisonId);
+        if (existing.isPresent()) {
+            return existing.get(); // Retourner la facture existante
+        }
+        
+        CommandeClient commande = bonLivraison.getCommande();
+        
+        // Calculer le montant basé sur les quantités livrées
+        BigDecimal montantHT = BigDecimal.ZERO;
+        for (LigneBonLivraison ligne : bonLivraison.getLignes()) {
+            // Récupérer le prix depuis la ligne de commande
+            BigDecimal prixUnitaire = commande.getLignes().stream()
+                .filter(lc -> lc.getArticle().getId().equals(ligne.getArticle().getId()))
+                .findFirst()
+                .map(lc -> lc.getPriceUnit())
+                .orElse(BigDecimal.ZERO);
+            
+            BigDecimal montantLigne = prixUnitaire.multiply(ligne.getQtyLivree());
+            montantHT = montantHT.add(montantLigne);
+        }
+        
+        // Appliquer la remise globale si présente
+        if (commande.getRemiseGlobalePct() != null && commande.getRemiseGlobalePct().compareTo(BigDecimal.ZERO) > 0) {
+            BigDecimal remise = montantHT.multiply(commande.getRemiseGlobalePct()).divide(new BigDecimal("100"));
+            montantHT = montantHT.subtract(remise);
+        }
+        
+        // Appliquer TVA 20%
+        BigDecimal tva = montantHT.multiply(new BigDecimal("0.20"));
+        BigDecimal montantTTC = montantHT.add(tva);
+        
+        FactureClient facture = FactureClient.builder()
+            .numero(generateFactureClientNumero())
+            .client(commande.getClient())
+            .commande(commande)
+            .bonLivraison(bonLivraison)
+            .montantHT(montantHT)
+            .montantTTC(montantTTC)
+            .statutCode("A_PAYER")
+            .dateFacture(LocalDate.now())
+            .dateEcheance(LocalDate.now().plusDays(30))
+            .createur(createur)
+            .build();
+        
+        FactureClient saved = factureClientRepository.save(facture);
+        
+        auditService.logAction("FACTURE_CLIENT", saved.getId(), "CREATION_AUTO_BL", createur, 
+            Map.of("bonLivraisonId", bonLivraisonId.toString(), "bonLivraisonNumero", bonLivraison.getNumero()));
+        
+        return saved;
+    }
+    
+    /**
+     * Crée une facture fournisseur depuis une commande d'achat envoyée
+     */
+    public FactureFournisseur createFactureFromCommandeAchat(CommandeAchat commande, Utilisateur createur) {
+        // Vérifier si une facture existe déjà pour cette commande
+        Optional<FactureFournisseur> existing = factureFournisseurRepository.findByCommandeAchatId(commande.getId());
+        if (existing.isPresent()) {
+            return existing.get();
+        }
+        
+        String refInterne = generateFactureFournisseurNumero();
+        
+        FactureFournisseur facture = FactureFournisseur.builder()
+            .refInterne(refInterne)
+            .refFournisseur("FF-" + commande.getNumero()) // Référence temporaire, à modifier par l'utilisateur
+            .fournisseur(commande.getFournisseur())
+            .commandeAchat(commande)
+            .montantHT(commande.getTotalHT())
+            .montantTTC(commande.getTotalTTC())
+            .devise(commande.getDevise())
+            .statutCode("A_PAYER")
+            .dateFacture(LocalDate.now())
+            .dateEcheance(LocalDate.now().plusDays(30))
+            .build();
+        
+        FactureFournisseur saved = factureFournisseurRepository.save(facture);
+        
+        auditService.logAction("FACTURE_FOURNISSEUR", saved.getId(), "CREATION_AUTO_CMD", createur,
+            Map.of("commandeAchatId", commande.getId().toString(), "commandeNumero", commande.getNumero()));
+        
+        return saved;
+    }
+    
+    public String generateFactureFournisseurNumero() {
+        return "FF-" + LocalDate.now().getYear() + "-" + 
+               String.format("%05d", factureFournisseurRepository.count() + 1);
     }
     
     // ============ ENCAISSEMENTS ============
@@ -244,5 +337,70 @@ public class FinanceService {
     
     public List<FactureClient> getFacturesClientEnRetard() {
         return factureClientRepository.findOverdueFactures(LocalDate.now());
+    }
+    
+    // ============ STATISTIQUES AVANCÉES ============
+    
+    public Map<String, Object> getDashboardStats() {
+        Map<String, Object> stats = new HashMap<>();
+        
+        LocalDate today = LocalDate.now();
+        LocalDate startOfMonth = today.withDayOfMonth(1);
+        
+        // Créances et dettes
+        BigDecimal creancesClient = factureClientRepository.getTotalOutstandingAmount();
+        BigDecimal dettesFournisseur = factureFournisseurRepository.getTotalOutstandingAmount();
+        
+        stats.put("creancesClient", creancesClient != null ? creancesClient : BigDecimal.ZERO);
+        stats.put("dettesFournisseur", dettesFournisseur != null ? dettesFournisseur : BigDecimal.ZERO);
+        
+        // Factures en retard
+        stats.put("facturesClientRetard", factureClientRepository.findOverdueFactures(today));
+        stats.put("facturesFournisseurRetard", factureFournisseurRepository.findOverdueFactures(today));
+        
+        // Compteurs par statut
+        stats.put("facturesClientAPayer", factureClientRepository.countByStatut("A_PAYER"));
+        stats.put("facturesClientPartielles", factureClientRepository.countByStatut("PAYEE_PARTIEL"));
+        stats.put("facturesClientPayees", factureClientRepository.countByStatut("PAYEE"));
+        
+        stats.put("facturesFournisseurAPayer", factureFournisseurRepository.countByStatut("A_PAYER"));
+        stats.put("facturesFournisseurPartielles", factureFournisseurRepository.countByStatut("PAYEE_PARTIEL"));
+        stats.put("facturesFournisseurPayees", factureFournisseurRepository.countByStatut("PAYEE"));
+        
+        // CA du mois
+        BigDecimal caClient = factureClientRepository.sumByPeriod(startOfMonth, today);
+        BigDecimal achats = factureFournisseurRepository.sumByPeriod(startOfMonth, today);
+        stats.put("caClientMois", caClient != null ? caClient : BigDecimal.ZERO);
+        stats.put("achatsMois", achats != null ? achats : BigDecimal.ZERO);
+        
+        // Encaissements et paiements du mois
+        BigDecimal encaissementsMois = encaissementClientRepository.sumEncaissementsByPeriod(startOfMonth, today);
+        BigDecimal paiementsMois = paiementFournisseurRepository.sumPaiementsByPeriod(startOfMonth, today);
+        stats.put("encaissementsMois", encaissementsMois != null ? encaissementsMois : BigDecimal.ZERO);
+        stats.put("paiementsMois", paiementsMois != null ? paiementsMois : BigDecimal.ZERO);
+        
+        // Factures récentes
+        stats.put("facturesClientRecentes", factureClientRepository.findRecentFactures(startOfMonth));
+        stats.put("facturesFournisseurRecentes", factureFournisseurRepository.findRecentFactures(startOfMonth));
+        
+        return stats;
+    }
+    
+    // ============ DÉTAILS FACTURES ============
+    
+    public Optional<FactureClient> findFactureClientByIdWithDetails(UUID id) {
+        return factureClientRepository.findByIdWithDetails(id);
+    }
+    
+    public Optional<FactureFournisseur> findFactureFournisseurByIdWithDetails(UUID id) {
+        return factureFournisseurRepository.findByIdWithDetails(id);
+    }
+    
+    public List<EncaissementClient> findEncaissementsByFactureClient(UUID factureId) {
+        return encaissementClientRepository.findByFactureId(factureId);
+    }
+    
+    public List<PaiementFournisseur> findPaiementsByFactureFournisseur(UUID factureId) {
+        return paiementFournisseurRepository.findByFactureId(factureId);
     }
 }
