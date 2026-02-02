@@ -27,27 +27,49 @@
     <!-- Filtres -->
     <div class="card mb-4">
         <div class="card-body">
-            <form class="row g-3">
-                <div class="col-md-3">
+            <form class="row g-3" method="get" th:action="@{/stock}">
+                <div class="col-md-2">
                     <label class="form-label">Dépôt</label>
                     <select class="form-select" name="depot">
                         <option value="">Tous les dépôts</option>
+                        <option th:each="d : ${depots}" 
+                                th:value="${d.id}" 
+                                th:text="${d.name}"
+                                th:selected="${selectedDepot != null and selectedDepot.toString() == d.id.toString()}"></option>
                     </select>
                 </div>
-                <div class="col-md-3">
+                <div class="col-md-2">
                     <label class="form-label">Famille article</label>
                     <select class="form-select" name="famille">
                         <option value="">Toutes</option>
+                        <option th:each="f : ${familles}" 
+                                th:value="${f.id}" 
+                                th:text="${f.name}"
+                                th:selected="${selectedFamille != null and selectedFamille.toString() == f.id.toString()}"></option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Valorisation</label>
+                    <select class="form-select" name="valorisation">
+                        <option value="">Toutes</option>
+                        <option th:each="m : ${methodeValorisations}" 
+                                th:value="${m.code}" 
+                                th:text="${m.label}"
+                                th:selected="${selectedValorisation != null and selectedValorisation == m.code}"></option>
                     </select>
                 </div>
                 <div class="col-md-3">
                     <label class="form-label">Recherche article</label>
-                    <input type="text" class="form-control" name="search" placeholder="SKU ou désignation">
+                    <input type="text" class="form-control" name="search" placeholder="SKU ou désignation"
+                           th:value="${selectedSearch}">
                 </div>
-                <div class="col-md-3 d-flex align-items-end">
-                    <button type="submit" class="btn btn-outline-primary w-100">
+                <div class="col-md-3 d-flex align-items-end gap-2">
+                    <button type="submit" class="btn btn-outline-primary flex-grow-1">
                         <i class="bi bi-search me-2"></i>Filtrer
                     </button>
+                    <a th:href="@{/stock}" class="btn btn-outline-secondary">
+                        <i class="bi bi-x-circle"></i>
+                    </a>
                 </div>
             </form>
         </div>
@@ -61,38 +83,65 @@
                         <tr>
                             <th>Article</th>
                             <th>SKU</th>
+                            <th>Valorisation</th>
                             <th>Dépôt</th>
                             <th>Emplacement</th>
                             <th>Lot</th>
                             <th class="text-end">Qty Réelle</th>
                             <th class="text-end">Qty Réservée</th>
                             <th class="text-end">Qty Disponible</th>
+                            <th class="text-end">Prix Unitaire</th>
+                            <th class="text-end">Valeur Stock</th>
                             <th>État</th>
                         </tr>
                     </thead>
                     <tbody>
                         <tr th:each="stock : ${stocks.content}"
                             th:classappend="${stock.qtyReel != null and stock.qtyReel.intValue() < 10} ? 'table-warning' : ''">
-                            <td th:text="${stock.article?.label}"></td>
-                            <td><code th:text="${stock.article?.sku}"></code></td>
-                            <td th:text="${stock.depot?.name}"></td>
-                            <td th:text="${stock.emplacement?.code}"></td>
-                            <td th:text="${stock.lot?.numeroLot}"></td>
+                            <td th:text="${stock.articleLabel}"></td>
+                            <td><code th:text="${stock.articleSku}"></code></td>
+                            <td>
+                                <span class="badge" 
+                                      th:classappend="${stock.methodeValorisationCode == 'FIFO' ? 'bg-success' : 
+                                                       (stock.methodeValorisationCode == 'LIFO' ? 'bg-warning' : 'bg-info')}"
+                                      th:text="${stock.methodeValorisationLabel}"></span>
+                            </td>
+                            <td th:text="${stock.depotName}"></td>
+                            <td th:text="${stock.emplacementCode}"></td>
+                            <td th:text="${stock.lotNumero}"></td>
                             <td class="text-end" th:text="${#numbers.formatDecimal(stock.qtyReel, 0, 'COMMA', 2, 'POINT')}"></td>
                             <td class="text-end" th:text="${#numbers.formatDecimal(stock.qtyReserve, 0, 'COMMA', 2, 'POINT')}"></td>
                             <td class="text-end fw-bold" th:text="${#numbers.formatDecimal(stock.qtyDisponible, 0, 'COMMA', 2, 'POINT')}"></td>
+                            <td class="text-end">
+                                <span th:if="${stock.prixUnitaire != null and stock.prixUnitaire > 0}" 
+                                      th:text="${#numbers.formatDecimal(stock.prixUnitaire, 0, 'COMMA', 2, 'POINT')} + ' Ar'"></span>
+                                <span th:if="${stock.prixUnitaire == null or stock.prixUnitaire == 0}" class="text-muted">-</span>
+                            </td>
+                            <td class="text-end fw-bold">
+                                <span th:if="${stock.valeurStock != null and stock.valeurStock > 0}" 
+                                      class="text-primary"
+                                      th:text="${#numbers.formatDecimal(stock.valeurStock, 0, 'COMMA', 2, 'POINT')} + ' Ar'"></span>
+                                <span th:if="${stock.valeurStock == null or stock.valeurStock == 0}" class="text-muted">-</span>
+                            </td>
                             <td>
                                 <span th:if="${stock.qtyReel != null and stock.qtyReel.intValue() > 0 and stock.qtyReel.intValue() < 10}" class="badge bg-warning">Stock faible</span>
                                 <span th:if="${stock.qtyReel == null or stock.qtyReel.intValue() == 0}" class="badge bg-danger">Rupture</span>
                             </td>
                         </tr>
                         <tr th:if="${stocks.content.isEmpty()}">
-                            <td colspan="9" class="text-center text-muted py-4">
+                            <td colspan="12" class="text-center text-muted py-4">
                                 <i class="bi bi-box fs-1 d-block mb-2"></i>
                                 Aucun stock
                             </td>
                         </tr>
                     </tbody>
+                    <tfoot th:if="${!stocks.content.isEmpty()}">
+                        <tr class="table-dark fw-bold">
+                            <td colspan="10" class="text-end">VALEUR TOTALE DU STOCK :</td>
+                            <td class="text-end text-success fs-5" th:text="${#numbers.formatDecimal(valeurTotale, 0, 'COMMA', 2, 'POINT')} + ' Ar'"></td>
+                            <td></td>
+                        </tr>
+                    </tfoot>
                 </table>
             </div>
             
@@ -100,14 +149,14 @@
             <nav th:if="${stocks.totalPages > 1}" class="mt-4">
                 <ul class="pagination justify-content-center">
                     <li class="page-item" th:classappend="${stocks.first} ? 'disabled'">
-                        <a class="page-link" th:href="@{/stock(page=${stocks.number - 1})}">Précédent</a>
+                        <a class="page-link" th:href="@{/stock(page=${stocks.number - 1}, depot=${selectedDepot}, famille=${selectedFamille}, valorisation=${selectedValorisation}, search=${selectedSearch})}">Précédent</a>
                     </li>
                     <li class="page-item" th:each="i : ${#numbers.sequence(0, stocks.totalPages - 1)}"
                         th:classappend="${i == stocks.number} ? 'active'">
-                        <a class="page-link" th:href="@{/stock(page=${i})}" th:text="${i + 1}"></a>
+                        <a class="page-link" th:href="@{/stock(page=${i}, depot=${selectedDepot}, famille=${selectedFamille}, valorisation=${selectedValorisation}, search=${selectedSearch})}" th:text="${i + 1}"></a>
                     </li>
                     <li class="page-item" th:classappend="${stocks.last} ? 'disabled'">
-                        <a class="page-link" th:href="@{/stock(page=${stocks.number + 1})}">Suivant</a>
+                        <a class="page-link" th:href="@{/stock(page=${stocks.number + 1}, depot=${selectedDepot}, famille=${selectedFamille}, valorisation=${selectedValorisation}, search=${selectedSearch})}">Suivant</a>
                     </li>
                 </ul>
             </nav>

@@ -68,4 +68,23 @@ public interface StockRepository extends JpaRepository<Stock, UUID> {
     List<Stock> findByDepotIdAndArticleIdAndQtyReelGreaterThan(UUID depotId, UUID articleId, BigDecimal qty);
     
     List<Stock> findByArticleIdAndQtyReelGreaterThan(UUID articleId, BigDecimal qty);
+    
+    // Requête avec filtres (depot, famille, valorisation, search)
+    @Query(value = """
+        SELECT s.* FROM stock s
+        LEFT JOIN depot d ON d.id = s.depot_id
+        LEFT JOIN article a ON a.id = s.article_id
+        LEFT JOIN famille_article f ON f.id = a.famille_id
+        LEFT JOIN methode_valorisation m ON m.code = f.methode_valorisation_code
+        LEFT JOIN lot l ON l.id = s.lot_id
+        LEFT JOIN emplacement e ON e.id = s.emplacement_id
+        WHERE (CAST(:depotId AS uuid) IS NULL OR s.depot_id = CAST(:depotId AS uuid))
+          AND (CAST(:familleId AS uuid) IS NULL OR a.famille_id = CAST(:familleId AS uuid))
+          AND (CAST(:methodeCode AS varchar) IS NULL OR f.methode_valorisation_code = CAST(:methodeCode AS varchar))
+          AND (CAST(:search AS varchar) IS NULL OR CAST(:search AS varchar) = '' 
+               OR LOWER(a.sku) LIKE LOWER(CONCAT('%', CAST(:search AS varchar), '%')) 
+               OR LOWER(a.label) LIKE LOWER(CONCAT('%', CAST(:search AS varchar), '%')))
+        ORDER BY a.label, d.name
+        """, nativeQuery = true)
+    List<Stock> findStocksFiltered(UUID depotId, UUID familleId, String methodeCode, String search);
 }

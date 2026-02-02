@@ -2,6 +2,7 @@ package module.avs.controller;
 
 import lombok.RequiredArgsConstructor;
 import module.avs.dto.StockTransfertDTO;
+import module.avs.dto.StockValorisationDTO;
 import module.avs.model.security.Utilisateur;
 import module.avs.model.stock.*;
 import module.avs.service.*;
@@ -25,6 +26,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Controller
 @RequestMapping("/stock")
@@ -37,6 +39,7 @@ public class StockController {
     private final AjustementStockService ajustementStockService;
     private final ReferentielService referentielService;
     private final UtilisateurService utilisateurService;
+    private final PrixArticleService prixArticleService;
     
     private Utilisateur getCurrentUser(Authentication auth) {
         return utilisateurService.findByUsername(auth.getName())
@@ -61,10 +64,60 @@ public class StockController {
     @GetMapping
     public String listStock(@RequestParam(defaultValue = "0") int page,
                            @RequestParam(defaultValue = "20") int size,
+                           @RequestParam(required = false) String depot,
+                           @RequestParam(required = false) String famille,
+                           @RequestParam(required = false) String valorisation,
+                           @RequestParam(required = false) String search,
                            Model model) {
         Pageable pageable = PageRequest.of(page, size);
-        Page<Stock> stocks = stockService.findAllStocks(pageable);
-        model.addAttribute("stocks", stocks);
+        
+        // Convertir les chaînes vides en null pour les UUIDs
+        UUID depotId = (depot != null && !depot.trim().isEmpty()) ? UUID.fromString(depot) : null;
+        UUID familleId = (famille != null && !famille.trim().isEmpty()) ? UUID.fromString(famille) : null;
+        String methodeCode = (valorisation != null && !valorisation.trim().isEmpty()) ? valorisation : null;
+        String searchTerm = (search != null && !search.trim().isEmpty()) ? search : null;
+        
+        // Filtrer les stocks
+        List<Stock> allStocks = stockService.findStocksFiltered(depotId, familleId, methodeCode, searchTerm);
+        
+        // Calculer la valorisation pour tous les stocks (pour le total)
+        BigDecimal valeurTotale = BigDecimal.ZERO;
+        for (Stock stock : allStocks) {
+            BigDecimal valeurStock = prixArticleService.getValeurStock(stock);
+            valeurTotale = valeurTotale.add(valeurStock);
+        }
+        
+        // Pagination manuelle de la liste filtrée
+        int start = (int) pageable.getOffset();
+        int end = Math.min((start + pageable.getPageSize()), allStocks.size());
+        List<Stock> pageContent = start < allStocks.size() ? allStocks.subList(start, end) : List.of();
+        
+        // Convertir en DTOs avec valorisation
+        List<StockValorisationDTO> stocksValorisees = pageContent.stream()
+            .map(stock -> {
+                BigDecimal prixUnitaire = prixArticleService.getCoutUnitaireStock(stock);
+                return StockValorisationDTO.fromStock(stock, prixUnitaire);
+            })
+            .collect(Collectors.toList());
+        
+        // Créer la page avec les DTOs
+        Page<StockValorisationDTO> stocksPage = new org.springframework.data.domain.PageImpl<>(
+            stocksValorisees, pageable, allStocks.size());
+        
+        model.addAttribute("stocks", stocksPage);
+        model.addAttribute("valeurTotale", valeurTotale);
+        
+        // Données pour les filtres
+        model.addAttribute("depots", referentielService.findAllDepots());
+        model.addAttribute("familles", referentielService.findAllFamilles());
+        model.addAttribute("methodeValorisations", referentielService.findAllMethodesValorisation());
+        
+        // Valeurs sélectionnées pour conserver les filtres
+        model.addAttribute("selectedDepot", depotId);
+        model.addAttribute("selectedFamille", familleId);
+        model.addAttribute("selectedValorisation", methodeCode);
+        model.addAttribute("selectedSearch", searchTerm);
+        
         return "stock/stocks";
     }
     

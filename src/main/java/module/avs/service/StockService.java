@@ -210,6 +210,10 @@ public class StockService {
         return stockRepository.findAllStocksWithDepotAndArticle();
     }
     
+    public List<Stock> findStocksFiltered(UUID depotId, UUID familleId, String methodeCode, String search) {
+        return stockRepository.findStocksFiltered(depotId, familleId, methodeCode, search);
+    }
+
     public List<StockTransfertDTO> findStocksByDepot(UUID depotId) {
         List<Stock> stocks = stockRepository.findByDepotId(depotId);
         return stocks.stream()

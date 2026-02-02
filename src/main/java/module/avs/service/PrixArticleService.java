@@ -205,4 +205,116 @@ public class PrixArticleService {
         // TODO: Implémenter la recherche dans ligne_liste_tarifaire
         return null;
     }
+    
+    /**
+     * Calcule le coût unitaire d'un stock selon la méthode de valorisation de l'article
+     * Cette méthode est utilisée pour afficher la valeur du stock dans l'interface
+     * 
+     * Le prix unitaire est calculé au niveau du dépôt (pas au niveau du lot individuel):
+     * - FIFO: Prix du lot le plus ancien avec stock disponible dans le dépôt
+     * - LIFO: Prix du lot le plus récent avec stock disponible dans le dépôt
+     * - CUMP: Moyenne pondérée de tous les lots du dépôt
+     * 
+     * @param stock Le stock à valoriser
+     * @return Le coût unitaire selon la méthode de valorisation (FIFO, LIFO, CUMP)
+     */
+    public BigDecimal getCoutUnitaireStock(Stock stock) {
+        if (stock == null || stock.getArticle() == null || stock.getArticle().getFamille() == null) {
+            return BigDecimal.ZERO;
+        }
+        
+        String methodeValorisation = stock.getArticle().getFamille().getMethodeValorisation().getCode();
+        UUID articleId = stock.getArticle().getId();
+        UUID depotId = stock.getDepot() != null ? stock.getDepot().getId() : null;
+        
+        // Le prix unitaire est calculé au niveau du dépôt, pas au niveau du lot individuel
+        return switch (methodeValorisation) {
+            case "FIFO" -> getCoutUnitaireDepotFIFO(articleId, depotId);
+            case "LIFO" -> getCoutUnitaireDepotLIFO(articleId, depotId);
+            case "CUMP" -> calculerPrixCUMP(articleId, depotId, null);
+            default -> getCoutUnitaireLot(stock); // Fallback au dernier prix connu
+        };
+    }
+    
+    /**
+     * Calcule le coût unitaire FIFO au niveau du dépôt
+     * En FIFO, on utilise le coût du premier lot entré (le plus ancien) avec stock > 0
+     * Ce même prix s'applique à tous les lots de l'article dans ce dépôt
+     */
+    private BigDecimal getCoutUnitaireDepotFIFO(UUID articleId, UUID depotId) {
+        if (depotId == null) {
+            return BigDecimal.ZERO;
+        }
+        
+        // Récupérer tous les stocks de cet article dans ce dépôt, triés par date fabrication ASC
+        List<Stock> stocks = stockRepository.findByDepotIdAndArticleIdAndQtyReelGreaterThanOrderByLotDateFabricationAsc(
+            depotId, articleId, BigDecimal.ZERO);
+        
+        // Le premier lot avec stock disponible donne le prix FIFO
+        for (Stock s : stocks) {
+            BigDecimal coutLot = getCoutUnitaireLot(s);
+            if (coutLot.compareTo(BigDecimal.ZERO) > 0) {
+                return coutLot;
+            }
+        }
+        
+        // Fallback: chercher dans les mouvements
+        List<MouvementStock> mouvements = mouvementStockRepository
+            .findByArticleIdAndDepotDestIdAndUnitCostIsNotNullOrderByCreatedAtDesc(articleId, depotId);
+        
+        if (!mouvements.isEmpty()) {
+            // Prendre le mouvement le plus ancien avec un coût
+            return mouvements.get(mouvements.size() - 1).getUnitCost();
+        }
+        
+        return BigDecimal.ZERO;
+    }
+    
+    /**
+     * Calcule le coût unitaire LIFO au niveau du dépôt
+     * En LIFO, on utilise le coût du dernier lot entré (le plus récent) avec stock > 0
+     * Ce même prix s'applique à tous les lots de l'article dans ce dépôt
+     */
+    private BigDecimal getCoutUnitaireDepotLIFO(UUID articleId, UUID depotId) {
+        if (depotId == null) {
+            return BigDecimal.ZERO;
+        }
+        
+        // Récupérer tous les stocks de cet article dans ce dépôt, triés par date fabrication DESC
+        List<Stock> stocks = stockRepository.findByDepotIdAndArticleIdAndQtyReelGreaterThanOrderByLotDateFabricationDesc(
+            depotId, articleId, BigDecimal.ZERO);
+        
+        // Le premier lot (le plus récent) avec stock disponible donne le prix LIFO
+        for (Stock s : stocks) {
+            BigDecimal coutLot = getCoutUnitaireLot(s);
+            if (coutLot.compareTo(BigDecimal.ZERO) > 0) {
+                return coutLot;
+            }
+        }
+        
+        // Fallback: chercher le mouvement le plus récent
+        List<MouvementStock> mouvements = mouvementStockRepository
+            .findByArticleIdAndDepotDestIdAndUnitCostIsNotNullOrderByCreatedAtDesc(articleId, depotId);
+        
+        if (!mouvements.isEmpty()) {
+            return mouvements.get(0).getUnitCost();
+        }
+        
+        return BigDecimal.ZERO;
+    }
+    
+    /**
+     * Calcule la valeur totale d'un stock (quantité × coût unitaire)
+     * 
+     * @param stock Le stock à valoriser
+     * @return La valeur totale du stock
+     */
+    public BigDecimal getValeurStock(Stock stock) {
+        if (stock == null || stock.getQtyReel() == null) {
+            return BigDecimal.ZERO;
+        }
+        
+        BigDecimal coutUnitaire = getCoutUnitaireStock(stock);
+        return stock.getQtyReel().multiply(coutUnitaire).setScale(2, RoundingMode.HALF_UP);
+    }
 }
