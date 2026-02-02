@@ -46,10 +46,22 @@ public class InventaireService {
         return inventaireRepository.findByStatutCode(statut);
     }
     
-    public String generateInventaireNumero(String type) {
+    public synchronized String generateInventaireNumero(String type) {
         String prefix = "INV-" + type.substring(0, 1) + "-" + LocalDate.now().format(DateTimeFormatter.ofPattern("yyMM")) + "-";
         Integer maxNum = inventaireRepository.findMaxNumero(prefix + "%");
-        return prefix + String.format("%03d", (maxNum != null ? maxNum : 0) + 1);
+        int nextNum = (maxNum != null ? maxNum : 0) + 1;
+        String numero;
+        
+        do {
+            numero = prefix + String.format("%03d", nextNum);
+            if (inventaireRepository.findByNumero(numero).isPresent()) {
+                nextNum++;
+            } else {
+                break;
+            }
+        } while (true);
+        
+        return numero;
     }
     
     public Inventaire createInventaire(Inventaire inventaire, Utilisateur createur) {

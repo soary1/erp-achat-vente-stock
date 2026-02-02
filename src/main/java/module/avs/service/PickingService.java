@@ -210,10 +210,22 @@ public class PickingService {
         return ordrePreparationRepository.findByPreparateurId(preparateurId);
     }
     
-    private String generateOrdreNumero() {
+    private synchronized String generateOrdreNumero() {
         String prefix = "OP-" + LocalDate.now().format(DateTimeFormatter.ofPattern("yyMM")) + "-";
         Integer maxNum = ordrePreparationRepository.findMaxNumero(prefix + "%");
-        return prefix + String.format("%04d", (maxNum != null ? maxNum : 0) + 1);
+        int nextNum = (maxNum != null ? maxNum : 0) + 1;
+        String numero;
+        
+        do {
+            numero = prefix + String.format("%04d", nextNum);
+            if (ordrePreparationRepository.findByNumero(numero).isPresent()) {
+                nextNum++;
+            } else {
+                break;
+            }
+        } while (true);
+        
+        return numero;
     }
     
     /**

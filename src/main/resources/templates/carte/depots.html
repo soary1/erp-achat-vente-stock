@@ -78,10 +78,12 @@
                              th:data-id="${depot.id}"
                              th:onclick="${depot.latitude != null && depot.longitude != null} ? 'focusOnDepot(' + ${depot.latitude} + ',' + ${depot.longitude} + ', this)' : 'alertNoCoords()'">
                             <div class="d-flex justify-content-between align-items-center">
-                                <div>
+                                <div class="flex-grow-1">
                                     <h6 class="mb-0">
                                         <i class="bi bi-box-seam me-1 text-success"></i>
-                                        <span th:text="${depot.name}">Nom du dépôt</span>
+                                        <a th:href="@{/carte/depots/{id}(id=${depot.id})}" 
+                                           th:text="${depot.name}" 
+                                           class="text-decoration-none"></a>
                                     </h6>
                                     <small class="text-muted" th:text="${depot.code}">CODE</small>
                                     <div th:if="${depot.site}" class="mt-1">
@@ -98,6 +100,9 @@
                                     </div>
                                 </div>
                                 <div class="text-end">
+                                    <a th:href="@{/carte/depots/{id}(id=${depot.id})}" class="btn btn-sm btn-outline-success me-1">
+                                        <i class="bi bi-eye"></i>
+                                    </a>
                                     <span th:if="${depot.latitude != null}" class="badge bg-success">
                                         <i class="bi bi-geo-alt-fill"></i>
                                     </span>

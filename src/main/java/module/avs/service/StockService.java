@@ -68,10 +68,22 @@ public class StockService {
     
     // ============ NUMÉROTATION MOUVEMENTS ============
     
-    public String generateMouvementNumero() {
+    public synchronized String generateMouvementNumero() {
         String prefix = "MVT-" + LocalDate.now().format(DateTimeFormatter.ofPattern("yyMM")) + "-";
         Integer maxNum = mouvementStockRepository.findMaxNumero(prefix);
-        return prefix + String.format("%05d", (maxNum != null ? maxNum : 0) + 1);
+        int nextNum = (maxNum != null ? maxNum : 0) + 1;
+        String numero;
+        
+        do {
+            numero = prefix + String.format("%05d", nextNum);
+            if (mouvementStockRepository.findByNumero(numero).isPresent()) {
+                nextNum++;
+            } else {
+                break;
+            }
+        } while (true);
+        
+        return numero;
     }
     
     // ============ CRÉATION DE MOUVEMENT ============
@@ -268,10 +280,22 @@ public class StockService {
         return bonReceptionRepository.findByCommandeAchatId(commandeId);
     }
     
-    public String generateReceptionNumero() {
+    public synchronized String generateReceptionNumero() {
         String prefix = "BR-" + LocalDate.now().format(DateTimeFormatter.ofPattern("yyMM")) + "-";
         Integer maxNum = bonReceptionRepository.findMaxNumero(prefix + "%");
-        return prefix + String.format("%03d", (maxNum != null ? maxNum : 0) + 1);
+        int nextNum = (maxNum != null ? maxNum : 0) + 1;
+        String numero;
+        
+        do {
+            numero = prefix + String.format("%03d", nextNum);
+            if (bonReceptionRepository.findByNumero(numero).isPresent()) {
+                nextNum++;
+            } else {
+                break;
+            }
+        } while (true);
+        
+        return numero;
     }
     
     public BonReception createReception(BonReception reception, Utilisateur user) {

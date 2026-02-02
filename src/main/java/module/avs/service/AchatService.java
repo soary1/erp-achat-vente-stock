@@ -66,10 +66,22 @@ public class AchatService {
         return demandeAchatRepository.findByStatutCodeWithDetails(statut);
     }
     
-    public String generateDemandeAchatNumero() {
+    public synchronized String generateDemandeAchatNumero() {
         String prefix = "DA-" + LocalDate.now().format(DateTimeFormatter.ofPattern("yyMM")) + "-";
         Integer maxNum = demandeAchatRepository.findMaxNumero(prefix + "%");
-        return prefix + String.format("%03d", (maxNum != null ? maxNum : 0) + 1);
+        int nextNum = (maxNum != null ? maxNum : 0) + 1;
+        String numero;
+        
+        do {
+            numero = prefix + String.format("%03d", nextNum);
+            if (demandeAchatRepository.findByNumero(numero).isPresent()) {
+                nextNum++;
+            } else {
+                break;
+            }
+        } while (true);
+        
+        return numero;
     }
     
     public DemandeAchat createDemandeAchat(DemandeAchat demande, Utilisateur createur) {
@@ -153,10 +165,23 @@ public class AchatService {
         return commandeAchatRepository.findByStatutCodeWithDetails(statut);
     }
     
-    public String generateCommandeAchatNumero() {
+    public synchronized String generateCommandeAchatNumero() {
         String prefix = "BC-" + LocalDate.now().format(DateTimeFormatter.ofPattern("yyMM")) + "-";
         Integer maxNum = commandeAchatRepository.findMaxNumero(prefix + "%");
-        return prefix + String.format("%03d", (maxNum != null ? maxNum : 0) + 1);
+        int nextNum = (maxNum != null ? maxNum : 0) + 1;
+        String numero;
+        
+        // Vérification pour éviter les doublons
+        do {
+            numero = prefix + String.format("%03d", nextNum);
+            if (commandeAchatRepository.findByNumero(numero).isPresent()) {
+                nextNum++;
+            } else {
+                break;
+            }
+        } while (true);
+        
+        return numero;
     }
     
     public CommandeAchat createCommandeAchat(CommandeAchat commande, Utilisateur createur) {
@@ -187,6 +212,10 @@ public class AchatService {
     }
     
     public CommandeAchat saveCommandeAchat(CommandeAchat commande) {
+        // Si pas de numéro (création), en générer un
+        if (commande.getNumero() == null || commande.getNumero().isEmpty()) {
+            commande.setNumero(generateCommandeAchatNumero());
+        }
         commande.recalculerTotaux();
         return commandeAchatRepository.save(commande);
     }

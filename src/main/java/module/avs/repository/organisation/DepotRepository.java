@@ -13,6 +13,7 @@ import java.util.UUID;
 public interface DepotRepository extends JpaRepository<Depot, UUID> {
     Optional<Depot> findByCode(String code);
     List<Depot> findBySiteIdAndIsActiveTrue(UUID siteId);
+    List<Depot> findBySiteId(UUID siteId);
     List<Depot> findByIsActiveTrue();
     
     @Query("SELECT d FROM Depot d LEFT JOIN FETCH d.site WHERE d.id = :id")

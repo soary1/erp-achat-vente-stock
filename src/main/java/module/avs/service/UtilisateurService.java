@@ -1,10 +1,14 @@
 package module.avs.service;
 
 import lombok.RequiredArgsConstructor;
+import module.avs.model.organisation.Societe;
 import module.avs.model.security.*;
+import module.avs.repository.organisation.SocieteRepository;
 import module.avs.repository.security.*;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,6 +28,7 @@ public class UtilisateurService {
     private final DelegationAccesRepository delegationAccesRepository;
     private final RegleApprobationRepository regleApprobationRepository;
     private final JournalAuditRepository journalAuditRepository;
+    private final SocieteRepository societeRepository;
     private final PasswordEncoder passwordEncoder;
     
     public List<Utilisateur> findAll() {
@@ -164,5 +169,35 @@ public class UtilisateurService {
     
     public RegleApprobation saveRegleApprobation(RegleApprobation regle) {
         return regleApprobationRepository.save(regle);
+    }
+    
+    // Récupérer l'utilisateur courant
+    public Utilisateur getCurrentUser() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null && auth.isAuthenticated() && !"anonymousUser".equals(auth.getPrincipal())) {
+            String username = auth.getName();
+            return findByUsername(username).orElse(null);
+        }
+        return null;
+    }
+    
+    // Récupérer la société de l'utilisateur courant
+    public Societe getCurrentUserSociete() {
+        Utilisateur currentUser = getCurrentUser();
+        if (currentUser != null) {
+            // Récupérer la société depuis le périmètre d'accès
+            List<PerimetreAcces> perimetres = perimetreAccesRepository
+                .findByUtilisateurIdAndActiveTrue(currentUser.getId());
+            
+            if (!perimetres.isEmpty() && perimetres.get(0).getSociete() != null) {
+                return perimetres.get(0).getSociete();
+            }
+            
+            // Sinon, récupérer la première société disponible (fallback)
+            return societeRepository.findAll().stream().findFirst().orElse(null);
+        }
+        
+        // Fallback : retourner la première société si pas d'utilisateur connecté
+        return societeRepository.findAll().stream().findFirst().orElse(null);
     }
 }

@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" 
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{layout/main}">
+<head>
+    <title th:text="${depot.name}"></title>
+</head>
+<body>
+<div layout:fragment="content">
+    <div class="page-header mb-4">
+        <div class="d-flex justify-content-between align-items-start">
+            <div>
+                <h1>
+                    <i class="bi bi-warehouse me-2"></i>
+                    <span th:text="${depot.name}"></span>
+                    <span th:if="${depot.isActive}" class="badge bg-success ms-2">Actif</span>
+                    <span th:unless="${depot.isActive}" class="badge bg-secondary ms-2">Inactif</span>
+                </h1>
+                <p class="text-muted mb-0">Code: <code th:text="${depot.code}"></code></p>
+                <nav aria-label="breadcrumb" class="mt-2">
+                    <ol class="breadcrumb">
+                        <li class="breadcrumb-item"><a th:href="@{/dashboard}">Accueil</a></li>
+                        <li class="breadcrumb-item"><a th:href="@{/carte}">Cartographie</a></li>
+                        <li class="breadcrumb-item"><a th:href="@{/carte/depots}">Dépôts</a></li>
+                        <li class="breadcrumb-item active" th:text="${depot.name}"></li>
+                    </ol>
+                </nav>
+            </div>
+            <div>
+                <a th:href="@{/carte/depots}" class="btn btn-outline-secondary me-2">
+                    <i class="bi bi-arrow-left me-2"></i>Retour à la carte
+                </a>
+                <a th:href="@{/stock/depots/edit/{id}(id=${depot.id})}" class="btn btn-primary">
+                    <i class="bi bi-pencil me-2"></i>Modifier
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Colonne gauche -->
+        <div class="col-md-8">
+            <!-- Informations du dépôt -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-info-circle me-2"></i>Informations du Dépôt</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p><strong>Code:</strong> <code th:text="${depot.code}"></code></p>
+                            <p><strong>Nom:</strong> <span th:text="${depot.name}"></span></p>
+                            <p>
+                                <strong>Site:</strong> 
+                                <a th:href="@{/carte/sites/{id}(id=${depot.site.id})}" 
+                                   th:text="${depot.site?.name}"></a>
+                            </p>
+                        </div>
+                        <div class="col-md-6">
+                            <p><strong>Adresse:</strong> <span th:text="${depot.address ?: 'Non renseignée'}"></span></p>
+                            <p><strong>Type:</strong> <span th:text="${depot.typeDepot ?: 'Standard'}"></span></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Stock du dépôt -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0"><i class="bi bi-boxes me-2"></i>Stock du Dépôt</h5>
+                        <div>
+                            <a th:href="@{/stock/stocks(depot=${depot.id})}" class="btn btn-sm btn-outline-primary me-2">
+                                <i class="bi bi-table me-1"></i>Vue détaillée
+                            </a>
+                            <a th:href="@{/stock/reception/new?depot={id}(id=${depot.id})}" class="btn btn-sm btn-primary">
+                                <i class="bi bi-box-arrow-in-down me-1"></i>Nouvelle réception
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div th:if="${#lists.isEmpty(stocks)}" class="text-center text-muted py-4">
+                        <i class="bi bi-inbox fs-1 d-block mb-2"></i>
+                        Aucun stock dans ce dépôt
+                    </div>
+                    <div th:unless="${#lists.isEmpty(stocks)}">
+                        <!-- Résumé -->
+                        <div class="row mb-4">
+                            <div class="col-md-3">
+                                <div class="card bg-light">
+                                    <div class="card-body text-center">
+                                        <h6 class="text-muted mb-1">Articles différents</h6>
+                                        <h3 class="mb-0" th:text="${nbArticles}"></h3>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="card bg-success bg-opacity-10">
+                                    <div class="card-body text-center">
+                                        <h6 class="text-muted mb-1">Stock Total</h6>
+                                        <h3 class="mb-0 text-success" 
+                                            th:text="${#numbers.formatDecimal(stockTotal, 0, 'COMMA', 2, 'POINT')}"></h3>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="card bg-warning bg-opacity-10">
+                                    <div class="card-body text-center">
+                                        <h6 class="text-muted mb-1">Stock Réservé</h6>
+                                        <h3 class="mb-0 text-warning" 
+                                            th:text="${#numbers.formatDecimal(stockReserve, 0, 'COMMA', 2, 'POINT')}"></h3>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="card bg-primary bg-opacity-10">
+                                    <div class="card-body text-center">
+                                        <h6 class="text-muted mb-1">Stock Disponible</h6>
+                                        <h3 class="mb-0 text-primary" 
+                                            th:text="${#numbers.formatDecimal(stockDisponible, 0, 'COMMA', 2, 'POINT')}"></h3>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Liste du stock (Top 20) -->
+                        <div class="table-responsive">
+                            <table class="table table-hover table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Article</th>
+                                        <th>SKU</th>
+                                        <th>Emplacement</th>
+                                        <th>Lot</th>
+                                        <th class="text-end">Qté Réelle</th>
+                                        <th class="text-end">Qté Réservée</th>
+                                        <th class="text-end">Qté Disponible</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr th:each="stock, iterStat : ${stocks}" th:if="${iterStat.index < 20}">
+                                        <td>
+                                            <a th:href="@{/articles/{id}(id=${stock.article.id})}" 
+                                               th:text="${stock.article.label}"></a>
+                                        </td>
+                                        <td><code th:text="${stock.article.sku}"></code></td>
+                                        <td>
+                                            <code th:text="${stock.emplacement?.code ?: '-'}"></code>
+                                        </td>
+                                        <td>
+                                            <span th:if="${stock.lot != null}">
+                                                <code th:text="${stock.lot.numeroLot}"></code>
+                                                <small th:if="${stock.lot.datePeremption != null}" 
+                                                       class="d-block text-muted">
+                                                    Exp: <span th:text="${#temporals.format(stock.lot.datePeremption, 'dd/MM/yyyy')}"></span>
+                                                </small>
+                                            </span>
+                                            <span th:unless="${stock.lot != null}">-</span>
+                                        </td>
+                                        <td class="text-end" th:text="${#numbers.formatDecimal(stock.qtyReel, 0, 'COMMA', 2, 'POINT')}"></td>
+                                        <td class="text-end" th:text="${#numbers.formatDecimal(stock.qtyReserve, 0, 'COMMA', 2, 'POINT')}"></td>
+                                        <td class="text-end">
+                                            <strong th:text="${#numbers.formatDecimal(stock.qtyDisponible, 0, 'COMMA', 2, 'POINT')}"></strong>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                            <div th:if="${#lists.size(stocks) > 20}" class="text-center mt-3">
+                                <a th:href="@{/stock/stocks(depot=${depot.id})}" class="btn btn-outline-primary">
+                                    Voir les <span th:text="${#lists.size(stocks) - 20}"></span> articles restants
+                                    <i class="bi bi-arrow-right ms-1"></i>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Colonne droite -->
+        <div class="col-md-4">
+            <!-- Statistiques rapides -->
+            <div class="card mb-4">
+                <div class="card-header bg-success text-white">
+                    <h6 class="mb-0"><i class="bi bi-graph-up me-2"></i>Statistiques</h6>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <small class="text-muted d-block mb-1">Articles en Stock</small>
+                        <h3 class="mb-0" th:text="${nbArticles}"></h3>
+                    </div>
+                    <div class="mb-3">
+                        <small class="text-muted d-block mb-1">Taux d'Occupation</small>
+                        <div class="progress" style="height: 25px;">
+                            <div class="progress-bar bg-success" role="progressbar" 
+                                 style="width: 65%;" aria-valuenow="65" aria-valuemin="0" aria-valuemax="100">
+                                65%
+                            </div>
+                        </div>
+                    </div>
+                    <div>
+                        <small class="text-muted d-block mb-1">Valeur du Stock</small>
+                        <h4 class="mb-0 text-success">
+                            <span>À calculer</span>
+                            <small class="text-muted">Ar</small>
+                        </h4>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Localisation -->
+            <div class="card mb-4" th:if="${depot.latitude != null && depot.longitude != null}">
+                <div class="card-header">
+                    <h6 class="mb-0"><i class="bi bi-geo-alt me-2"></i>Localisation</h6>
+                </div>
+                <div class="card-body">
+                    <div id="depotMap" style="height: 200px; border-radius: 8px;"></div>
+                    <div class="mt-3">
+                        <a th:href="'https://www.google.com/maps?q=' + ${depot.latitude} + ',' + ${depot.longitude}" 
+                           target="_blank" 
+                           class="btn btn-outline-success btn-sm w-100">
+                            <i class="bi bi-map me-2"></i>Voir dans Google Maps
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Actions rapides -->
+            <div class="card">
+                <div class="card-header">
+                    <h6 class="mb-0"><i class="bi bi-lightning-charge me-2"></i>Actions Rapides</h6>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <a th:href="@{/stock/reception/new?depot={id}(id=${depot.id})}" class="btn btn-outline-success btn-sm">
+                            <i class="bi bi-box-arrow-in-down me-2"></i>Nouvelle Réception
+                        </a>
+                        <a th:href="@{/stock/transfert/new?depotSource={id}(id=${depot.id})}" class="btn btn-outline-primary btn-sm">
+                            <i class="bi bi-arrow-left-right me-2"></i>Transfert de Stock
+                        </a>
+                        <a th:href="@{/stock/mouvements(depot=${depot.id})}" class="btn btn-outline-info btn-sm">
+                            <i class="bi bi-clock-history me-2"></i>Historique Mouvements
+                        </a>
+                        <a th:href="@{/inventaires/new?depot={id}(id=${depot.id})}" class="btn btn-outline-warning btn-sm">
+                            <i class="bi bi-clipboard-check me-2"></i>Nouvel Inventaire
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Leaflet pour la carte -->
+<th:block layout:fragment="scripts">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script th:if="${depot.latitude != null && depot.longitude != null}">
+        document.addEventListener('DOMContentLoaded', function() {
+            var map = L.map('depotMap').setView([/*[[${depot.latitude}]]*/, /*[[${depot.longitude}]]*/], 15);
+            
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap'
+            }).addTo(map);
+            
+            var depotIcon = L.divIcon({
+                className: 'custom-marker',
+                html: '<div style="background-color: #10b981; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; box-shadow: 0 3px 10px rgba(0,0,0,0.3); font-size: 20px; border: 3px solid white;"><i class="bi bi-warehouse"></i></div>',
+                iconSize: [40, 40],
+                iconAnchor: [20, 20],
+                popupAnchor: [0, -20]
+            });
+            
+            L.marker([/*[[${depot.latitude}]]*/, /*[[${depot.longitude}]]*/], { icon: depotIcon }).addTo(map)
+                .bindPopup('<b>/*[[${depot.name}]]*/</b><br>/*[[${depot.address}]]*/')
+                .openPopup();
+        });
+    </script>
+</th:block>
+</body>
+</html>

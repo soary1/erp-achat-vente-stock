@@ -19,6 +19,10 @@ public interface FactureClientRepository extends JpaRepository<FactureClient, UU
     List<FactureClient> findByStatutCode(String statutCode);
     Page<FactureClient> findAllByOrderByDateFactureDesc(Pageable pageable);
     
+    // Numérotation
+    @Query("SELECT COALESCE(MAX(CAST(SUBSTRING(f.numero, 10) AS int)), 0) FROM FactureClient f WHERE f.numero LIKE :prefix")
+    Integer findMaxNumero(String prefix);
+    
     // Check if invoice already exists for a bon de livraison
     Optional<FactureClient> findByBonLivraisonId(UUID bonLivraisonId);
     

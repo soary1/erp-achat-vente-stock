@@ -78,10 +78,12 @@
                              th:data-id="${site.id}"
                              th:onclick="'focusOnSite(' + ${site.latitude} + ',' + ${site.longitude} + ', this)'">
                             <div class="d-flex justify-content-between align-items-center">
-                                <div>
+                                <div class="flex-grow-1">
                                     <h6 class="mb-0">
                                         <i class="bi bi-building me-1 text-primary"></i>
-                                        <span th:text="${site.name}">Nom du site</span>
+                                        <a th:href="@{/carte/sites/{id}(id=${site.id})}" 
+                                           th:text="${site.name}" 
+                                           class="text-decoration-none"></a>
                                     </h6>
                                     <small class="text-muted" th:text="${site.code}">CODE</small>
                                     <div th:if="${site.address}" class="mt-1">
@@ -89,6 +91,9 @@
                                     </div>
                                 </div>
                                 <div class="text-end">
+                                    <a th:href="@{/carte/sites/{id}(id=${site.id})}" class="btn btn-sm btn-outline-primary me-1">
+                                        <i class="bi bi-eye"></i>
+                                    </a>
                                     <span th:if="${site.latitude != null}" class="badge bg-success">
                                         <i class="bi bi-geo-alt-fill"></i>
                                     </span>

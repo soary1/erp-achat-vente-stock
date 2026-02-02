@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{layout/main}">
+<head>
+    <title th:text="${article.label}"></title>
+</head>
+<body>
+<div layout:fragment="content">
+    <div class="page-header mb-4">
+        <div class="d-flex justify-content-between align-items-start">
+            <div>
+                <h1>
+                    <span th:text="${article.label}"></span>
+                    <span th:if="${article.isActive}" class="badge bg-success ms-2">Actif</span>
+                    <span th:unless="${article.isActive}" class="badge bg-secondary ms-2">Inactif</span>
+                </h1>
+                <p class="text-muted mb-0">SKU: <code th:text="${article.sku}"></code></p>
+                <nav aria-label="breadcrumb" class="mt-2">
+                    <ol class="breadcrumb">
+                        <li class="breadcrumb-item"><a th:href="@{/dashboard}">Accueil</a></li>
+                        <li class="breadcrumb-item"><a th:href="@{/articles}">Articles</a></li>
+                        <li class="breadcrumb-item active" th:text="${article.label}"></li>
+                    </ol>
+                </nav>
+            </div>
+            <div>
+                <a th:href="@{/articles/edit/{id}(id=${article.id})}" class="btn btn-primary">
+                    <i class="bi bi-pencil me-2"></i>Modifier
+                </a>
+                <form th:action="@{/articles/{id}/toggle-active(id=${article.id})}" 
+                      method="post" 
+                      class="d-inline"
+                      onsubmit="return confirm('Confirmer le changement de statut ?')">
+                    <button type="submit" class="btn btn-outline-secondary">
+                        <i th:class="${article.isActive ? 'bi bi-x-circle' : 'bi bi-check-circle'} + ' me-2'"></i>
+                        <span th:text="${article.isActive ? 'Désactiver' : 'Activer'}"></span>
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Messages -->
+    <div th:if="${success}" class="alert alert-success alert-dismissible fade show">
+        <i class="bi bi-check-circle me-2"></i><span th:text="${success}"></span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    <div th:if="${error}" class="alert alert-danger alert-dismissible fade show">
+        <i class="bi bi-exclamation-triangle me-2"></i><span th:text="${error}"></span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+
+    <div class="row">
+        <!-- Colonne gauche -->
+        <div class="col-md-8">
+            <!-- Informations générales -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-box-seam me-2"></i>Informations Générales</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p><strong>SKU:</strong> <code th:text="${article.sku}"></code></p>
+                            <p><strong>Désignation:</strong> <span th:text="${article.label}"></span></p>
+                            <p>
+                                <strong>Famille:</strong> 
+                                <span th:text="${article.famille?.name}"></span>
+                                <span th:if="${article.famille?.isLotObligatoire}" class="badge bg-info ms-2">
+                                    <i class="bi bi-boxes me-1"></i>Géré par lot
+                                </span>
+                                <span th:if="${article.famille?.isPeremptionObligatoire}" class="badge bg-warning ms-2">
+                                    <i class="bi bi-calendar-x me-1"></i>Périssable
+                                </span>
+                            </p>
+                        </div>
+                        <div class="col-md-6">
+                            <p><strong>Unité de Mesure:</strong> <span th:text="${article.unite?.label + ' (' + article.unite?.code + ')'}"></span></p>
+                            <p><strong>Poids:</strong> <span th:text="${article.weight != null ? article.weight + ' kg' : 'Non renseigné'}"></span></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Méthode de Valorisation -->
+            <div class="card mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="bi bi-graph-up me-2"></i>Méthode de Valorisation</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col-md-8">
+                            <h4 class="mb-1" th:text="${article.famille?.methodeValorisation?.label}"></h4>
+                            <p class="text-muted mb-0" th:text="${article.famille?.methodeValorisation?.description}"></p>
+                            <div class="mt-3">
+                                <span class="badge bg-info me-2">
+                                    Code: <span th:text="${article.famille?.methodeValorisation?.code}"></span>
+                                </span>
+                                <span class="text-muted small">
+                                    Défini par la famille d'article
+                                </span>
+                            </div>
+                        </div>
+                        <div class="col-md-4 text-center">
+                            <div class="display-4">
+                                <i th:class="${article.famille?.methodeValorisation?.code == 'FIFO' ? 'bi bi-arrow-right-circle text-success' : 
+                                             (article.famille?.methodeValorisation?.code == 'LIFO' ? 'bi bi-arrow-left-circle text-warning' : 
+                                             'bi bi-calculator text-primary')}"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Paramètres fiscaux -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-calculator me-2"></i>Paramètres Fiscaux</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p>
+                                <strong>Taxe à la Vente:</strong>
+                                <span th:if="${article.taxeVente != null}">
+                                    <span th:text="${article.taxeVente.label}"></span>
+                                    <span class="badge bg-secondary" th:text="${(article.taxeVente.rate * 100) + '%'}"></span>
+                                </span>
+                                <span th:unless="${article.taxeVente != null}" class="text-muted">Aucune</span>
+                            </p>
+                        </div>
+                        <div class="col-md-6">
+                            <p>
+                                <strong>Taxe à l'Achat:</strong>
+                                <span th:if="${article.taxeAchat != null}">
+                                    <span th:text="${article.taxeAchat.label}"></span>
+                                    <span class="badge bg-secondary" th:text="${(article.taxeAchat.rate * 100) + '%'}"></span>
+                                </span>
+                                <span th:unless="${article.taxeAchat != null}" class="text-muted">Aucune</span>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Stock par dépôt -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-warehouse me-2"></i>Stocks par Dépôt</h5>
+                </div>
+                <div class="card-body">
+                    <div th:if="${#lists.isEmpty(stocks)}" class="text-center text-muted py-4">
+                        <i class="bi bi-inbox fs-1 d-block mb-2"></i>
+                        Aucun stock disponible pour cet article
+                    </div>
+                    <div th:unless="${#lists.isEmpty(stocks)}" class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Dépôt</th>
+                                    <th>Emplacement</th>
+                                    <th>Lot</th>
+                                    <th class="text-end">Qté Réelle</th>
+                                    <th class="text-end">Qté Réservée</th>
+                                    <th class="text-end">Qté Disponible</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr th:each="stock : ${stocks}">
+                                    <td>
+                                        <a th:href="@{/carte/depots/{id}(id=${stock.depot.id})}" 
+                                           th:text="${stock.depot.name}"></a>
+                                    </td>
+                                    <td>
+                                        <code th:text="${stock.emplacement?.code ?: '-'}"></code>
+                                    </td>
+                                    <td>
+                                        <span th:if="${stock.lot != null}">
+                                            <code th:text="${stock.lot.numeroLot}"></code>
+                                            <small th:if="${stock.lot.datePeremption != null}" class="d-block text-muted">
+                                                Exp: <span th:text="${#temporals.format(stock.lot.datePeremption, 'dd/MM/yyyy')}"></span>
+                                            </small>
+                                        </span>
+                                        <span th:unless="${stock.lot != null}">-</span>
+                                    </td>
+                                    <td class="text-end" th:text="${#numbers.formatDecimal(stock.qtyReel, 0, 'COMMA', 2, 'POINT')}"></td>
+                                    <td class="text-end" th:text="${#numbers.formatDecimal(stock.qtyReserve, 0, 'COMMA', 2, 'POINT')}"></td>
+                                    <td class="text-end">
+                                        <strong th:text="${#numbers.formatDecimal(stock.qtyDisponible, 0, 'COMMA', 2, 'POINT')}"></strong>
+                                    </td>
+                                </tr>
+                            </tbody>
+                            <tfoot>
+                                <tr class="table-active">
+                                    <th colspan="5" class="text-end">Total:</th>
+                                    <th class="text-end">
+                                        <strong th:text="${#numbers.formatDecimal(stockTotal, 0, 'COMMA', 2, 'POINT')}"></strong>
+                                    </th>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Colonne droite -->
+        <div class="col-md-4">
+            <!-- Résumé du stock -->
+            <div class="card mb-4">
+                <div class="card-header bg-success text-white">
+                    <h6 class="mb-0"><i class="bi bi-boxes me-2"></i>Résumé Stock</h6>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <small class="text-muted d-block mb-1">Stock Total</small>
+                        <h3 class="mb-0" th:text="${#numbers.formatDecimal(stockTotal, 0, 'COMMA', 2, 'POINT')}"></h3>
+                    </div>
+                    <div class="mb-3">
+                        <small class="text-muted d-block mb-1">Stock Disponible</small>
+                        <h3 class="mb-0 text-success" th:text="${#numbers.formatDecimal(stockDisponible, 0, 'COMMA', 2, 'POINT')}"></h3>
+                    </div>
+                    <div>
+                        <small class="text-muted d-block mb-1">Stock Réservé</small>
+                        <h3 class="mb-0 text-warning" th:text="${#numbers.formatDecimal(stockTotal - stockDisponible, 0, 'COMMA', 2, 'POINT')}"></h3>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Actions rapides -->
+            <div class="card">
+                <div class="card-header">
+                    <h6 class="mb-0"><i class="bi bi-lightning-charge me-2"></i>Actions Rapides</h6>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <a th:href="@{/stock/mouvements(article=${article.id})}" class="btn btn-outline-primary btn-sm">
+                            <i class="bi bi-arrow-left-right me-2"></i>Voir Mouvements
+                        </a>
+                        <a th:href="@{/stock/tracabilite-lot(article=${article.id})}" class="btn btn-outline-info btn-sm">
+                            <i class="bi bi-diagram-3 me-2"></i>Traçabilité
+                        </a>
+                        <a th:href="@{/achats/commandes/new?article=${article.id}}" class="btn btn-outline-success btn-sm">
+                            <i class="bi bi-cart-plus me-2"></i>Nouvelle Commande Achat
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+</html>

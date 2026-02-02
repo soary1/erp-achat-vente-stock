@@ -9,10 +9,10 @@ CREATE DATABASE avs_db;
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- ==============================================================================
--- 1. TABLES DE RÉFÉRENCE GLOBALES
+-- 1. TABLES DE ReFeRENCE GLOBALES
 -- ==============================================================================
 
--- 1.1 Géographie & Standards
+-- 1.1 Geographie & Standards
 CREATE TABLE devise (
     code VARCHAR(3) PRIMARY KEY,
     label VARCHAR(100) NOT NULL,
@@ -26,75 +26,75 @@ CREATE TABLE pays (
 );
 INSERT INTO pays (code, label) VALUES ('MG', 'Madagascar'), ('FR', 'France');
 
--- 1.2 Unités et Taxes
+-- 1.2 Unites et Taxes
 CREATE TABLE unite_mesure (
     code VARCHAR(20) PRIMARY KEY,
     label VARCHAR(100) NOT NULL
 );
-INSERT INTO unite_mesure (code, label) VALUES ('PCE', 'Pièce'), ('KG', 'Kilogramme'), ('L', 'Litre'), ('H', 'Heure');
+INSERT INTO unite_mesure (code, label) VALUES ('PCE', 'Piece'), ('KG', 'Kilogramme'), ('L', 'Litre'), ('H', 'Heure');
 
 CREATE TABLE type_taxe (
     code VARCHAR(20) PRIMARY KEY,
     rate DECIMAL(5, 4) NOT NULL,
     label VARCHAR(100) NOT NULL
 );
-INSERT INTO type_taxe (code, label, rate) VALUES ('TVA_20', 'TVA 20%', 0.20), ('EXO', 'Exonéré', 0.00);
+INSERT INTO type_taxe (code, label, rate) VALUES ('TVA_20', 'TVA 20%', 0.20), ('EXO', 'Exonere', 0.00);
 
--- 1.3 Méthodes de Gestion
+-- 1.3 Methodes de Gestion
 CREATE TABLE methode_valorisation (
     code VARCHAR(20) PRIMARY KEY,
     label VARCHAR(100) NOT NULL,
     description TEXT
 );
 INSERT INTO methode_valorisation (code, label) VALUES 
-('CUMP', 'Coût Unitaire Moyen Pondéré'), 
-('FIFO', 'Premier Entré Premier Sorti'), 
-('LIFO', 'Dernier Entré Premier Sorti');
+('CUMP', 'Coût Unitaire Moyen Pondere'), 
+('FIFO', 'Premier Entre Premier Sorti'), 
+('LIFO', 'Dernier Entre Premier Sorti');
 
 CREATE TABLE mode_paiement (
     code VARCHAR(50) PRIMARY KEY,
     label VARCHAR(100) NOT NULL
 );
-INSERT INTO mode_paiement (code, label) VALUES ('VIREMENT', 'Virement Bancaire'), ('CHEQUE', 'Chèque'), ('ESPECES', 'Espèces'), ('MOBILE', 'Mobile Money');
+INSERT INTO mode_paiement (code, label) VALUES ('VIREMENT', 'Virement Bancaire'), ('CHEQUE', 'Cheque'), ('ESPECES', 'Especes'), ('MOBILE', 'Mobile Money');
 
 -- ==============================================================================
 -- 2. TABLES DE STATUTS (WORKFLOW)
 -- ==============================================================================
 
 CREATE TABLE statut_demande_achat ( code VARCHAR(50) PRIMARY KEY, label VARCHAR(100) );
-INSERT INTO statut_demande_achat VALUES ('BROUILLON', 'Brouillon'), ('SOUMISE', 'Soumise'), ('APPROUVEE', 'Approuvée'), ('REJETEE', 'Rejetée');
+INSERT INTO statut_demande_achat VALUES ('BROUILLON', 'Brouillon'), ('SOUMISE', 'Soumise'), ('APPROUVEE', 'Approuvee'), ('REJETEE', 'Rejetee');
 
 CREATE TABLE statut_commande_achat ( code VARCHAR(50) PRIMARY KEY, label VARCHAR(100) );
-INSERT INTO statut_commande_achat VALUES ('BROUILLON', 'Brouillon'), ('VALIDEE', 'Validée'), ('ENVOYEE', 'Envoyée Frs'), ('PARTIEL', 'Reçu Partiel'), ('CLOTUREE', 'Clôturée');
+INSERT INTO statut_commande_achat VALUES ('BROUILLON', 'Brouillon'), ('VALIDEE', 'Validee'), ('ENVOYEE', 'Envoyee Frs'), ('PARTIEL', 'Reçu Partiel'), ('CLOTUREE', 'Clôturee');
 
 CREATE TABLE statut_reception ( code VARCHAR(50) PRIMARY KEY, label VARCHAR(100) );
-INSERT INTO statut_reception VALUES ('BROUILLON', 'Brouillon'), ('CONTROLE', 'Contrôle Qualité'), ('VALIDE', 'Validé / En Stock');
+INSERT INTO statut_reception VALUES ('BROUILLON', 'Brouillon'), ('CONTROLE', 'Contrôle Qualite'), ('VALIDE', 'Valide / En Stock');
 
 -- Statuts devis client
 CREATE TABLE statut_devis_client ( code VARCHAR(50) PRIMARY KEY, label VARCHAR(100) );
 INSERT INTO statut_devis_client VALUES 
 ('BROUILLON', 'Brouillon'), 
 ('EN_ATTENTE_VALIDATION', 'En attente validation remise'), 
-('VALIDE', 'Validé'),
-('REFUSE', 'Refusé'),
-('TRANSFORME', 'Transformé en commande');
+('VALIDE', 'Valide'),
+('REFUSE', 'Refuse'),
+('TRANSFORME', 'Transforme en commande');
 
 CREATE TABLE statut_commande_vente ( code VARCHAR(50) PRIMARY KEY, label VARCHAR(100) );
 INSERT INTO statut_commande_vente VALUES 
 ('BROUILLON', 'Brouillon'), 
 ('EN_ATTENTE_VALIDATION', 'En attente validation remise'),
-('CONFIRMEE', 'Confirmée'), 
+('CONFIRMEE', 'Confirmee'), 
 ('EN_ATTENTE_STOCK', 'En attente de stock'),
-('PREPARATION', 'En préparation'), 
-('PRETE', 'Prête pour expédition'),
-('EXPEDIEE', 'Expédiée'),
-('CLOTUREE', 'Clôturée');
+('PREPARATION', 'En preparation'), 
+('PRETE', 'Prête pour expedition'),
+('EXPEDIEE', 'Expediee'),
+('CLOTUREE', 'Clôturee');
 
 CREATE TABLE statut_facture ( code VARCHAR(50) PRIMARY KEY, label VARCHAR(100) );
-INSERT INTO statut_facture VALUES ('BROUILLON', 'Brouillon'), ('A_PAYER', 'Validée / À Payer'), ('PAYEE_PARTIEL', 'Payée Partiellement'), ('PAYEE', 'Soldée'), ('ANNULEE', 'Annulée');
+INSERT INTO statut_facture VALUES ('BROUILLON', 'Brouillon'), ('A_PAYER', 'Validee / a Payer'), ('PAYEE_PARTIEL', 'Payee Partiellement'), ('PAYEE', 'Soldee'), ('ANNULEE', 'Annulee');
 
 CREATE TABLE statut_inventaire ( code VARCHAR(50) PRIMARY KEY, label VARCHAR(100) );
-INSERT INTO statut_inventaire VALUES ('PLANIFIE', 'Planifié'), ('EN_COURS', 'Comptage en cours'), ('ANALYSE', 'Analyse des écarts'), ('VALIDE', 'Validé');
+INSERT INTO statut_inventaire VALUES ('PLANIFIE', 'Planifie'), ('EN_COURS', 'Comptage en cours'), ('ANALYSE', 'Analyse des ecarts'), ('VALIDE', 'Valide');
 
 CREATE TABLE statut_qualite ( code VARCHAR(50) PRIMARY KEY, label VARCHAR(100) );
 INSERT INTO statut_qualite VALUES ('CONFORME', 'Bon'), ('QUARANTAINE', 'En attente contrôle'), ('REJETE', 'Rebut / Non conforme');
@@ -152,7 +152,7 @@ CREATE TABLE emplacement (
 );
 
 -- ==============================================================================
--- 4. GOUVERNANCE & SÉCURITÉ
+-- 4. GOUVERNANCE & SeCURITe
 -- ==============================================================================
 
 CREATE TABLE departement (
@@ -190,7 +190,7 @@ CREATE TABLE perimetre_acces (
     site_id UUID REFERENCES site(id),
     depot_id UUID REFERENCES depot(id),
     max_amount_approval DECIMAL(19, 2),
-    max_remise_pct DECIMAL(5, 2) DEFAULT 5.00, -- Plafond de remise autorisée (%)
+    max_remise_pct DECIMAL(5, 2) DEFAULT 5.00, -- Plafond de remise autorisee (%)
     active BOOLEAN DEFAULT TRUE
 );
 
@@ -202,7 +202,7 @@ CREATE TABLE plafond_remise_role (
     description TEXT
 );
 
--- Insertion des plafonds par défaut
+-- Insertion des plafonds par defaut
 INSERT INTO plafond_remise_role (role_id, max_remise_pct, description)
 SELECT id, 5.00, 'Commercial - Remise max 5%' FROM role WHERE code = 'COMMERCIAL'
 UNION ALL
@@ -210,7 +210,7 @@ SELECT id, 15.00, 'Responsable Ventes - Remise max 15%' FROM role WHERE code = '
 UNION ALL
 SELECT id, 30.00, 'Directeur Commercial - Remise max 30%' FROM role WHERE code = 'ADMIN';
 
--- Délégation
+-- Delegation
 CREATE TABLE delegation_acces (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     donneur_id UUID NOT NULL REFERENCES utilisateur(id),
@@ -236,8 +236,8 @@ CREATE TABLE journal_audit (
 -- 5. AUDIT FONCTIONNEL & WORKFLOW (NOUVEAU)
 -- ==============================================================================
 
--- Cette table permet de savoir QUI a validé une commande ou un inventaire
--- C'est ici qu'on stocke les signatures électroniques.
+-- Cette table permet de savoir QUI a valide une commande ou un inventaire
+-- C'est ici qu'on stocke les signatures electroniques.
 CREATE TABLE historique_workflow (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     
@@ -248,7 +248,7 @@ CREATE TABLE historique_workflow (
     etape_precedente VARCHAR(50),
     etape_nouvelle VARCHAR(50) NOT NULL,
     
-    acteur_id UUID NOT NULL REFERENCES utilisateur(id), -- Celui qui a cliqué
+    acteur_id UUID NOT NULL REFERENCES utilisateur(id), -- Celui qui a clique
     
     action VARCHAR(50) NOT NULL, -- 'SOUMISSION', 'APPROBATION', 'REJET', 'ANNULATION'
     commentaire TEXT, -- Raison du rejet ou note d'approbation
@@ -258,7 +258,7 @@ CREATE TABLE historique_workflow (
 CREATE INDEX idx_workflow_doc ON historique_workflow(document_type, document_id);
 
 -- ==============================================================================
--- 6. RÉFÉRENTIELS ARTICLES & TIERS
+-- 6. ReFeRENTIELS ARTICLES & TIERS
 -- ==============================================================================
 
 CREATE TABLE famille_article (
@@ -361,6 +361,9 @@ CREATE TABLE ligne_demande_achat (
     description TEXT
 );
 
+-- Séquence pour numérotation automatique des commandes d'achat
+CREATE SEQUENCE commande_achat_seq START 1;
+
 CREATE TABLE commande_achat (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     numero VARCHAR(50) NOT NULL UNIQUE,
@@ -404,7 +407,7 @@ CREATE TABLE lot (
     UNIQUE(article_id, numero_lot, numero_serie)
 );
 
--- 8.1 Réception
+-- 8.1 Reception
 CREATE TABLE bon_reception (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     numero VARCHAR(50) NOT NULL UNIQUE,
@@ -424,8 +427,8 @@ CREATE TABLE ligne_bon_reception (
     qty_received DECIMAL(19, 4) NOT NULL
 );
 
--- 8.2 Contrôle Qualité (NOUVEAU)
--- Permet de tracer qui a vérifié la marchandise et les preuves de non-conformité
+-- 8.2 Contrôle Qualite (NOUVEAU)
+-- Permet de tracer qui a verifie la marchandise et les preuves de non-conformite
 CREATE TABLE controle_qualite (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     ligne_reception_id UUID NOT NULL REFERENCES ligne_bon_reception(id),
@@ -450,16 +453,16 @@ CREATE TABLE type_mouvement (
     sens INT NOT NULL
 );
 INSERT INTO type_mouvement VALUES 
-('RECEPTION', 'Réception Fournisseur', 1), 
+('RECEPTION', 'Reception Fournisseur', 1), 
 ('EXPEDITION', 'Livraison Client', -1), 
 ('RETOUR_CLIENT', 'Retour Client (SAV)', 1),
-('TRANSFERT_SORTIE', 'Transfert Sortant (Départ)', -1),
-('TRANSFERT_ENTREE', 'Transfert Entrant (Arrivée)', 1),
+('TRANSFERT_SORTIE', 'Transfert Sortant (Depart)', -1),
+('TRANSFERT_ENTREE', 'Transfert Entrant (Arrivee)', 1),
 ('TRANSFERT_EMPLACEMENT', 'Transfert d emplacement', 0),
 ('CONSOMMATION', 'Consommation Interne', -1),
 ('REBUT', 'Mise au Rebut', -1),
 ('AJUSTEMENT_POS', 'Ajustement Positif', 1),
-('AJUSTEMENT_NEG', 'Ajustement Négatif', -1),
+('AJUSTEMENT_NEG', 'Ajustement Negatif', -1),
 ('AJUSTEMENT', 'Ajustement Inventaire', 0);
 
 CREATE TABLE mouvement_stock (
@@ -479,7 +482,7 @@ CREATE TABLE mouvement_stock (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Séquence pour numérotation automatique des mouvements
+-- Sequence pour numerotation automatique des mouvements
 CREATE SEQUENCE mouvement_stock_seq START 1;
 
 -- TRIGGER : Empêcher modification/suppression des mouvements (AUDIT TRAIL)
@@ -487,9 +490,9 @@ CREATE OR REPLACE FUNCTION prevent_mouvement_modification()
 RETURNS TRIGGER AS $$
 BEGIN
     IF TG_OP = 'UPDATE' THEN
-        RAISE EXCEPTION 'Les mouvements de stock ne peuvent pas être modifiés (ID: %)', OLD.id;
+        RAISE EXCEPTION 'Les mouvements de stock ne peuvent pas être modifies (ID: %)', OLD.id;
     ELSIF TG_OP = 'DELETE' THEN
-        RAISE EXCEPTION 'Les mouvements de stock ne peuvent pas être supprimés (ID: %)', OLD.id;
+        RAISE EXCEPTION 'Les mouvements de stock ne peuvent pas être supprimes (ID: %)', OLD.id;
     END IF;
     RETURN NULL;
 END;
@@ -527,7 +530,7 @@ CREATE TABLE inventaire (
     valide_par UUID REFERENCES utilisateur(id)
 );
 
--- AJOUT AUDIT: 'arbitrage_par' pour tracer la décision financière de l'écart
+-- AJOUT AUDIT: 'arbitrage_par' pour tracer la decision financiere de l'ecart
 CREATE TABLE ligne_inventaire (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     inventaire_id UUID NOT NULL REFERENCES inventaire(id),
@@ -543,7 +546,7 @@ CREATE TABLE ligne_inventaire (
     est_validee BOOLEAN DEFAULT FALSE,
     notes_arbitrage TEXT,
     
-    -- Qui a validé cet écart spécifique ?
+    -- Qui a valide cet ecart specifique ?
     arbitrage_par UUID REFERENCES utilisateur(id),
     date_arbitrage TIMESTAMPTZ
 );
@@ -554,7 +557,7 @@ CREATE TABLE saisie_inventaire (
     ligne_inventaire_id UUID NOT NULL REFERENCES ligne_inventaire(id),
     operateur_id UUID NOT NULL REFERENCES utilisateur(id),
     
-    -- Si un chef a supervisé le comptage (pour les articles haute valeur)
+    -- Si un chef a supervise le comptage (pour les articles haute valeur)
     superviseur_id UUID REFERENCES utilisateur(id),
     
     qty_comptee DECIMAL(19, 4) NOT NULL,
@@ -688,7 +691,7 @@ CREATE TABLE ligne_bon_livraison (
     qty_preparee DECIMAL(19, 4) DEFAULT 0
 );
 
--- Table pour le picking/préparation de commande
+-- Table pour le picking/preparation de commande
 CREATE TABLE ordre_preparation (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     numero VARCHAR(50) UNIQUE NOT NULL,
@@ -707,13 +710,13 @@ CREATE TABLE ligne_ordre_preparation (
     ordre_id UUID NOT NULL REFERENCES ordre_preparation(id) ON DELETE CASCADE,
     ligne_commande_id UUID NOT NULL REFERENCES ligne_commande_client(id),
     article_id UUID NOT NULL REFERENCES article(id),
-    lot_id UUID REFERENCES lot(id), -- Lot alloué par FIFO
+    lot_id UUID REFERENCES lot(id), -- Lot alloue par FIFO
     emplacement_id UUID REFERENCES emplacement(id),
     qty_a_preparer DECIMAL(19, 4) NOT NULL,
     qty_preparee DECIMAL(19, 4) DEFAULT 0,
     date_scan TIMESTAMPTZ,
     scanne BOOLEAN DEFAULT FALSE,
-    forcage_fifo BOOLEAN DEFAULT FALSE, -- True si l'utilisateur a forcé un lot différent
+    forcage_fifo BOOLEAN DEFAULT FALSE, -- True si l'utilisateur a force un lot different
     forcage_validateur_id UUID REFERENCES utilisateur(id),
     forcage_motif TEXT
 );
@@ -755,25 +758,25 @@ CREATE TABLE statut_retour_client (
 );
 INSERT INTO statut_retour_client VALUES 
 ('DEMANDE', 'Demande de retour'),
-('APPROUVE', 'Retour approuvé'),
-('RECEPTIONNE', 'Marchandise réceptionnée'),
-('CONTROLE', 'En contrôle qualité'),
-('INTEGRE', 'Réintégré au stock'),
+('APPROUVE', 'Retour approuve'),
+('RECEPTIONNE', 'Marchandise receptionnee'),
+('CONTROLE', 'En contrôle qualite'),
+('INTEGRE', 'Reintegre au stock'),
 ('REBUTE', 'Mis au rebut'),
-('REMBOURSE', 'Client remboursé'),
-('REFUSE', 'Retour refusé');
+('REMBOURSE', 'Client rembourse'),
+('REFUSE', 'Retour refuse');
 
 CREATE TABLE motif_retour (
     code VARCHAR(50) PRIMARY KEY,
     label VARCHAR(100) NOT NULL
 );
 INSERT INTO motif_retour VALUES 
-('DEFECTUEUX', 'Produit défectueux'),
-('NON_CONFORME', 'Non conforme à la commande'),
+('DEFECTUEUX', 'Produit defectueux'),
+('NON_CONFORME', 'Non conforme a la commande'),
 ('ERREUR_LIVRAISON', 'Erreur de livraison'),
-('ENDOMMAGE', 'Produit endommagé'),
-('PERIME', 'Produit périmé ou proche péremption'),
-('REPENTIR', 'Droit de rétractation'),
+('ENDOMMAGE', 'Produit endommage'),
+('PERIME', 'Produit perime ou proche peremption'),
+('REPENTIR', 'Droit de retractation'),
 ('AUTRE', 'Autre motif');
 
 CREATE TABLE retour_client (
@@ -821,7 +824,7 @@ CREATE TABLE ligne_retour_client (
 );
 
 -- ==============================================================================
--- 12. TRANSFERTS INTER-DÉPÔTS
+-- 12. TRANSFERTS INTER-DePÔTS
 -- ==============================================================================
 
 CREATE TABLE statut_transfert (
@@ -829,14 +832,14 @@ CREATE TABLE statut_transfert (
     label VARCHAR(100) NOT NULL
 );
 INSERT INTO statut_transfert VALUES 
-('DEMANDE', 'Demandé'),
-('APPROUVE', 'Approuvé'),
-('EXPEDIE', 'Expédié'),
+('DEMANDE', 'Demande'),
+('APPROUVE', 'Approuve'),
+('EXPEDIE', 'Expedie'),
 ('EN_TRANSIT', 'En transit'),
-('RECEPTIONNE', 'Réceptionné'),
-('COMPLETE', 'Complété'),
-('CLOTURE', 'Clôturé'),
-('ANNULE', 'Annulé');
+('RECEPTIONNE', 'Receptionne'),
+('COMPLETE', 'Complete'),
+('CLOTURE', 'Clôture'),
+('ANNULE', 'Annule');
 
 CREATE TABLE transfert_stock (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -888,9 +891,9 @@ CREATE TABLE statut_demande_sortie (
 INSERT INTO statut_demande_sortie VALUES 
 ('BROUILLON', 'Brouillon'),
 ('SOUMISE', 'Soumise'),
-('APPROUVEE', 'Approuvée'),
-('REJETEE', 'Rejetée'),
-('EXECUTEE', 'Exécutée');
+('APPROUVEE', 'Approuvee'),
+('REJETEE', 'Rejetee'),
+('EXECUTEE', 'Executee');
 
 CREATE TABLE motif_sortie (
     code VARCHAR(50) PRIMARY KEY,
@@ -900,11 +903,11 @@ CREATE TABLE motif_sortie (
 INSERT INTO motif_sortie VALUES 
 ('CONSO_INTERNE', 'Consommation interne (fournitures bureau)', 'CONSOMMATION'),
 ('CONSO_PRODUCTION', 'Consommation production', 'CONSOMMATION'),
-('CONSO_DEMO', 'Démonstration / Échantillon', 'CONSOMMATION'),
-('REBUT_CASSE', 'Produit cassé', 'REBUT'),
-('REBUT_PERIME', 'Produit périmé', 'REBUT'),
-('REBUT_OBSOLETE', 'Produit obsolète', 'REBUT'),
-('REBUT_QUALITE', 'Non-conformité qualité', 'REBUT'),
+('CONSO_DEMO', 'Demonstration / echantillon', 'CONSOMMATION'),
+('REBUT_CASSE', 'Produit casse', 'REBUT'),
+('REBUT_PERIME', 'Produit perime', 'REBUT'),
+('REBUT_OBSOLETE', 'Produit obsolete', 'REBUT'),
+('REBUT_QUALITE', 'Non-conformite qualite', 'REBUT'),
 ('REBUT_VOL', 'Vol / Perte', 'REBUT');
 
 CREATE TABLE demande_sortie_stock (
@@ -928,7 +931,7 @@ CREATE TABLE demande_sortie_stock (
     justification TEXT NOT NULL,
     commentaire_approbation TEXT,
     
-    -- Coût total de la perte (calculé)
+    -- Coût total de la perte (calcule)
     cout_total DECIMAL(19, 2)
 );
 
@@ -957,21 +960,21 @@ CREATE TABLE statut_ajustement (
 INSERT INTO statut_ajustement VALUES 
 ('BROUILLON', 'Brouillon'),
 ('SOUMIS', 'Soumis pour validation'),
-('APPROUVE_NIVEAU1', 'Approuvé Niveau 1'),
-('APPROUVE_FINAL', 'Approuvé - Validation finale'),
-('REJETE', 'Rejeté'),
-('EXECUTE', 'Exécuté / Stock ajusté');
+('APPROUVE_NIVEAU1', 'Approuve Niveau 1'),
+('APPROUVE_FINAL', 'Approuve - Validation finale'),
+('REJETE', 'Rejete'),
+('EXECUTE', 'Execute / Stock ajuste');
 
 CREATE TABLE motif_ajustement (
     code VARCHAR(50) PRIMARY KEY,
     label VARCHAR(100) NOT NULL
 );
 INSERT INTO motif_ajustement VALUES 
-('ECART_INVENTAIRE', 'Écart suite à inventaire'),
+('ECART_INVENTAIRE', 'ecart suite a inventaire'),
 ('PERTE', 'Perte / Introuvable'),
 ('ERREUR_SAISIE', 'Erreur de saisie'),
-('REGULARISATION', 'Régularisation comptable'),
-('CASSE', 'Casse non déclarée'),
+('REGULARISATION', 'Regularisation comptable'),
+('CASSE', 'Casse non declaree'),
 ('AUTRE', 'Autre motif');
 
 CREATE TABLE ajustement_stock (
@@ -1009,7 +1012,7 @@ CREATE TABLE ajustement_stock (
     photo_url TEXT
 );
 
--- Règle : Le demandeur ne peut PAS être approbateur
+-- Regle : Le demandeur ne peut PAS être approbateur
 CREATE OR REPLACE FUNCTION check_ajustement_separation_taches()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -1028,23 +1031,23 @@ BEFORE INSERT OR UPDATE ON ajustement_stock
 FOR EACH ROW EXECUTE FUNCTION check_ajustement_separation_taches();
 
 -- ==============================================================================
--- RÈGLES DE SÉPARATION DES TÂCHES - MODULE VENTE
+-- ReGLES DE SePARATION DES TÂCHES - MODULE VENTE
 -- ==============================================================================
 
--- Règle : L'encaisseur ne peut pas être le commercial qui a créé la commande
+-- Regle : L'encaisseur ne peut pas être le commercial qui a cree la commande
 CREATE OR REPLACE FUNCTION check_encaissement_separation_taches()
 RETURNS TRIGGER AS $$
 DECLARE
     v_commercial_id UUID;
 BEGIN
-    -- Récupérer le commercial de la commande associée à la facture
+    -- Recuperer le commercial de la commande associee a la facture
     SELECT c.commercial_id INTO v_commercial_id
     FROM facture_client f
     LEFT JOIN commande_client c ON c.id = f.commande_id
     WHERE f.id = NEW.facture_id;
     
     IF v_commercial_id IS NOT NULL AND v_commercial_id = NEW.encaisseur_id THEN
-        RAISE EXCEPTION 'Le commercial qui a créé la commande ne peut pas encaisser le paiement';
+        RAISE EXCEPTION 'Le commercial qui a cree la commande ne peut pas encaisser le paiement';
     END IF;
     
     RETURN NEW;
@@ -1055,7 +1058,7 @@ CREATE TRIGGER tr_encaissement_separation
 BEFORE INSERT OR UPDATE ON encaissement_client
 FOR EACH ROW EXECUTE FUNCTION check_encaissement_separation_taches();
 
--- Règle : Le validateur ne peut pas être le créateur du retour
+-- Regle : Le validateur ne peut pas être le createur du retour
 CREATE OR REPLACE FUNCTION check_retour_separation_taches()
 RETURNS TRIGGER AS $$
 BEGIN

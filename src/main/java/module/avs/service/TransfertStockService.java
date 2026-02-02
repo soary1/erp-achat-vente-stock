@@ -62,10 +62,22 @@ public class TransfertStockService {
     
     // ============ NUMÉROTATION ============
     
-    public String generateTransfertNumero() {
+    public synchronized String generateTransfertNumero() {
         String prefix = "TRF-" + LocalDate.now().format(DateTimeFormatter.ofPattern("yyMM")) + "-";
         Integer maxNum = transfertRepository.findMaxNumero(prefix + "%");
-        return prefix + String.format("%03d", (maxNum != null ? maxNum : 0) + 1);
+        int nextNum = (maxNum != null ? maxNum : 0) + 1;
+        String numero;
+        
+        do {
+            numero = prefix + String.format("%03d", nextNum);
+            if (transfertRepository.findByNumero(numero).isPresent()) {
+                nextNum++;
+            } else {
+                break;
+            }
+        } while (true);
+        
+        return numero;
     }
     
     // ============ WORKFLOW ============

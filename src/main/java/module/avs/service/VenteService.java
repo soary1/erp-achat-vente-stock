@@ -98,10 +98,22 @@ public class VenteService {
         return devisClientRepository.findById(id);
     }
     
-    public String generateDevisNumero() {
+    public synchronized String generateDevisNumero() {
         String prefix = "DEV-" + LocalDate.now().format(DateTimeFormatter.ofPattern("yyMM")) + "-";
         Integer maxNum = devisClientRepository.findMaxNumero(prefix + "%");
-        return prefix + String.format("%03d", (maxNum != null ? maxNum : 0) + 1);
+        int nextNum = (maxNum != null ? maxNum : 0) + 1;
+        String numero;
+        
+        do {
+            numero = prefix + String.format("%03d", nextNum);
+            if (devisClientRepository.findByNumero(numero).isPresent()) {
+                nextNum++;
+            } else {
+                break;
+            }
+        } while (true);
+        
+        return numero;
     }
     
     public DevisClient createDevis(DevisClient devis, Utilisateur createur) {
@@ -171,10 +183,22 @@ public class VenteService {
         return commandeClientRepository.findByStatutCode(statut);
     }
     
-    public String generateCommandeClientNumero() {
+    public synchronized String generateCommandeClientNumero() {
         String prefix = "CMD-" + LocalDate.now().format(DateTimeFormatter.ofPattern("yyMM")) + "-";
         Integer maxNum = commandeClientRepository.findMaxNumero(prefix + "%");
-        return prefix + String.format("%03d", (maxNum != null ? maxNum : 0) + 1);
+        int nextNum = (maxNum != null ? maxNum : 0) + 1;
+        String numero;
+        
+        do {
+            numero = prefix + String.format("%03d", nextNum);
+            if (commandeClientRepository.findByNumero(numero).isPresent()) {
+                nextNum++;
+            } else {
+                break;
+            }
+        } while (true);
+        
+        return numero;
     }
     
     public CommandeClient createCommandeClient(CommandeClient commande, Utilisateur createur) {
@@ -447,10 +471,22 @@ public class VenteService {
         return bonLivraisonRepository.findById(id);
     }
     
-    public String generateLivraisonNumero() {
+    public synchronized String generateLivraisonNumero() {
         String prefix = "BL-" + LocalDate.now().format(DateTimeFormatter.ofPattern("yyMM")) + "-";
         Integer maxNum = bonLivraisonRepository.findMaxNumero(prefix + "%");
-        return prefix + String.format("%03d", (maxNum != null ? maxNum : 0) + 1);
+        int nextNum = (maxNum != null ? maxNum : 0) + 1;
+        String numero;
+        
+        do {
+            numero = prefix + String.format("%03d", nextNum);
+            if (bonLivraisonRepository.findByNumero(numero).isPresent()) {
+                nextNum++;
+            } else {
+                break;
+            }
+        } while (true);
+        
+        return numero;
     }
     
     public BonLivraison createLivraison(UUID commandeId, Utilisateur createur) {
@@ -498,63 +534,68 @@ public class VenteService {
         TypeMouvement typeMouvement = typeMouvementRepository.findById("EXPEDITION")
             .orElseThrow(() -> new RuntimeException("Type mouvement non trouvé"));
         
-        // Décrémenter le stock et libérer les réservations
+        // CORRECTION COMPLÈTE : Décrémenter le stock directement depuis les lignes de livraison
+        // Chaque ligne de livraison correspond déjà à UNE réservation spécifique (1 lot)
+        // Il ne faut PAS rechercher toutes les réservations pour chaque ligne !
+        
         for (LigneBonLivraison ligne : livraison.getLignes()) {
-            // Trouver les réservations associées
-            LigneCommandeClient ligneCmd = livraison.getCommande().getLignes().stream()
-                .filter(l -> l.getArticle().getId().equals(ligne.getArticle().getId()))
-                .findFirst()
-                .orElse(null);
+            BigDecimal qtyALivrer = ligne.getQtyLivree();
             
-            if (ligneCmd != null) {
-                List<ReservationStock> reservations = reservationStockRepository.findByLigneCommandeId(ligneCmd.getId());
-                BigDecimal qtyALivrer = ligne.getQtyLivree();
+            if (qtyALivrer.compareTo(BigDecimal.ZERO) <= 0) continue;
+            
+            // Mettre à jour le stock correspondant à cette ligne (1 ligne = 1 lot spécifique)
+            Optional<Stock> stockOpt = stockRepository.findByDepotIdAndArticleIdAndLotId(
+                ligne.getDepot().getId(),
+                ligne.getArticle().getId(),
+                ligne.getLot() != null ? ligne.getLot().getId() : null
+            );
+            
+            if (stockOpt.isPresent()) {
+                Stock stock = stockOpt.get();
                 
-                for (ReservationStock reservation : reservations) {
-                    if (qtyALivrer.compareTo(BigDecimal.ZERO) <= 0) break;
-                    
-                    BigDecimal aDeduire = reservation.getQtyReservee().min(qtyALivrer);
-                    
-                    // Mettre à jour le stock
-                    Optional<Stock> stockOpt = stockRepository.findByDepotIdAndArticleIdAndLotId(
-                        reservation.getDepot().getId(),
-                        reservation.getArticle().getId(),
-                        reservation.getLot() != null ? reservation.getLot().getId() : null
-                    );
-                    
-                    if (stockOpt.isPresent()) {
-                        Stock stock = stockOpt.get();
-                        stock.setQtyReel(stock.getQtyReel().subtract(aDeduire));
-                        stock.setQtyReserve(stock.getQtyReserve().subtract(aDeduire));
-                        stockRepository.save(stock);
-                        
-                        // Générer le numéro de mouvement
-                        String numeroMvt = "MVT-" + LocalDate.now().format(DateTimeFormatter.ofPattern("yyMM")) + "-";
-                        Integer maxNum = mouvementStockRepository.findMaxNumero(numeroMvt);
-                        numeroMvt += String.format("%05d", (maxNum != null ? maxNum : 0) + 1);
-                        
-                        // Créer le mouvement de sortie
-                        MouvementStock mouvement = MouvementStock.builder()
-                            .numero(numeroMvt)
-                            .typeMouvement(typeMouvement)
-                            .referenceDoc(livraison.getNumero())
-                            .article(ligne.getArticle())
-                            .lot(ligne.getLot())
-                            .depotSource(stock.getDepot())
-                            .emplacementSource(stock.getEmplacement())
-                            .qty(aDeduire)
-                            .utilisateur(acteur)
-                            .createdAt(OffsetDateTime.now())
-                            .build();
-                        mouvementStockRepository.save(mouvement);
-                    }
-                    
-                    qtyALivrer = qtyALivrer.subtract(aDeduire);
-                }
+                // Déduire la quantité livrée du stock réel et réservé
+                stock.setQtyReel(stock.getQtyReel().subtract(qtyALivrer));
+                stock.setQtyReserve(stock.getQtyReserve().subtract(qtyALivrer));
+                stockRepository.save(stock);
                 
-                // Mettre à jour la quantité livrée sur la commande
-                ligneCmd.setQtyDelivered(ligneCmd.getQtyDelivered().add(ligne.getQtyLivree()));
+                // Générer le numéro de mouvement
+                String numeroMvt = "MVT-" + LocalDate.now().format(DateTimeFormatter.ofPattern("yyMM")) + "-";
+                Integer maxNum = mouvementStockRepository.findMaxNumero(numeroMvt);
+                numeroMvt += String.format("%05d", (maxNum != null ? maxNum : 0) + 1);
+                
+                // Créer le mouvement de sortie
+                MouvementStock mouvement = MouvementStock.builder()
+                    .numero(numeroMvt)
+                    .typeMouvement(typeMouvement)
+                    .referenceDoc(livraison.getNumero())
+                    .article(ligne.getArticle())
+                    .lot(ligne.getLot())
+                    .depotSource(stock.getDepot())
+                    .emplacementSource(stock.getEmplacement())
+                    .qty(qtyALivrer)
+                    .utilisateur(acteur)
+                    .createdAt(OffsetDateTime.now())
+                    .build();
+                mouvementStockRepository.save(mouvement);
+            }
+        }
+        
+        // Mettre à jour les quantités livrées sur les lignes de commande (par article)
+        Map<UUID, BigDecimal> qteLivreeParArticle = new HashMap<>();
+        for (LigneBonLivraison ligne : livraison.getLignes()) {
+            UUID articleId = ligne.getArticle().getId();
+            qteLivreeParArticle.merge(articleId, ligne.getQtyLivree(), BigDecimal::add);
+        }
+        
+        for (LigneCommandeClient ligneCmd : livraison.getCommande().getLignes()) {
+            UUID articleId = ligneCmd.getArticle().getId();
+            if (qteLivreeParArticle.containsKey(articleId)) {
+                ligneCmd.setQtyDelivered(ligneCmd.getQtyDelivered().add(qteLivreeParArticle.get(articleId)));
                 ligneCommandeClientRepository.save(ligneCmd);
+                
+                // CORRECTION : Supprimer les réservations après livraison pour éviter double traitement
+                List<ReservationStock> reservations = reservationStockRepository.findByLigneCommandeId(ligneCmd.getId());
+                reservationStockRepository.deleteAll(reservations);
             }
         }
         
@@ -624,10 +665,22 @@ public class VenteService {
         return retourClientRepository.findByClientId(clientId);
     }
     
-    public String generateRetourNumero() {
+    public synchronized String generateRetourNumero() {
         String prefix = "RET-" + LocalDate.now().format(DateTimeFormatter.ofPattern("yyMM")) + "-";
         Integer maxNum = retourClientRepository.findMaxNumero(prefix + "%");
-        return prefix + String.format("%03d", (maxNum != null ? maxNum : 0) + 1);
+        int nextNum = (maxNum != null ? maxNum : 0) + 1;
+        String numero;
+        
+        do {
+            numero = prefix + String.format("%03d", nextNum);
+            if (retourClientRepository.findByNumero(numero).isPresent()) {
+                nextNum++;
+            } else {
+                break;
+            }
+        } while (true);
+        
+        return numero;
     }
     
     public RetourClient createRetour(RetourClient retour, Utilisateur demandeur) {

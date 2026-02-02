@@ -464,10 +464,10 @@
             
             <!-- Référentiels -->
             <div class="nav-section mt-3">Référentiels</div>
-            <a th:href="@{/referentiels/devises}" class="nav-link" sec:authorize="hasAnyRole('ADMIN','MANAGER_ACHATS','MANAGER_VENTES','DAF')"
-               th:classappend="${#strings.contains(currentUri, '/referentiels')} ? 'active' : ''">
-                <i class="bi bi-database"></i>
-                <span>Référentiels</span>
+            <a th:href="@{/articles}" class="nav-link"
+               th:classappend="${#strings.contains(currentUri, '/articles')} ? 'active' : ''">
+                <i class="bi bi-box-seam"></i>
+                <span>Articles</span>
             </a>
             
             <!-- Administration -->

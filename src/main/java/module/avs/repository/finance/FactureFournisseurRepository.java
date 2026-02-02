@@ -19,6 +19,10 @@ public interface FactureFournisseurRepository extends JpaRepository<FactureFourn
     List<FactureFournisseur> findByStatutCode(String statutCode);
     Page<FactureFournisseur> findAllByOrderByDateFactureDesc(Pageable pageable);
     
+    // Numérotation
+    @Query("SELECT COALESCE(MAX(CAST(SUBSTRING(f.refInterne, 9) AS int)), 0) FROM FactureFournisseur f WHERE f.refInterne LIKE :prefix")
+    Integer findMaxNumero(String prefix);
+    
     // Check if invoice already exists for a commande achat
     Optional<FactureFournisseur> findByCommandeAchatId(UUID commandeAchatId);
     

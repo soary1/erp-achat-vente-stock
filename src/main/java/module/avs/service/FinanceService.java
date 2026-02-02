@@ -160,9 +160,22 @@ public class FinanceService {
         return factureClientRepository.findById(id);
     }
     
-    public String generateFactureClientNumero() {
-        return "FAC-" + LocalDate.now().getYear() + "-" + 
-               String.format("%05d", factureClientRepository.count() + 1);
+    public synchronized String generateFactureClientNumero() {
+        String prefix = "FAC-" + LocalDate.now().getYear() + "-";
+        Integer maxNum = factureClientRepository.findMaxNumero(prefix + "%");
+        int nextNum = (maxNum != null ? maxNum : 0) + 1;
+        String numero;
+        
+        do {
+            numero = prefix + String.format("%05d", nextNum);
+            if (factureClientRepository.findByNumero(numero).isPresent()) {
+                nextNum++;
+            } else {
+                break;
+            }
+        } while (true);
+        
+        return numero;
     }
     
     /**
@@ -283,9 +296,22 @@ public class FinanceService {
         return saved;
     }
     
-    public String generateFactureFournisseurNumero() {
-        return "FF-" + LocalDate.now().getYear() + "-" + 
-               String.format("%05d", factureFournisseurRepository.count() + 1);
+    public synchronized String generateFactureFournisseurNumero() {
+        String prefix = "FF-" + LocalDate.now().getYear() + "-";
+        Integer maxNum = factureFournisseurRepository.findMaxNumero(prefix + "%");
+        int nextNum = (maxNum != null ? maxNum : 0) + 1;
+        String numero;
+        
+        do {
+            numero = prefix + String.format("%05d", nextNum);
+            if (factureFournisseurRepository.findByRefInterne(numero).isPresent()) {
+                nextNum++;
+            } else {
+                break;
+            }
+        } while (true);
+        
+        return numero;
     }
     
     // ============ ENCAISSEMENTS ============

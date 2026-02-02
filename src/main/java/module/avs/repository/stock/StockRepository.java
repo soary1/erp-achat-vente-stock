@@ -29,6 +29,9 @@ public interface StockRepository extends JpaRepository<Stock, UUID> {
     @Query("SELECT SUM(s.qtyReel) FROM Stock s WHERE s.article.id = :articleId")
     BigDecimal getTotalStockByArticle(UUID articleId);
     
+    @Query("SELECT SUM(s.qtyReel) FROM Stock s WHERE s.depot.id = :depotId")
+    BigDecimal getTotalStockByDepot(UUID depotId);
+    
     @Query("SELECT SUM(s.qtyReel) FROM Stock s WHERE s.depot.id = :depotId AND s.article.id = :articleId")
     BigDecimal getStockByDepotAndArticle(UUID depotId, UUID articleId);
     
